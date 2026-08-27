@@ -55,11 +55,18 @@ return [
     | Documentation de l'API
     |--------------------------------------------------------------------------
     |
-    | Jeton d'accès à `/docs/api` hors environnement local. Vide = documentation
-    | inaccessible en dehors du local.
+    | `enabled` est l'interrupteur principal : à false, `/docs/api` répond 403
+    | partout, y compris en local.
+    |
+    | Une fois activée, la documentation est ouverte en local. Sur les autres
+    | environnements, elle exige `?token=` correspondant à `token` ; si aucun
+    | jeton n'est configuré, elle reste fermée.
     |
     */
 
-    'docs_token' => env('API_DOCS_TOKEN'),
+    'docs' => [
+        'enabled' => (bool) env('API_DOCS_ENABLED', false),
+        'token' => env('API_DOCS_TOKEN'),
+    ],
 
 ];

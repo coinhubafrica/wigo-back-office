@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureApiDocsAreEnabled;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 use Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
@@ -166,6 +167,7 @@ return [
 
     'middleware' => [
         'web',
+        EnsureApiDocsAreEnabled::class,
         RestrictedDocsAccess::class,
     ],
 

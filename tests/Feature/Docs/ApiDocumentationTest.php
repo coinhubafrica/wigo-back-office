@@ -68,15 +68,33 @@ class ApiDocumentationTest extends TestCase
 
     public function test_the_documentation_is_reachable_in_local(): void
     {
+        config(['wigo.docs.enabled' => true]);
         $this->app->detectEnvironment(fn (): string => 'local');
 
         $this->get('/docs/api')->assertOk();
     }
 
+    public function test_the_master_switch_closes_the_documentation_even_in_local(): void
+    {
+        config(['wigo.docs.enabled' => false]);
+        $this->app->detectEnvironment(fn (): string => 'local');
+
+        $this->get('/docs/api')->assertForbidden();
+        $this->get('/docs/api.json')->assertForbidden();
+    }
+
+    public function test_the_master_switch_closes_the_documentation_despite_a_valid_token(): void
+    {
+        config(['wigo.docs.enabled' => false, 'wigo.docs.token' => 'jeton-secret']);
+        $this->app->detectEnvironment(fn (): string => 'production');
+
+        $this->get('/docs/api?token=jeton-secret')->assertForbidden();
+    }
+
     public function test_the_documentation_is_refused_without_a_token_outside_local(): void
     {
         $this->app->detectEnvironment(fn (): string => 'production');
-        config(['wigo.docs_token' => 'jeton-secret']);
+        config(['wigo.docs.enabled' => true, 'wigo.docs.token' => 'jeton-secret']);
 
         $this->get('/docs/api')->assertForbidden();
         $this->get('/docs/api?token=mauvais')->assertForbidden();
@@ -85,7 +103,7 @@ class ApiDocumentationTest extends TestCase
     public function test_the_documentation_is_served_with_a_valid_token_outside_local(): void
     {
         $this->app->detectEnvironment(fn (): string => 'production');
-        config(['wigo.docs_token' => 'jeton-secret']);
+        config(['wigo.docs.enabled' => true, 'wigo.docs.token' => 'jeton-secret']);
 
         $this->get('/docs/api?token=jeton-secret')->assertOk();
     }
@@ -93,7 +111,7 @@ class ApiDocumentationTest extends TestCase
     public function test_the_documentation_stays_closed_when_no_token_is_configured(): void
     {
         $this->app->detectEnvironment(fn (): string => 'production');
-        config(['wigo.docs_token' => null]);
+        config(['wigo.docs.enabled' => true, 'wigo.docs.token' => null]);
 
         $this->get('/docs/api')->assertForbidden();
         $this->get('/docs/api?token=')->assertForbidden();
@@ -107,7 +125,7 @@ class ApiDocumentationTest extends TestCase
      */
     private function document(): array
     {
-        config(['wigo.docs_token' => 'jeton-de-test']);
+        config(['wigo.docs.enabled' => true, 'wigo.docs.token' => 'jeton-de-test']);
 
         return $this->getJson('/docs/api.json?token=jeton-de-test')->assertOk()->json();
     }

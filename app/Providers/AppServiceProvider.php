@@ -94,16 +94,17 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Accès à la documentation générée (`/docs/api`).
+     * Accès à la documentation générée (`/docs/api`) hors environnement local.
      *
-     * Ouverte en local. Ailleurs, elle n'est servie que si `API_DOCS_TOKEN` est
-     * défini et fourni en paramètre `?token=` : l'équipe mobile consulte le
-     * contrat sur les environnements de recette sans l'exposer publiquement.
+     * L'interrupteur principal (`API_DOCS_ENABLED`) est appliqué en amont par
+     * EnsureApiDocsAreEnabled. Ici, on n'autorise que sur présentation du jeton
+     * `API_DOCS_TOKEN` : l'équipe mobile consulte le contrat en recette sans
+     * l'exposer publiquement.
      */
     protected function configureApiDocs(): void
     {
         Gate::define('viewApiDocs', function (?object $user = null): bool {
-            $expected = (string) config('wigo.docs_token');
+            $expected = (string) config('wigo.docs.token');
 
             if ($expected === '') {
                 return false;
