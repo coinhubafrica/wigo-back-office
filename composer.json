@@ -10,7 +10,9 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "dedoc/scramble": "^0.13.42",
         "laravel/framework": "^13.17",
+        "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "livewire/blaze": "^1.0",
         "livewire/livewire": "^4.1"
@@ -54,6 +56,9 @@
         ],
         "lint": [
             "pint --parallel"
+        ],
+        "docs": [
+            "@php artisan scramble:export"
         ],
         "lint:check": [
             "pint --parallel --test"
