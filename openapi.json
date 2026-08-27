@@ -16,6 +16,42 @@
         }
     ],
     "paths": {
+        "/announcements": {
+            "get": {
+                "operationId": "v1.announcements.index",
+                "description": "Uniquement celles publi\u00e9es : actives et, si elles ont une fen\u00eatre de\ndiffusion, dans cette fen\u00eatre. Tri\u00e9es par ordre d'affichage.",
+                "summary": "Lister les banni\u00e8res de l'accueil",
+                "tags": [
+                    "Announcement"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `AnnouncementResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/AnnouncementResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/auth/otp/request": {
             "post": {
                 "operationId": "v1.auth.otp.request",
@@ -274,6 +310,38 @@
             }
         },
         "schemas": {
+            "AnnouncementResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "media_type": {
+                        "type": "string",
+                        "enum": [
+                            "image",
+                            "video"
+                        ]
+                    },
+                    "media_url": {
+                        "type": "string"
+                    },
+                    "order": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "media_type",
+                    "media_url",
+                    "order"
+                ],
+                "title": "AnnouncementResource"
+            },
             "DriverResource": {
                 "type": "object",
                 "properties": {

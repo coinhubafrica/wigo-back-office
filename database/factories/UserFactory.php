@@ -24,13 +24,29 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $firstName = fake()->firstName();
+        $lastName = Str::upper(fake()->lastName());
+
         return [
-            'name' => fake()->name(),
+            'name' => "{$firstName} {$lastName}",
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => fake()->unique()->safeEmail(),
+            'phone' => '+225'.fake()->numerify('##########'),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'is_active' => true,
+            'last_login_at' => null,
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /**
+     * Compte désactivé : conservé mais interdit à la connexion.
+     */
+    public function disabled(): static
+    {
+        return $this->state(fn (): array => ['is_active' => false]);
     }
 
     /**

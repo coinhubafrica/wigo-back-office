@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DriverPhotoStatus;
 use App\Enums\DriverStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\DriverFactory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -22,6 +24,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $phone
  * @property string|null $license_number
  * @property string|null $photo_url
+ * @property DriverPhotoStatus|null $photo_status
  * @property DriverStatus $status
  * @property string|null $suspension_reason
  * @property string|null $terms_version
@@ -55,6 +58,7 @@ class Driver extends Authenticatable
     {
         return [
             'status' => DriverStatus::class,
+            'photo_status' => DriverPhotoStatus::class,
             'terms_accepted_at' => 'datetime',
             'last_sync_at' => 'datetime',
             'last_login_at' => 'datetime',
@@ -98,6 +102,11 @@ class Driver extends Authenticatable
         return $this->status === DriverStatus::Suspended;
     }
 
+    public function hasPhotoPendingModeration(): bool
+    {
+        return $this->photo_status === DriverPhotoStatus::Pending;
+    }
+
     public function fullName(): string
     {
         return trim("{$this->first_name} {$this->last_name}");
@@ -107,5 +116,14 @@ class Driver extends Authenticatable
     {
         return $this->terms_version === config('wigo.terms_version')
             && $this->terms_accepted_at !== null;
+    }
+
+    public function initials(): string
+    {
+        $initials = Str::initials($this->fullName(), true);
+
+        return Str::length($initials) > 1
+            ? Str::substr($initials, 0, 1).Str::substr($initials, -1)
+            : $initials;
     }
 }

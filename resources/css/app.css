@@ -3,6 +3,55 @@
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
+/*
+ * Charte WiGO PRO (cahier des charges § 4.2). Les jetons du handoff sont
+ * exprimés en syntaxe Tailwind 4 (`@theme`) et non dans tailwind.config.js.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+    --color-primary: #FB5C02;
+    --color-primary-hover: #E05302;
+    --color-primary-active: #C94802;
+    --color-primary-tint: #FFF1E6;
+    --color-primary-text: #C94802;
+
+    --color-ink: #09090B;
+    --color-muted: #71717A;
+    --color-surface: #FAFAFA;
+    --color-card: #FFFFFF;
+    --color-line: #E4E4E7;
+    --color-input: #D4D4D8;
+
+    --color-sidebar: #18181B;
+    --color-sidebar-line: #27272A;
+
+    --color-ok-bg: #E9F7EF;
+    --color-ok-text: #15803D;
+    --color-warn-bg: #FEF6E0;
+    --color-warn-text: #B45309;
+    --color-err-bg: #FDECEC;
+    --color-err-text: #DC2626;
+
+    --radius-DEFAULT: 8px;
+    --radius-sm: 6px;
+}
+
+@layer base {
+    body {
+        /* Chiffres tabulaires : les colonnes financières doivent s'aligner. */
+        font-feature-settings: 'tnum' 1;
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+    }
+
+    ::selection {
+        background-color: #FFDCC3;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+    }
 }

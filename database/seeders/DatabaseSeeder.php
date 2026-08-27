@@ -14,9 +14,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Jeu d'essai de développement : jamais exécuté en production.
+        // Permissions et rôles initiaux : nécessaires dans tous les
+        // environnements, y compris en production.
+        $this->call(RolePermissionSeeder::class);
+
+        // Jeux d'essai : jamais exécutés en production.
         if (! app()->isProduction()) {
-            $this->call(DriverSeeder::class);
+            $this->call([
+                UserSeeder::class,
+                DriverSeeder::class,
+            ]);
         }
     }
 }
