@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'sms' => [
+        'driver' => env('SMS_DRIVER', 'log'),
+        'base_url' => env('SMS_BASE_URL'),
+        'api_key' => env('SMS_API_KEY'),
+        'sender_id' => env('SMS_SENDER_ID', 'WiGO'),
+        'whatsapp_base_url' => env('SMS_WHATSAPP_BASE_URL'),
+        'whatsapp_api_key' => env('SMS_WHATSAPP_API_KEY'),
+    ],
+
 ];
