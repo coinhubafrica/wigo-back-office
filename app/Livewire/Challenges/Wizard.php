@@ -205,7 +205,7 @@ class Wizard extends Component
             ]);
         }
 
-        $isDirection = auth()->user()?->hasRole('direction') ?? false;
+        $isDirection = auth('web')->user()?->hasRole('direction') ?? false;
 
         $challenge = Challenge::query()->create([
             'reference' => $this->nextReference(),

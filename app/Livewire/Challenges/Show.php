@@ -15,6 +15,7 @@ use App\Models\ChallengeWinner;
 use App\Models\Driver;
 use App\Services\Challenges\DrawService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -398,7 +399,7 @@ class Show extends Component
         $winnerDriverIds = $this->challenge->winners()->pluck('driver_id')->all();
         $places = (int) ($this->challenge->winners_count ?? 0);
 
-        return $this->rankedDrivers()
+        $rows = $this->rankedDrivers()
             ->values()
             ->map(function (array $row, int $index) use ($winnerDriverIds, $places): array {
                 $rank = $index + 1;
@@ -419,15 +420,21 @@ class Show extends Component
                             : __('backoffice.challenges.eligible_badge')),
                 ];
             })
-            ->when($this->listSearch !== '', fn (Collection $rows) => $rows->filter(
-                fn (array $row): bool => str_contains(mb_strtolower($row['name']), mb_strtolower($this->listSearch))
-                    || str_contains(mb_strtolower((string) $row['account']), mb_strtolower($this->listSearch))
-            ))
-            ->when($this->listFilter === 'gagnants', fn (Collection $rows) => $rows->filter(fn (array $row): bool => $row['isWinner']))
-            ->when($this->listFilter === 'hors', fn (Collection $rows) => $rows->reject(fn (array $row): bool => $row['isWinner']))
-            ->take(25)
-            ->values()
             ->all();
+
+        if ($this->listSearch !== '') {
+            $needle = mb_strtolower($this->listSearch);
+            $rows = array_filter($rows, fn (array $row): bool => str_contains(mb_strtolower((string) $row['name']), $needle)
+                || str_contains(mb_strtolower((string) $row['account']), $needle));
+        }
+
+        $rows = match ($this->listFilter) {
+            'gagnants' => array_filter($rows, fn (array $row): bool => (bool) $row['isWinner']),
+            'hors' => array_filter($rows, fn (array $row): bool => ! $row['isWinner']),
+            default => $rows,
+        };
+
+        return array_slice(array_values($rows), 0, 25);
     }
 
     /**
@@ -439,18 +446,19 @@ class Show extends Component
     {
         $winnerNumbers = $this->challenge->winners()->pluck('winning_range_number')->filter()->all();
 
-        return ChallengeTicket::query()
+        $rows = ChallengeTicket::query()
             ->where('challenge_id', $this->challenge->id)
             ->whereNotNull('range_number')
             ->with('driver')
             ->orderBy('range_number')
             ->get()
             ->groupBy('driver_id')
-            ->map(function (Collection $tickets): array {
+            ->map(function (EloquentCollection $tickets): array {
                 $numbers = $tickets->pluck('range_number');
+                $driver = $tickets->firstOrFail()->driver;
 
                 return [
-                    'name' => $tickets->first()->driver->fullName(),
+                    'name' => $driver->fullName(),
                     'tickets' => $tickets->count(),
                     'range' => number_format((int) $numbers->min(), 0, ',', ' ').' – '.number_format((int) $numbers->max(), 0, ',', ' '),
                     'numbers' => $numbers->all(),
@@ -463,9 +471,9 @@ class Show extends Component
                 'isWinner' => array_intersect($row['numbers'], $winnerNumbers) !== [],
             ])
             ->sortByDesc('isWinner')
-            ->take(8)
-            ->values()
             ->all();
+
+        return array_slice(array_values($rows), 0, 8);
     }
 
     /**
@@ -508,7 +516,7 @@ class Show extends Component
     public function committedBudget(): string
     {
         if ($this->challenge->prize_nature === PrizeNature::PhysicalItem) {
-            return (string) ($this->challenge->prize?->name ?? '—');
+            return (string) ($this->challenge->prize->name ?? '—');
         }
 
         return number_format(
@@ -519,7 +527,7 @@ class Show extends Component
 
     public function canManageBonus(): bool
     {
-        return auth()->user()?->hasAnyRole(['bonus', 'direction']) ?? false;
+        return auth('web')->user()?->hasAnyRole(['bonus', 'direction']) ?? false;
     }
 
     public function render(): View

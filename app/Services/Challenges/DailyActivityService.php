@@ -35,7 +35,7 @@ class DailyActivityService
                 ->orderByDesc('activity_date')
                 ->first();
 
-            $previousTotal = $previousDay?->orders_total ?? 0;
+            $previousTotal = $previousDay->orders_total ?? 0;
             $ordersTotal = $previousTotal + $ordersCompleted;
 
             DriverDailyActivity::query()->updateOrCreate(
