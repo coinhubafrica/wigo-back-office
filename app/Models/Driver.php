@@ -97,6 +97,22 @@ class Driver extends Authenticatable
         return $this->hasMany(Vehicle::class);
     }
 
+    /**
+     * @return HasMany<Order, $this>
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /**
+     * @return HasMany<DriverDailyActivity, $this>
+     */
+    public function dailyActivities(): HasMany
+    {
+        return $this->hasMany(DriverDailyActivity::class);
+    }
+
     public function isSuspended(): bool
     {
         return $this->status === DriverStatus::Suspended;

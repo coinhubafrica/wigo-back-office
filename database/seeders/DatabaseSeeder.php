@@ -24,7 +24,17 @@ class DatabaseSeeder extends Seeder
                 UserSeeder::class,
                 DriverSeeder::class,
                 AnnouncementSeeder::class,
+                // ChallengeSeeder avant OrderSeeder : le grand livre de
+                // tickets ne mine que pour les challenges déjà existants au
+                // moment où chaque journée est enregistrée.
+                ChallengeSeeder::class,
+                OrderSeeder::class,
             ]);
+
+            // Gel du pool de tirage "à effectuer" : nécessite les courses
+            // d'OrderSeeder, donc exécuté après coup plutôt que dans
+            // ChallengeSeeder lui-même.
+            (new ChallengeSeeder)->freezeDrawPendingFixture();
         }
     }
 }

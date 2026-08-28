@@ -3,6 +3,9 @@
 use App\Enums\BackOfficeModule;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Auth\Login;
+use App\Livewire\Challenges\Index as ChallengesIndex;
+use App\Livewire\Challenges\Prizes as ChallengesPrizes;
+use App\Livewire\Challenges\Show as ChallengesShow;
 use App\Livewire\Dashboard;
 use App\Livewire\Drivers\Index as DriversIndex;
 use App\Livewire\Drivers\Show as DriversShow;
@@ -57,4 +60,16 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('announcements', AnnouncementsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Announcements->permission())
         ->name(BackOfficeModule::Announcements->route());
+
+    Route::livewire('challenges', ChallengesIndex::class)
+        ->middleware('permission:'.BackOfficeModule::Challenges->permission())
+        ->name(BackOfficeModule::Challenges->route());
+
+    Route::livewire('challenges/lots', ChallengesPrizes::class)
+        ->middleware('permission:'.BackOfficeModule::Challenges->permission())
+        ->name('bo.challenges.prizes');
+
+    Route::livewire('challenges/{challenge}', ChallengesShow::class)
+        ->middleware('permission:'.BackOfficeModule::Challenges->permission())
+        ->name('bo.challenges.show');
 });
