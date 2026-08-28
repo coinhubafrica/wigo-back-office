@@ -25,7 +25,7 @@ class AuthControllerTest extends TestCase
 
         $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])
             ->assertOk()
-            ->assertJsonStructure(['message', 'channel', 'expires_at']);
+            ->assertJsonStructure(['message', 'data' => ['channel', 'expires_at']]);
 
         $otpCode = OtpCode::sole();
         $this->assertSame($driver->id, $otpCode->driver_id);
@@ -47,7 +47,7 @@ class AuthControllerTest extends TestCase
         $this->postJson(route('api.v1.auth.otp.request'), [
             'phone' => '+2250717738299',
             'channel' => 'whatsapp',
-        ])->assertOk()->assertJsonPath('channel', 'whatsapp');
+        ])->assertOk()->assertJsonPath('data.channel', 'whatsapp');
 
         $this->assertSame(OtpChannel::Whatsapp->value, $sender->sent()[0]['channel']);
     }
@@ -59,7 +59,7 @@ class AuthControllerTest extends TestCase
 
         $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])
             ->assertOk()
-            ->assertJsonPath('channel', 'sms');
+            ->assertJsonPath('data.channel', 'sms');
 
         $this->assertSame(OtpChannel::Sms->value, $sender->sent()[0]['channel']);
     }
@@ -86,7 +86,7 @@ class AuthControllerTest extends TestCase
 
         $code = $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])
             ->assertOk()
-            ->json('code');
+            ->json('data.code');
 
         $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
         $this->assertTrue(Hash::check($code, OtpCode::sole()->code_hash));
@@ -96,7 +96,7 @@ class AuthControllerTest extends TestCase
             'phone' => $driver->phone,
             'code' => $code,
             'device_name' => 'Pixel 8',
-        ])->assertOk()->assertJsonStructure(['token']);
+        ])->assertOk()->assertJsonStructure(['data' => ['token']]);
     }
 
     public function test_otp_request_omits_the_code_when_exposure_is_disabled(): void
@@ -107,7 +107,7 @@ class AuthControllerTest extends TestCase
 
         $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])
             ->assertOk()
-            ->assertJsonMissingPath('code');
+            ->assertJsonMissingPath('data.code');
     }
 
     public function test_the_code_is_never_exposed_in_production(): void
@@ -122,7 +122,7 @@ class AuthControllerTest extends TestCase
 
         $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])
             ->assertOk()
-            ->assertJsonMissingPath('code');
+            ->assertJsonMissingPath('data.code');
     }
 
     public function test_otp_request_returns_429_after_three_sends(): void
@@ -150,8 +150,8 @@ class AuthControllerTest extends TestCase
             'device_name' => 'Pixel 8',
         ])
             ->assertOk()
-            ->assertJsonStructure(['token', 'driver' => ['id', 'first_name', 'phone', 'status'], 'terms'])
-            ->assertJsonPath('driver.id', $driver->id);
+            ->assertJsonStructure(['data' => ['token', 'driver' => ['id', 'first_name', 'phone', 'status'], 'terms']])
+            ->assertJsonPath('data.driver.id', $driver->id);
 
         $this->assertCount(1, $driver->tokens()->get());
         $this->assertSame(['mobile:*'], $driver->tokens()->first()->abilities);
@@ -182,7 +182,7 @@ class AuthControllerTest extends TestCase
             'code' => '482913',
             'device_name' => 'Pixel 8',
             'terms_version' => '1.0',
-        ])->assertOk()->assertJsonPath('terms.accepted', true);
+        ])->assertOk()->assertJsonPath('data.terms.accepted', true);
 
         $driver->refresh();
         $this->assertSame('1.0', $driver->terms_version);
@@ -199,8 +199,8 @@ class AuthControllerTest extends TestCase
             'device_name' => 'Pixel 8',
         ])
             ->assertOk()
-            ->assertJsonPath('terms.accepted', false)
-            ->assertJsonPath('terms.current_version', '1.0');
+            ->assertJsonPath('data.terms.accepted', false)
+            ->assertJsonPath('data.terms.current_version', '1.0');
     }
 
     public function test_otp_verify_returns_422_for_a_wrong_code(): void
@@ -296,10 +296,10 @@ class AuthControllerTest extends TestCase
 
         $this->getJson(route('api.v1.me'))
             ->assertOk()
-            ->assertJsonPath('id', $driver->id)
-            ->assertJsonPath('license_no', $driver->license_number)
-            ->assertJsonPath('vehicle.plate', 'AA-567-HJ')
-            ->assertJsonPath('vehicle.make', 'Suzuki');
+            ->assertJsonPath('data.id', $driver->id)
+            ->assertJsonPath('data.license_no', $driver->license_number)
+            ->assertJsonPath('data.vehicle.plate', 'AA-567-HJ')
+            ->assertJsonPath('data.vehicle.make', 'Suzuki');
     }
 
     public function test_me_does_not_expose_the_otp_hash_or_the_push_token(): void

@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\UpdatePushTokenRequest;
 use App\Http\Resources\DriverResource;
 use App\Models\Driver;
 use App\Services\Auth\OtpService;
+use App\Support\Scramble\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -34,9 +35,11 @@ class AuthController extends Controller
      *
      * @response array{
      *     message: string,
-     *     channel: 'sms'|'whatsapp',
-     *     expires_at: string,
-     *     code?: string,
+     *     data: array{
+     *         channel: 'sms'|'whatsapp',
+     *         expires_at: string,
+     *         code?: string,
+     *     },
      * }
      */
     public function requestOtp(OtpRequestRequest $request): JsonResponse
@@ -46,7 +49,6 @@ class AuthController extends Controller
         $otpCode = $this->otpService->send($driver, $request->channel(), $request->ip());
 
         $payload = [
-            'message' => __('otp.sent', ['minutes' => config('wigo.otp.ttl_minutes')]),
             'channel' => $otpCode->channel->value,
             'expires_at' => $otpCode->expires_at->toIso8601String(),
         ];
@@ -57,7 +59,7 @@ class AuthController extends Controller
             $payload['code'] = $plainCode;
         }
 
-        return new JsonResponse($payload);
+        return $this->okApiResponse($payload, __('otp.sent', ['minutes' => config('wigo.otp.ttl_minutes')]));
     }
 
     /**
@@ -68,6 +70,15 @@ class AuthController extends Controller
      * valides simultanément ; une vérification réussie les consomme tous.
      *
      * Après 5 saisies erronées, le numéro est verrouillé 15 minutes.
+     *
+     * @response array{
+     *     message: string,
+     *     data: array{
+     *         token: string,
+     *         driver: DriverResource,
+     *         terms: array{current_version: string, accepted: bool},
+     *     },
+     * }
      */
     public function verifyOtp(OtpVerifyRequest $request): JsonResponse
     {
@@ -84,9 +95,11 @@ class AuthController extends Controller
 
         $token = $driver->createToken($request->string('device_name')->toString(), ['mobile:*']);
 
-        return new JsonResponse([
+        return $this->okApiResponse([
             'token' => $token->plainTextToken,
-            'driver' => new DriverResource($driver->load('vehicle')),
+            // `resolve()` : le conducteur reste un objet imbriqué simple, sans
+            // seconde enveloppe `{message, data}`.
+            'driver' => (new DriverResource($driver->load('vehicle')))->resolve(),
             'terms' => [
                 'current_version' => config('wigo.terms_version'),
                 'accepted' => $driver->hasAcceptedCurrentTerms(),
@@ -99,12 +112,14 @@ class AuthController extends Controller
      *
      * Révoque uniquement le jeton présenté ; les autres appareils du conducteur
      * restent connectés.
+     *
+     * @response array{message: string, data: array<string, never>}
      */
     public function logout(Request $request): JsonResponse
     {
         $this->driver($request)->currentAccessToken()->delete();
 
-        return new JsonResponse(['message' => __('auth.logged_out')]);
+        return $this->okApiResponse([], __('auth.logged_out'));
     }
 
     /**
@@ -113,15 +128,18 @@ class AuthController extends Controller
      * Accessible même lorsque le compte est suspendu, afin que l'application
      * puisse afficher le motif et permettre la déconnexion.
      */
-    public function me(Request $request): DriverResource
+    #[ApiResponse(DriverResource::class)]
+    public function me(Request $request): JsonResponse
     {
-        return new DriverResource($this->driver($request)->load('vehicle'));
+        return $this->okApiResponse(new DriverResource($this->driver($request)->load('vehicle')));
     }
 
     /**
      * Enregistrer le jeton FCM de l'appareil
      *
      * Requis pour recevoir les notifications push (messages data-only).
+     *
+     * @response array{message: string, data: array<string, never>}
      */
     public function updatePushToken(UpdatePushTokenRequest $request): JsonResponse
     {
@@ -129,7 +147,7 @@ class AuthController extends Controller
             'fcm_token' => $request->string('fcm_token')->toString(),
         ])->save();
 
-        return new JsonResponse(['message' => __('auth.push_token_saved')]);
+        return $this->okApiResponse([], __('auth.push_token_saved'));
     }
 
     /**
