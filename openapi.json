@@ -3,7 +3,7 @@
     "info": {
         "title": "WiGO PRO \u2014 API mobile",
         "version": "1.0.0",
-        "description": "Contrat entre le back-office Laravel et l'application mobile **WiGO PRO**\n(chauffeurs Yango en C\u00f4te d'Ivoire, op\u00e9r\u00e9 par At Confort Plus).\n\n- Montants en **entiers FCFA** (XOF).\n- Dates au format **ISO 8601 UTC**.\n- Identifiants **ULID**.\n- Messages d'erreur **en fran\u00e7ais**, pr\u00eats \u00e0 afficher.\n- Pagination **curseur** : `{ data, meta.next_cursor }`, `per_page` \u2264 50.\n- Authentification par **jeton Sanctum** (habilitation `mobile:*`) obtenu\n  via `POST /auth/otp/verify`."
+        "description": "Contrat entre le back-office Laravel et l'application mobile **WiGO PRO**\n(chauffeurs Yango en C\u00f4te d'Ivoire, op\u00e9r\u00e9 par At Confort Plus).\n\n- Montants en **entiers FCFA** (XOF).\n- Dates au format **ISO 8601 UTC**.\n- Identifiants **ULID**.\n- Messages d'erreur **en fran\u00e7ais**, pr\u00eats \u00e0 afficher.\n- Enveloppe unique : succ\u00e8s `{ message, data }`, erreur\n  `{ message, errors }`. Le code HTTP porte le statut, jamais le corps.\n- Pagination **curseur** : `meta.next_cursor` et `links.next`,\n  `per_page` \u2264 50.\n- Authentification par **jeton Sanctum** (habilitation `mobile:*`) obtenu\n  via `POST /auth/otp/verify`."
     },
     "servers": [
         {
@@ -19,27 +19,40 @@
         "/announcements": {
             "get": {
                 "operationId": "v1.announcements.index",
-                "description": "Uniquement celles publi\u00e9es : actives et, si elles ont une fen\u00eatre de\ndiffusion, dans cette fen\u00eatre. Tri\u00e9es par ordre d'affichage.",
+                "description": "Uniquement celles publi\u00e9es : actives et, si elles ont une fen\u00eatre de\ndiffusion, dans cette fen\u00eatre. Tri\u00e9es par ordre d'affichage.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la derni\u00e8re page), \u00e0 renvoyer dans `?cursor=`. `per_page`\nest plafonn\u00e9 \u00e0 50.",
                 "summary": "Lister les banni\u00e8res de l'accueil",
                 "tags": [
                     "Announcement"
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `AnnouncementResource`",
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
                                         "data": {
                                             "type": "array",
                                             "items": {
                                                 "$ref": "#/components/schemas/AnnouncementResource"
                                             }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
                                         }
                                     },
                                     "required": [
+                                        "message",
                                         "data"
                                     ]
                                 }
@@ -81,24 +94,32 @@
                                         "message": {
                                             "type": "string"
                                         },
-                                        "channel": {
-                                            "type": "string",
-                                            "enum": [
-                                                "sms",
-                                                "whatsapp"
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "channel": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "sms",
+                                                        "whatsapp"
+                                                    ]
+                                                },
+                                                "expires_at": {
+                                                    "type": "string"
+                                                },
+                                                "code": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "channel",
+                                                "expires_at"
                                             ]
-                                        },
-                                        "expires_at": {
-                                            "type": "string"
-                                        },
-                                        "code": {
-                                            "type": "string"
                                         }
                                     },
                                     "required": [
                                         "message",
-                                        "channel",
-                                        "expires_at"
+                                        "data"
                                     ]
                                 }
                             }
@@ -137,42 +158,44 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "token": {
+                                        "message": {
                                             "type": "string"
                                         },
-                                        "driver": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/components/schemas/DriverResource"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "vehicle"
-                                                    ]
-                                                }
-                                            ]
-                                        },
-                                        "terms": {
+                                        "data": {
                                             "type": "object",
                                             "properties": {
-                                                "current_version": {
+                                                "token": {
                                                     "type": "string"
                                                 },
-                                                "accepted": {
-                                                    "type": "boolean"
+                                                "driver": {
+                                                    "$ref": "#/components/schemas/DriverResource"
+                                                },
+                                                "terms": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "current_version": {
+                                                            "type": "string"
+                                                        },
+                                                        "accepted": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "current_version",
+                                                        "accepted"
+                                                    ]
                                                 }
                                             },
                                             "required": [
-                                                "current_version",
-                                                "accepted"
+                                                "token",
+                                                "driver",
+                                                "terms"
                                             ]
                                         }
                                     },
                                     "required": [
-                                        "token",
-                                        "driver",
-                                        "terms"
+                                        "message",
+                                        "data"
                                     ]
                                 }
                             }
@@ -202,12 +225,18 @@
                                     "type": "object",
                                     "properties": {
                                         "message": {
-                                            "type": "string",
-                                            "const": "Vous avez \u00e9t\u00e9 d\u00e9connect\u00e9."
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object"
+                                            }
                                         }
                                     },
                                     "required": [
-                                        "message"
+                                        "message",
+                                        "data"
                                     ]
                                 }
                             }
@@ -229,20 +258,23 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "`DriverResource`",
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "allOf": [
-                                        {
-                                            "$ref": "#/components/schemas/DriverResource"
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
                                         },
-                                        {
-                                            "type": "object",
-                                            "required": [
-                                                "vehicle"
-                                            ]
+                                        "data": {
+                                            "$ref": "#/components/schemas/DriverResource"
                                         }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
                                     ]
                                 }
                             }
@@ -281,12 +313,18 @@
                                     "type": "object",
                                     "properties": {
                                         "message": {
-                                            "type": "string",
-                                            "const": "Jeton de notification enregistr\u00e9."
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object"
+                                            }
                                         }
                                     },
                                     "required": [
-                                        "message"
+                                        "message",
+                                        "data"
                                     ]
                                 }
                             }
@@ -297,6 +335,255 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/me/challenges": {
+            "get": {
+                "operationId": "v1.me.challenges",
+                "description": "Un \u00e9l\u00e9ment par challenge ouvert, avec la progression propre au\nconducteur : tickets d\u00e9tenus et courses restantes avant le prochain pour\nune tombola, rang et prime pour un classement, gain \u00e9ventuel. Les blocs\n`ticketing`, `leaderboard` et `won` ne sont pr\u00e9sents que lorsqu'ils\ns'appliquent au challenge.\n\n`meta.weekly_history` porte les douze derni\u00e8res semaines de courses\ntermin\u00e9es, de la plus ancienne \u00e0 la semaine en cours.\n\nReste accessible \u00e0 un conducteur suspendu, comme le profil : ses\ncompteurs cessent simplement de progresser.",
+                "summary": "Challenges en cours du conducteur",
+                "tags": [
+                    "MeChallenge"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "reference": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "leaderboard",
+                                                            "raffle",
+                                                            "surprise"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "active",
+                                                            "draw_pending",
+                                                            "payout_pending"
+                                                        ]
+                                                    },
+                                                    "criteria_summary": {
+                                                        "type": "string"
+                                                    },
+                                                    "period": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "start": {
+                                                                "type": "string"
+                                                            },
+                                                            "end": {
+                                                                "type": "string"
+                                                            },
+                                                            "week_iso": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "start",
+                                                            "end",
+                                                            "week_iso"
+                                                        ]
+                                                    },
+                                                    "prize": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "photo_url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "photo_url"
+                                                        ]
+                                                    },
+                                                    "ticketing": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "trips_per_ticket": {
+                                                                "type": "integer"
+                                                            },
+                                                            "orders_completed": {
+                                                                "type": "integer"
+                                                            },
+                                                            "tickets_held": {
+                                                                "type": "integer"
+                                                            },
+                                                            "progress_in_block": {
+                                                                "type": "integer"
+                                                            },
+                                                            "orders_to_next_ticket": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "trips_per_ticket",
+                                                            "orders_completed",
+                                                            "tickets_held",
+                                                            "progress_in_block",
+                                                            "orders_to_next_ticket"
+                                                        ]
+                                                    },
+                                                    "leaderboard": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "rank": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "winning_places": {
+                                                                "type": "integer"
+                                                            },
+                                                            "reward_amount": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "in_winning_range": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "rank",
+                                                            "winning_places",
+                                                            "reward_amount",
+                                                            "in_winning_range"
+                                                        ]
+                                                    },
+                                                    "won": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "drawn_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "prize_name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "amount": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "credited": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "collection_note": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "drawn_at",
+                                                            "prize_name",
+                                                            "amount",
+                                                            "credited"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "reference",
+                                                    "name",
+                                                    "type",
+                                                    "status",
+                                                    "criteria_summary",
+                                                    "period",
+                                                    "prize"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "weekly_history": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "week_iso": {
+                                                                "type": "string"
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "orders_completed": {
+                                                                "type": "integer"
+                                                            },
+                                                            "current": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "week_iso",
+                                                            "label",
+                                                            "orders_completed",
+                                                            "current"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "weekly_history"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }

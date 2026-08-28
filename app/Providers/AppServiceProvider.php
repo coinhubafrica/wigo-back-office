@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureModels();
         $this->configureRateLimiting();
         $this->configureApiDocs();
+        $this->configureAuthorization();
     }
 
     /**
@@ -112,5 +114,15 @@ class AppServiceProvider extends ServiceProvider
 
             return hash_equals($expected, (string) request()->query('token'));
         });
+    }
+
+    /**
+     * Approbation des bonus surprise : action réservée à la direction, non
+     * couverte par la permission `module.challenges` (accès au module) qui
+     * elle est aussi accordée au rôle bonus.
+     */
+    protected function configureAuthorization(): void
+    {
+        Gate::define('approveSurpriseChallenge', fn (User $user): bool => $user->hasRole('direction'));
     }
 }

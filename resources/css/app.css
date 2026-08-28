@@ -34,6 +34,13 @@
     --color-err-bg: #FDECEC;
     --color-err-text: #DC2626;
 
+    /* Pastilles de type de challenge (prototype, `TYPES`). Le classement
+     * réutilise la teinte primaire, les deux autres ont la leur. */
+    --color-type-raffle-bg: #E8EEF7;
+    --color-type-raffle-text: #2C4C7C;
+    --color-type-surprise-bg: #F1EAF7;
+    --color-type-surprise-text: #6A3C93;
+
     --radius-DEFAULT: 8px;
     --radius-sm: 6px;
 }

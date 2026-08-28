@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\MeChallengeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,6 +31,8 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('me', [AuthController::class, 'me'])->name('me');
         Route::put('me/push-token', [AuthController::class, 'updatePushToken'])->name('me.push-token');
+
+        Route::get('me/challenges', [MeChallengeController::class, 'index'])->name('me.challenges');
 
         Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     });

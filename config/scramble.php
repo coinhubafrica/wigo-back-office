@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureApiDocsAreEnabled;
+use App\Support\Scramble\WrapApiEnvelope;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 use Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
@@ -64,7 +65,10 @@ return [
         - Dates au format **ISO 8601 UTC**.
         - Identifiants **ULID**.
         - Messages d'erreur **en français**, prêts à afficher.
-        - Pagination **curseur** : `{ data, meta.next_cursor }`, `per_page` ≤ 50.
+        - Enveloppe unique : succès `{ message, data }`, erreur
+          `{ message, errors }`. Le code HTTP porte le statut, jamais le corps.
+        - Pagination **curseur** : `meta.next_cursor` et `links.next`,
+          `per_page` ≤ 50.
         - Authentification par **jeton Sanctum** (habilitation `mobile:*`) obtenu
           via `POST /auth/otp/verify`.
         MARKDOWN,
@@ -171,7 +175,11 @@ return [
         RestrictedDocsAccess::class,
     ],
 
-    'extensions' => [],
+    'extensions' => [
+        // Réintroduit l'enveloppe `{message, data}` du trait ApiResponses,
+        // que Scramble ne peut pas déduire en traversant le trait.
+        WrapApiEnvelope::class,
+    ],
 
     /*
      * Automatically document API security (OpenAPI `security` / `securitySchemes`) based on route
