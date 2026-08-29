@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
                 // moment où chaque journée est enregistrée.
                 ChallengeSeeder::class,
                 OrderSeeder::class,
+                CnpsSeeder::class,
             ]);
 
             // Gel du pool de tirage "à effectuer" : nécessite les courses

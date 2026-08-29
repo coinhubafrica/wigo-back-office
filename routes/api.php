@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChallengeController;
+use App\Http\Controllers\Api\V1\CnpsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,6 +34,22 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::put('push-token', [AuthController::class, 'updatePushToken'])->name('push-token');
 
         Route::get('challenges', [ChallengeController::class, 'index'])->name('challenges');
+
+        // Cotisations CNPS : la lecture reste ouverte à un conducteur
+        // suspendu, comme le profil — ses versements passés le regardent.
+        Route::get('cnps', [CnpsController::class, 'show'])->name('cnps.show');
+        Route::get('cnps/declarations/{declaration}/proof', [CnpsController::class, 'proof'])
+            ->middleware('signed')
+            ->name('cnps.declarations.proof');
+
+        // En écriture, en revanche : un conducteur suspendu n'enregistre plus
+        // rien tant que son compte n'est pas rétabli.
+        Route::middleware('driver.active')->group(function (): void {
+            Route::post('cnps/declarations', [CnpsController::class, 'storeDeclaration'])
+                ->name('cnps.declarations.store');
+            Route::put('cnps/reference', [CnpsController::class, 'updateReference'])
+                ->name('cnps.reference.update');
+        });
 
         Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     });

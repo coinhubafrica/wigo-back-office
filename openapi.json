@@ -587,6 +587,438 @@
                     }
                 }
             }
+        },
+        "/cnps": {
+            "get": {
+                "operationId": "v1.cnps.show",
+                "description": "Le montant mensuel de r\u00e9f\u00e9rence, le mois en cours et les douze mois\npr\u00e9c\u00e9dents, du plus r\u00e9cent au plus ancien.\n\nSuivi purement d\u00e9claratif : les montants sont ceux que le conducteur\nd\u00e9clare avoir pay\u00e9s dans Wave. Seuls les \u00e9tats de la CNPS font foi.\n`status` se d\u00e9duit du cumul d\u00e9clar\u00e9 face \u00e0 la r\u00e9f\u00e9rence en vigueur ce\nmois-l\u00e0 \u2014 le mois en cours vaut `pending`, jamais `late`.\n\n`reference` est `null` tant que le conducteur n'a fix\u00e9 aucun montant ;\n`reference_amount` l'est pour les mois ant\u00e9rieurs au premier montant fix\u00e9.\n\nReste lisible par un conducteur suspendu, comme le profil.",
+                "summary": "Mon relev\u00e9 de cotisations CNPS",
+                "tags": [
+                    "Cnps"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "reference": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "amount": {
+                                                            "type": "integer"
+                                                        },
+                                                        "effective_from": {
+                                                            "type": "string"
+                                                        },
+                                                        "set_by": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "driver",
+                                                                "agent"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "amount",
+                                                        "effective_from",
+                                                        "set_by"
+                                                    ]
+                                                },
+                                                "current": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "period": {
+                                                            "type": "string"
+                                                        },
+                                                        "label": {
+                                                            "type": "string"
+                                                        },
+                                                        "reference_amount": {
+                                                            "type": [
+                                                                "integer",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "declared_amount": {
+                                                            "type": "integer"
+                                                        },
+                                                        "remaining": {
+                                                            "type": "integer"
+                                                        },
+                                                        "progress": {
+                                                            "type": "integer"
+                                                        },
+                                                        "status": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "paid",
+                                                                "partial",
+                                                                "late",
+                                                                "pending"
+                                                            ]
+                                                        },
+                                                        "declarations": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "declared_amount": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "payment_date": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "has_proof": {
+                                                                        "type": "boolean"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "id",
+                                                                    "declared_amount",
+                                                                    "payment_date",
+                                                                    "has_proof"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "period",
+                                                        "label",
+                                                        "reference_amount",
+                                                        "declared_amount",
+                                                        "remaining",
+                                                        "progress",
+                                                        "status",
+                                                        "declarations"
+                                                    ]
+                                                },
+                                                "history": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "period": {
+                                                                "type": "string"
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "reference_amount": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "declared_amount": {
+                                                                "type": "integer"
+                                                            },
+                                                            "remaining": {
+                                                                "type": "integer"
+                                                            },
+                                                            "progress": {
+                                                                "type": "integer"
+                                                            },
+                                                            "status": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "paid",
+                                                                    "partial",
+                                                                    "late",
+                                                                    "pending"
+                                                                ]
+                                                            },
+                                                            "declarations": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "id": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "declared_amount": {
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "payment_date": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "has_proof": {
+                                                                            "type": "boolean"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "id",
+                                                                        "declared_amount",
+                                                                        "payment_date",
+                                                                        "has_proof"
+                                                                    ]
+                                                                }
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "period",
+                                                            "label",
+                                                            "reference_amount",
+                                                            "declared_amount",
+                                                            "remaining",
+                                                            "progress",
+                                                            "status",
+                                                            "declarations"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "reference",
+                                                "current",
+                                                "history"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/cnps/declarations/{declaration}/proof": {
+            "get": {
+                "operationId": "v1.cnps.declarations.proof",
+                "description": "Route sign\u00e9e et temporaire. La signature ne vaut pas autorisation : le\nconducteur authentifi\u00e9 doit \u00eatre celui qui a d\u00e9pos\u00e9 la d\u00e9claration.",
+                "summary": "T\u00e9l\u00e9charger le justificatif d'une d\u00e9claration",
+                "tags": [
+                    "Cnps"
+                ],
+                "parameters": [
+                    {
+                        "name": "declaration",
+                        "in": "path",
+                        "required": true,
+                        "description": "The declaration ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Transfer-Encoding": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chunked"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/cnps/declarations": {
+            "post": {
+                "operationId": "v1.cnps.declarations.store",
+                "description": "Enregistre un paiement RSTI effectu\u00e9 dans Wave. Un mois peut \u00eatre r\u00e9gl\u00e9\nen plusieurs versements : chaque appel ajoute une ligne, il n'y a pas de\nconflit sur un mois d\u00e9j\u00e0 d\u00e9clar\u00e9.\n\nLe justificatif est facultatif \u2014 une capture Wave que le conducteur garde\npour ses propres archives (jpg, png ou pdf, 5 Mo au plus).",
+                "summary": "D\u00e9clarer un versement",
+                "tags": [
+                    "Cnps"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreCnpsDeclarationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "period": {
+                                                    "type": "string"
+                                                },
+                                                "declared_amount": {
+                                                    "type": "integer"
+                                                },
+                                                "payment_date": {
+                                                    "type": "string"
+                                                },
+                                                "has_proof": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "period",
+                                                "declared_amount",
+                                                "payment_date",
+                                                "has_proof"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/cnps/reference": {
+            "put": {
+                "operationId": "v1.cnps.reference.update",
+                "description": "Le montant que le conducteur vise chaque mois. L'historique est conserv\u00e9 :\nune nouvelle ligne est cr\u00e9\u00e9e, l'ancienne reste, pour que les mois pass\u00e9s\ngardent le montant qui s'appliquait \u00e0 l'\u00e9poque.",
+                "summary": "Fixer le montant mensuel de r\u00e9f\u00e9rence",
+                "tags": [
+                    "Cnps"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCnpsReferenceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "amount": {
+                                                    "type": "integer"
+                                                },
+                                                "effective_from": {
+                                                    "type": "string"
+                                                },
+                                                "set_by": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "driver",
+                                                        "agent"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "amount",
+                                                "effective_from",
+                                                "set_by"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -770,6 +1202,61 @@
                 ],
                 "title": "OtpVerifyRequest"
             },
+            "StoreCnpsDeclarationRequest": {
+                "type": "object",
+                "properties": {
+                    "period": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000000
+                    },
+                    "payment_date": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "proof": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Capture du paiement Wave, facultative \u2014 jpg, png ou pdf, 5 Mo au\nplus. Le type est v\u00e9rifi\u00e9 sur le contenu, pas sur l'extension."
+                    }
+                },
+                "required": [
+                    "period",
+                    "amount",
+                    "payment_date"
+                ],
+                "title": "StoreCnpsDeclarationRequest"
+            },
+            "UpdateCnpsReferenceRequest": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "integer",
+                        "minimum": 3600,
+                        "maximum": 21600
+                    },
+                    "effective_from": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Mois \u00e0 partir duquel le montant s'applique. Par d\u00e9faut, le\npremier jour du mois en cours."
+                    }
+                },
+                "required": [
+                    "amount"
+                ],
+                "title": "UpdateCnpsReferenceRequest"
+            },
             "UpdatePushTokenRequest": {
                 "type": "object",
                 "properties": {
@@ -817,6 +1304,25 @@
             },
             "AuthenticationException": {
                 "description": "Unauthenticated",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ModelNotFoundException": {
+                "description": "Not found",
                 "content": {
                     "application/json": {
                         "schema": {

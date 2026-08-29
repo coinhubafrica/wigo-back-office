@@ -6,6 +6,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | --- | --- |
 | app/Livewire/Announcements/** | .ai/rules/announcements.md |
 | app/Services/Auth/** | .ai/rules/auth.md |
+| app/Services/Cnps/** | .ai/rules/cnps.md |
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
 | app/Http/** | .ai/rules/http.md |
 | database/migrations/** | .ai/rules/migrations.md |

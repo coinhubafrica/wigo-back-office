@@ -34,6 +34,8 @@ use Laravel\Sanctum\HasApiTokens;
  * @property CarbonImmutable|null $last_login_at
  * @property-read Vehicle|null $vehicle
  * @property-read Collection<int, OtpCode> $otpCodes
+ * @property-read Collection<int, CnpsDeclaration> $cnpsDeclarations
+ * @property-read Collection<int, CnpsReference> $cnpsReferences
  * @property-read int|null $period_orders  alias de withCount() sur la periode d'un challenge
  */
 class Driver extends Authenticatable
@@ -112,6 +114,22 @@ class Driver extends Authenticatable
     public function dailyActivities(): HasMany
     {
         return $this->hasMany(DriverDailyActivity::class);
+    }
+
+    /**
+     * @return HasMany<CnpsDeclaration, $this>
+     */
+    public function cnpsDeclarations(): HasMany
+    {
+        return $this->hasMany(CnpsDeclaration::class);
+    }
+
+    /**
+     * @return HasMany<CnpsReference, $this>
+     */
+    public function cnpsReferences(): HasMany
+    {
+        return $this->hasMany(CnpsReference::class);
     }
 
     public function isSuspended(): bool
