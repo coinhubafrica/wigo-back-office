@@ -7,8 +7,10 @@ use App\Livewire\Auth\Login;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class LoginTest extends TestCase
@@ -46,10 +48,15 @@ class LoginTest extends TestCase
 
     public function test_a_user_is_refused_when_none_of_their_modules_is_built_yet(): void
     {
-        // Le rôle `stock` n'a accès qu'à Requêtes et Boutique, dont les routes
-        // n'existent pas encore : la connexion doit échouer proprement plutôt
-        // que rediriger vers une route absente.
-        $user = $this->user('stock');
+        // Un compte dont aucun module accessible n'a de route doit échouer
+        // proprement plutôt que rediriger vers une route absente. Les rôles
+        // seedés ont tous au moins un module construit : on fabrique donc un
+        // rôle ne portant qu'une permission encore sans écran.
+        $role = Role::findOrCreate('requetes-seules', 'web');
+        $role->givePermissionTo(BackOfficeModule::SupportRequests->permission());
+
+        $user = User::factory()->create(['is_active' => true, 'password' => Hash::make('motdepasse')]);
+        $user->assignRole($role);
 
         Livewire::test(Login::class)
             ->set('email', $user->email)
@@ -58,6 +65,22 @@ class LoginTest extends TestCase
             ->assertHasErrors('email');
 
         $this->assertGuest();
+    }
+
+    public function test_the_stock_role_lands_on_the_shop(): void
+    {
+        // `stock` n'a ni tableau de bord ni requêtes construites : sa première
+        // route disponible est la boutique.
+        $user = $this->user('stock');
+
+        Livewire::test(Login::class)
+            ->set('email', $user->email)
+            ->set('password', 'motdepasse')
+            ->call('login')
+            ->assertHasNoErrors()
+            ->assertRedirect(route(BackOfficeModule::Shop->route()));
+
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_a_wrong_password_is_rejected(): void

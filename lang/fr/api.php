@@ -9,6 +9,29 @@ return [
     'prize_collection_note' => "À retirer au siège ATCP · pièce d'identité",
     'server_error' => 'Une erreur est survenue. Réessayez plus tard.',
 
+    'shop' => [
+        'order_placed' => 'Votre commande a été enregistrée.',
+        'insufficient_stock' => 'Stock insuffisant pour « :product » : il n\'en reste que :stock.',
+        'product_unavailable' => "Une des pièces commandées n'est plus disponible.",
+    ],
+
+    /*
+    | Idempotence : hors du bloc `shop`, le middleware sert aussi les recharges.
+    */
+    'idempotency' => [
+        'key_required' => "L'en-tête Idempotency-Key est obligatoire et doit être un UUID.",
+        'key_reused' => 'Cette clé a déjà été utilisée pour une autre requête.',
+    ],
+
+    'recharge' => [
+        'initiated' => 'Votre recharge a été initiée.',
+        'amount_below_min' => 'Le montant minimum est de :min FCFA.',
+        'amount_above_max' => 'Le montant maximum est de :max FCFA.',
+        'daily_cap_reached' => 'Vous avez atteint le plafond de :cap FCFA par jour.',
+        'provider_unavailable' => 'Le paiement Wave est momentanément indisponible. Réessayez dans un instant.',
+        'invalid_signature' => 'Signature invalide.',
+    ],
+
     'cnps' => [
         'period_format' => 'Le mois doit être au format AAAA-MM.',
         'period_future' => 'Vous ne pouvez pas déclarer un mois à venir.',

@@ -13,12 +13,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property string $id
  * @property string|null $yango_id
+ * @property int|null $yango_balance
+ * @property CarbonImmutable|null $balance_read_at
  * @property string $first_name
  * @property string $last_name
  * @property string $phone
@@ -36,12 +39,13 @@ use Laravel\Sanctum\HasApiTokens;
  * @property-read Collection<int, OtpCode> $otpCodes
  * @property-read Collection<int, CnpsDeclaration> $cnpsDeclarations
  * @property-read Collection<int, CnpsReference> $cnpsReferences
+ * @property-read Collection<int, Transaction> $transactions
  * @property-read int|null $period_orders  alias de withCount() sur la periode d'un challenge
  */
 class Driver extends Authenticatable
 {
     /** @use HasFactory<DriverFactory> */
-    use HasApiTokens, HasFactory, HasUlids, SoftDeletes;
+    use HasApiTokens, HasFactory, HasUlids, Notifiable, SoftDeletes;
 
     protected $guarded = ['id'];
 
@@ -62,6 +66,8 @@ class Driver extends Authenticatable
         return [
             'status' => DriverStatus::class,
             'photo_status' => DriverPhotoStatus::class,
+            'yango_balance' => 'integer',
+            'balance_read_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'last_sync_at' => 'datetime',
             'last_login_at' => 'datetime',
@@ -101,11 +107,19 @@ class Driver extends Authenticatable
     }
 
     /**
-     * @return HasMany<Order, $this>
+     * @return HasMany<YangoOrder, $this>
      */
-    public function orders(): HasMany
+    public function yangoOrders(): HasMany
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(YangoOrder::class);
+    }
+
+    /**
+     * @return HasMany<ShopOrder, $this>
+     */
+    public function shopOrders(): HasMany
+    {
+        return $this->hasMany(ShopOrder::class);
     }
 
     /**
@@ -130,6 +144,16 @@ class Driver extends Authenticatable
     public function cnpsReferences(): HasMany
     {
         return $this->hasMany(CnpsReference::class);
+    }
+
+    /**
+     * Mouvements d'argent, du plus récent au plus ancien.
+     *
+     * @return HasMany<Transaction, $this>
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class)->latest('initiated_at');
     }
 
     public function isSuspended(): bool

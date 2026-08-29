@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\IdempotencyKey;
 use App\Models\OtpCode;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -21,3 +22,11 @@ Schedule::call(fn () => OtpCode::query()
     ->delete())
     ->daily()
     ->name('otp:prune-codes');
+
+// Purge des clés d'idempotence périmées : une clé ne vaut que 24 h, la ligne
+// ne sert plus à rien passé ce délai.
+Schedule::call(fn () => IdempotencyKey::query()
+    ->where('expires_at', '<', now())
+    ->delete())
+    ->daily()
+    ->name('idempotency:prune-keys');

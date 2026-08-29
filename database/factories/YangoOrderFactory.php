@@ -2,16 +2,16 @@
 
 namespace Database\Factories;
 
-use App\Enums\OrderStatus;
+use App\Enums\YangoOrderStatus;
 use App\Models\Driver;
-use App\Models\Order;
+use App\Models\YangoOrder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends Factory<Order>
+ * @extends Factory<YangoOrder>
  */
-class OrderFactory extends Factory
+class YangoOrderFactory extends Factory
 {
     /**
      * @return array<string, mixed>
@@ -23,7 +23,7 @@ class OrderFactory extends Factory
         return [
             'driver_id' => Driver::factory(),
             'yango_id' => (string) Str::ulid(),
-            'status' => OrderStatus::Complete,
+            'status' => YangoOrderStatus::Complete,
             'week_iso' => $completedAt->format('o-\WW'),
             'completed_at' => $completedAt,
             'payload' => null,
@@ -35,7 +35,7 @@ class OrderFactory extends Factory
         return $this->state(fn (): array => [
             'completed_at' => $date,
             'week_iso' => $date->format('o-\WW'),
-            'status' => OrderStatus::Complete,
+            'status' => YangoOrderStatus::Complete,
         ]);
     }
 }

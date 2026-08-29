@@ -96,7 +96,7 @@ class ChallengeSeeder extends Seeder
         $this->seedWinners($payoutPending, $drivers, $bonus);
 
         // 3. Tombola en cours : pool vivant, tickets minés au fil de l'eau
-        // par OrderSeeder.
+        // par YangoOrderSeeder.
         $this->challenge('CH-2026-039', [
             'name' => 'Tombola Daba Guéhou — Semaine '.Carbon::now()->isoWeek(),
             'type' => ChallengeType::Raffle,
@@ -213,8 +213,8 @@ class ChallengeSeeder extends Seeder
 
     /**
      * Gèle le pool de la tombola clôturée une fois que les courses de sa
-     * période existent (OrderSeeder doit avoir tourné en premier). Appelé
-     * séparément par DatabaseSeeder, après OrderSeeder.
+     * période existent (YangoOrderSeeder doit avoir tourné en premier). Appelé
+     * séparément par DatabaseSeeder, après YangoOrderSeeder.
      */
     public function freezeDrawPendingFixture(): void
     {

@@ -2,7 +2,9 @@
 
 use App\Enums\BackOfficeModule;
 use App\Http\Middleware\EnsureDriverIsActive;
+use App\Http\Middleware\EnsureIdempotentRequest;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\VerifyWaveSignature;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -33,6 +35,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // API mobile
             'ability' => CheckForAnyAbility::class,
             'driver.active' => EnsureDriverIsActive::class,
+            'idempotency' => EnsureIdempotentRequest::class,
+
+            // Webhooks : la signature tient lieu d'authentification.
+            'wave.signature' => VerifyWaveSignature::class,
 
             // Back-office : `permission` et `role` viennent de
             // spatie/laravel-permission (voir aussi les macros de route

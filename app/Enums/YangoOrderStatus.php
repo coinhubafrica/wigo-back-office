@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum OrderStatus: string
+enum YangoOrderStatus: string
 {
     case Complete = 'complete';
     case Cancelled = 'cancelled';

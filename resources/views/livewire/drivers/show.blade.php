@@ -71,7 +71,17 @@
         </div>
         <div class="rounded border border-line bg-card p-4">
             <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.drivers.cnps_this_month') }}</p>
-            <p class="mt-2 text-xl font-semibold text-muted">—</p>
+            @php $currentCnps = $cnps['current']; @endphp
+            <p @class([
+                'mt-2 text-xl font-semibold',
+                'text-ink' => $currentCnps['declared_amount'] > 0,
+                'text-muted' => $currentCnps['declared_amount'] === 0,
+            ])>
+                {{ $currentCnps['declared_amount'] > 0 ? number_format($currentCnps['declared_amount'], 0, ',', ' ').' FCFA' : '—' }}
+            </p>
+            <p class="mt-0.5 text-xs text-muted">
+                {{ \App\Enums\CnpsMonthStatus::from($currentCnps['status'])->label() }} · {{ $currentCnps['label'] }}
+            </p>
         </div>
     </div>
 
@@ -108,5 +118,104 @@
                 {{ __('backoffice.drivers.suspend') }}
             </button>
         @endif
+    </div>
+
+    {{-- Suivi CNPS : le même relevé que celui vu par le conducteur dans
+         l'application, pour qu'agent et conducteur parlent des mêmes chiffres.
+         Rien à valider ici : la déclaration fait foi telle quelle. --}}
+    <div class="rounded border border-line bg-card">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+            <h2 class="text-sm font-semibold text-ink">{{ __('backoffice.cnps.panel_title') }}</h2>
+            <div class="text-right">
+                @if ($cnps['reference'] === null)
+                    <p class="text-xs text-muted">{{ __('backoffice.cnps.reference_none') }}</p>
+                @else
+                    <p class="text-xs uppercase tracking-wide text-muted">{{ __('backoffice.cnps.reference_amount') }}</p>
+                    <p class="text-sm font-semibold text-ink">
+                        {{ number_format($cnps['reference']['amount'], 0, ',', ' ') }} FCFA
+                        <span class="ml-1 text-xs font-normal text-muted">
+                            {{ $cnps['reference']['set_by'] === 'agent'
+                                ? __('backoffice.cnps.set_by_agent')
+                                : __('backoffice.cnps.set_by_driver') }}
+                        </span>
+                    </p>
+                @endif
+            </div>
+        </div>
+
+        <div class="border-b border-line px-5 py-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.cnps.current_month') }} — {{ $cnps['current']['label'] }}</p>
+            <div class="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+                <p class="text-2xl font-semibold text-ink">
+                    {{ number_format($cnps['current']['declared_amount'], 0, ',', ' ') }}
+                    <span class="text-sm font-medium text-muted">
+                        / {{ $cnps['current']['reference_amount'] === null ? '—' : number_format($cnps['current']['reference_amount'], 0, ',', ' ') }} FCFA
+                    </span>
+                </p>
+                @php $currentStatus = \App\Enums\CnpsMonthStatus::from($cnps['current']['status']); @endphp
+                <span @class([
+                    'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                    'bg-ok-bg text-ok-text' => $currentStatus === \App\Enums\CnpsMonthStatus::Paid,
+                    'bg-warn-bg text-warn-text' => $currentStatus === \App\Enums\CnpsMonthStatus::Partial,
+                    'bg-err-bg text-err-text' => $currentStatus === \App\Enums\CnpsMonthStatus::Late,
+                    'bg-zinc-100 text-muted' => $currentStatus === \App\Enums\CnpsMonthStatus::Pending,
+                ])>{{ $currentStatus->label() }}</span>
+                @if ($cnps['current']['remaining'] > 0)
+                    <span class="text-xs text-muted">
+                        {{ __('backoffice.cnps.remaining') }} :
+                        <b class="text-ink">{{ number_format($cnps['current']['remaining'], 0, ',', ' ') }} FCFA</b>
+                    </span>
+                @endif
+            </div>
+            @if ($cnps['current']['reference_amount'] !== null)
+                <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                    <div class="h-full rounded-full bg-ok-text" style="width: {{ $cnps['current']['progress'] }}%"></div>
+                </div>
+            @endif
+        </div>
+
+        <div class="px-5 py-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.cnps.history_title') }}</p>
+            <div class="mt-3 overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <tbody>
+                        @foreach ($cnps['history'] as $month)
+                            <tr class="border-b border-line last:border-0">
+                                <td class="py-2 pr-4 text-[13px] text-ink">{{ $month['label'] }}</td>
+                                <td class="py-2 pr-4 text-right text-[13px]">
+                                    <b @class([
+                                        'font-semibold',
+                                        'text-ink' => $month['declared_amount'] > 0,
+                                        'text-muted' => $month['declared_amount'] === 0,
+                                    ])>{{ $month['declared_amount'] > 0 ? number_format($month['declared_amount'], 0, ',', ' ') : '—' }}</b>
+                                    <span class="text-muted"> / {{ $month['reference_amount'] === null ? '—' : number_format($month['reference_amount'], 0, ',', ' ') }}</span>
+                                </td>
+                                <td class="py-2 pr-4">
+                                    @php $monthStatus = \App\Enums\CnpsMonthStatus::from($month['status']); @endphp
+                                    <span @class([
+                                        'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                        'bg-ok-bg text-ok-text' => $monthStatus === \App\Enums\CnpsMonthStatus::Paid,
+                                        'bg-warn-bg text-warn-text' => $monthStatus === \App\Enums\CnpsMonthStatus::Partial,
+                                        'bg-err-bg text-err-text' => $monthStatus === \App\Enums\CnpsMonthStatus::Late,
+                                        'bg-zinc-100 text-muted' => $monthStatus === \App\Enums\CnpsMonthStatus::Pending,
+                                    ])>{{ $monthStatus->label() }}</span>
+                                </td>
+                                <td class="py-2 text-right text-[11px] text-muted">
+                                    @foreach ($month['declarations'] as $declaration)
+                                        <span class="ml-2 whitespace-nowrap">
+                                            {{ number_format($declaration['declared_amount'], 0, ',', ' ') }}
+                                            {{ __('backoffice.cnps.payment_on', ['date' => \Illuminate\Support\Carbon::parse($declaration['payment_date'])->translatedFormat('j M')]) }}
+                                            @if ($declaration['has_proof'])
+                                                <span title="{{ __('backoffice.cnps.with_proof') }}">📎</span>
+                                            @endif
+                                        </span>
+                                    @endforeach
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>

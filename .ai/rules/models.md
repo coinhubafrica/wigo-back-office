@@ -1,6 +1,7 @@
 ---
 paths:
   - app/Models/Vehicle.php
+  - app/Models/Product.php
 ---
 
 # Models
@@ -22,3 +23,10 @@ One row per vehicle: reassignment moves `driver_id` and flips `is_active`. There
 Both tables carry their own `last_sync_at` (nullable), stamped on each successful Fleet reconciliation. Vehicles get their own because the park can hold unassigned vehicles that sync independently of any driver. A null or stale value means Yango is no longer reporting that record — the sync job should surface it rather than silently skip it.
 
 `Driver::vehicle()` resolves the current vehicle via `is_active` + `latestOfMany()`; the latter only guards against a transient double-active state mid-sync.
+
+## Compatibilité pièce/véhicule : hiérarchie, pas de table de compatibilité
+Le MCD prévoit `product_compatibility` (n-n pièce ↔ marque/modèle) avec son propre `model_price`. On a retenu la hiérarchie `vehicle_brands > vehicle_models > products` : une pièce appartient à au plus un modèle et porte un seul `unit_price`. Le prototype le disait déjà — `AM-DZ-AV1`, `DF-DZ-400` : le modèle est dans la référence.
+
+`products.vehicle_model_id` est nullable = pièce universelle (huile, ampoules), visible quel que soit le véhicule. Conséquence assumée : une même pièce montée sur deux modèles fait deux lignes, deux références, deux stocks.
+
+Ne pas réintroduire la table pivot ni `model_price`. La carte « Marques & modèles » du prototype se dérive de `VehicleBrand::with('vehicleModels')`.

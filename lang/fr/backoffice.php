@@ -63,6 +63,93 @@ return [
         'reactivated' => 'Conducteur réactivé.',
     ],
 
+    'shop' => [
+        // Catalogue — libellés du prototype.
+        'kpi_references' => 'Références au catalogue',
+        'kpi_stock_value' => 'Valeur du stock',
+        'kpi_alerts' => 'Stock faible ou rupture',
+        'kpi_orders' => 'Commandes reçues',
+        'catalogue' => 'Catalogue des pièces',
+        'brands_models' => 'Marques & modèles',
+        'search_placeholder' => 'Rechercher une pièce…',
+        'none' => 'Aucune pièce ne correspond à cette recherche.',
+        'col_part' => 'Pièce',
+        'col_model' => 'Modèle',
+        'col_price' => 'Prix',
+        'col_stock' => 'Stock',
+        'universal' => 'Universelle',
+        'stock_out' => 'Rupture',
+        'stock_low' => ':count — faible',
+        'all_categories' => 'Toutes les familles',
+        'all_models' => 'Tous les modèles',
+
+        // Approvisionnement.
+        'restock' => 'Stock',
+        'restock_title' => 'Approvisionner :product',
+        'restock_quantity' => 'Quantité reçue',
+        'restock_reason' => 'Motif',
+        'restocked' => 'Stock approvisionné — applications mises à jour',
+        'movement_cancelled' => 'Annulation de la commande :reference',
+
+        // Fiche produit.
+        'new_product' => 'Nouvelle pièce',
+        'edit_product' => 'Modifier la pièce',
+        'field_reference' => 'Référence',
+        'field_name' => 'Désignation',
+        'field_description' => 'Description',
+        'field_price' => 'Prix unitaire (FCFA)',
+        'field_category' => 'Famille',
+        'field_model' => 'Modèle compatible',
+        'field_model_universal' => 'Toutes marques (pièce universelle)',
+        'field_threshold' => "Seuil d'alerte",
+        'field_photo' => 'Photo',
+        'field_status' => 'Statut',
+        'field_stock' => 'Stock initial',
+        'product_created' => 'Pièce ajoutée au catalogue.',
+        'product_updated' => 'Pièce mise à jour.',
+        'product_deleted' => 'Pièce retirée du catalogue.',
+        'product_delete_blocked' => 'Cette pièce figure dans des commandes : elle ne peut pas être supprimée.',
+        'confirm_delete_product' => 'Retirer cette pièce du catalogue ?',
+
+        // Référentiel marques / modèles.
+        'manage_brands' => 'Gérer les marques',
+        'brand_name' => 'Marque',
+        'model_name' => 'Modèle',
+        'brand_created' => 'Marque ajoutée.',
+        'model_created' => 'Modèle ajouté.',
+        'brand_delete_blocked' => 'Cette marque porte des modèles : supprimez-les d\'abord.',
+        'model_delete_blocked' => 'Ce modèle est référencé par des pièces : elles doivent être réaffectées.',
+
+        // Commandes.
+        'orders' => 'Commandes',
+        'orders_title' => 'Commandes reçues',
+        'orders_none' => 'Aucune commande ne correspond à ces filtres.',
+        'col_reference' => 'Réf',
+        'col_driver' => 'Chauffeur',
+        'col_items' => 'Articles',
+        'col_total' => 'Total',
+        'col_mode' => 'Réception',
+        'col_status' => 'Statut',
+        'col_date' => 'Date',
+        'all_statuses' => 'Tous les statuts',
+        'pickup_code' => 'Code de retrait',
+        'pickup_code_prompt' => 'Code présenté par le chauffeur',
+        'pickup_code_invalid' => 'Code de retrait incorrect.',
+        'pickup_point' => 'Agence de retrait',
+        'delivery_position' => 'Position de livraison',
+        'contact' => 'Contact',
+        'transition_forbidden' => 'Une commande :from ne peut pas passer à « :to ».',
+        'mark_ready' => 'Marquer prête',
+        'mark_dispatched' => 'Confier au livreur',
+        'mark_collected' => 'Confirmer le retrait',
+        'mark_delivered' => 'Confirmer la livraison',
+        'cancel_order' => 'Annuler',
+        'cancel_reason' => "Motif de l'annulation",
+        'order_updated' => 'Commande mise à jour.',
+        'order_cancelled' => 'Commande annulée — stock rendu au catalogue.',
+        'select_order' => 'Sélectionnez une commande pour en voir le détail.',
+    ],
+
     'announcements' => [
         'total' => 'Annonces',
         'active' => 'Actives',
@@ -118,6 +205,61 @@ return [
         'proof_available' => 'Justificatif joint',
         'payments_count' => '{0} aucun|{1} 1 versement|[2,*] :count versements',
         'view_driver' => 'Voir la fiche',
+
+        // Panneau de la fiche conducteur.
+        'panel_title' => 'Cotisations CNPS (RSTI)',
+        'reference_amount' => 'Montant mensuel de référence',
+        'reference_since' => 'depuis le :date',
+        'reference_none' => 'Aucun montant fixé par le conducteur',
+        'set_by_driver' => 'fixé par le conducteur',
+        'set_by_agent' => 'fixé par un agent',
+        'current_month' => 'Mois en cours',
+        'history_title' => 'Douze derniers mois',
+        'declared' => 'Déclaré',
+        'remaining' => 'Reste à déclarer',
+        'nothing_declared' => 'Aucune déclaration',
+        'payment_on' => 'payé le :date',
+        'with_proof' => 'avec justificatif',
+    ],
+
+    'recharges' => [
+        // Cartes de tête (libellés du prototype)
+        'kpi_collected_today' => "Encaissé aujourd'hui",
+        'kpi_pending' => 'Rechargements en attente',
+        'kpi_to_replay' => 'Échecs à rejouer',
+        'kpi_wave_balance' => 'Solde Wave Business',
+        'journal_title' => 'Journal des transactions Wave',
+
+        // Filtres
+        'all' => 'Toutes',
+        'search_placeholder' => 'Rechercher un conducteur, une référence TX…',
+
+        // Colonnes
+        'column_transaction' => 'Transaction',
+        'column_amount' => 'Montant',
+        'column_status' => 'Statut',
+
+        // Actions
+        'replay' => '↻ Rejouer',
+        'mark_credited' => '✓ Rechargé',
+        'confirm_replay_title' => 'Rejouer cette transaction ?',
+        'confirm_replay_body' => 'Le crédit du solde Yango sera relancé pour :reference (:amount FCFA). Un compte déjà crédité ne le sera pas deux fois.',
+        'confirm_mark_credited_title' => 'Marquer cette recharge comme créditée ?',
+        'confirm_mark_credited_body' => "À n'utiliser qu'après avoir crédité :reference (:amount FCFA) à la main sur Yango. Aucun crédit automatique ne sera déclenché.",
+        'confirm' => 'Confirmer',
+        'cancel' => 'Annuler',
+
+        // Retours
+        'replayed' => 'Transaction rejouée.',
+        'marked_credited' => 'Compte rechargé sur Yango ✓',
+        'not_replayable' => 'Une transaction « :status » ne peut pas être rejouée.',
+        'not_creditable' => 'Une transaction « :status » ne peut pas être marquée créditée.',
+
+        // Vide
+        'no_rows' => 'Aucune transaction ne correspond.',
+        'no_rows_hint' => 'Modifiez les filtres ou la recherche.',
+        'reset_filters' => 'Réinitialiser',
+        'unknown_balance' => '—',
     ],
 
     'challenges' => [
