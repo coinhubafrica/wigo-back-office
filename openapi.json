@@ -286,9 +286,9 @@
                 }
             }
         },
-        "/me/push-token": {
+        "/push-token": {
             "put": {
-                "operationId": "v1.me.push-token",
+                "operationId": "v1.push-token",
                 "description": "Requis pour recevoir les notifications push (messages data-only).",
                 "summary": "Enregistrer le jeton FCM de l'appareil",
                 "tags": [
@@ -339,13 +339,13 @@
                 }
             }
         },
-        "/me/challenges": {
+        "/challenges": {
             "get": {
-                "operationId": "v1.me.challenges",
+                "operationId": "v1.challenges",
                 "description": "Un \u00e9l\u00e9ment par challenge ouvert, avec la progression propre au\nconducteur : tickets d\u00e9tenus et courses restantes avant le prochain pour\nune tombola, rang et prime pour un classement, gain \u00e9ventuel. Les blocs\n`ticketing`, `leaderboard` et `won` ne sont pr\u00e9sents que lorsqu'ils\ns'appliquent au challenge.\n\n`meta.weekly_history` porte les douze derni\u00e8res semaines de courses\ntermin\u00e9es, de la plus ancienne \u00e0 la semaine en cours.\n\nReste accessible \u00e0 un conducteur suspendu, comme le profil : ses\ncompteurs cessent simplement de progresser.",
                 "summary": "Challenges en cours du conducteur",
                 "tags": [
-                    "MeChallenge"
+                    "Challenge"
                 ],
                 "responses": {
                     "200": {

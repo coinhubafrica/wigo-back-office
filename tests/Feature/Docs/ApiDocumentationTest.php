@@ -27,7 +27,7 @@ class ApiDocumentationTest extends TestCase
         $this->assertArrayHasKey('/auth/otp/verify', $document['paths']);
         $this->assertArrayHasKey('/auth/logout', $document['paths']);
         $this->assertArrayHasKey('/me', $document['paths']);
-        $this->assertArrayHasKey('/me/push-token', $document['paths']);
+        $this->assertArrayHasKey('/push-token', $document['paths']);
     }
 
     public function test_the_webhook_is_excluded_from_the_mobile_contract(): void
@@ -63,7 +63,7 @@ class ApiDocumentationTest extends TestCase
         $paths = $this->document()['paths'];
 
         $this->assertArrayHasKey('422', $paths['/auth/otp/request']['post']['responses']);
-        $this->assertArrayHasKey('422', $paths['/me/push-token']['put']['responses']);
+        $this->assertArrayHasKey('422', $paths['/push-token']['put']['responses']);
     }
 
     public function test_the_documentation_is_reachable_in_local(): void

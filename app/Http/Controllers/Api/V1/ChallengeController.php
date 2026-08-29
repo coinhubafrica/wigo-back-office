@@ -11,7 +11,7 @@ use App\Services\Challenges\DriverProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class MeChallengeController extends Controller
+class ChallengeController extends Controller
 {
     use ResolvesDriver;
 

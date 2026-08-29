@@ -16,13 +16,13 @@ use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
-class MeChallengeControllerTest extends TestCase
+class ChallengeControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
     public function test_it_requires_authentication(): void
     {
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertUnauthorized()
             ->assertJsonPath('message', __('api.unauthenticated'));
     }
@@ -31,7 +31,7 @@ class MeChallengeControllerTest extends TestCase
     {
         Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
 
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertOk()
             ->assertJsonStructure(['message', 'data', 'meta' => ['weekly_history']]);
     }
@@ -49,7 +49,7 @@ class MeChallengeControllerTest extends TestCase
             'date' => $challenge->period_start->toDateString(),
         ]);
 
-        $response = $this->getJson(route('api.v1.me.challenges'))->assertOk();
+        $response = $this->getJson(route('api.v1.challenges'))->assertOk();
 
         $response->assertJsonPath('data.0.ticketing.orders_completed', 124);
         $response->assertJsonPath('data.0.ticketing.tickets_held', 2);
@@ -66,7 +66,7 @@ class MeChallengeControllerTest extends TestCase
         $challenge = $this->raffle();
         $this->completeOrders($driver, $challenge, 12);
 
-        $response = $this->getJson(route('api.v1.me.challenges'))->assertOk();
+        $response = $this->getJson(route('api.v1.challenges'))->assertOk();
 
         $response->assertJsonPath('data.0.reference', $challenge->reference);
         $response->assertJsonPath('data.0.ticketing.tickets_held', 0);
@@ -82,7 +82,7 @@ class MeChallengeControllerTest extends TestCase
         $challenge->forceFill(['trips_per_ticket' => null])->save();
         $this->completeOrders($driver, $challenge, 5);
 
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertOk()
             ->assertJsonMissingPath('data.0.ticketing');
     }
@@ -99,7 +99,7 @@ class MeChallengeControllerTest extends TestCase
         $this->completeOrders(Driver::factory()->create(), $challenge, 30);
         $this->completeOrders(Driver::factory()->create(), $challenge, 20);
 
-        $response = $this->getJson(route('api.v1.me.challenges'))->assertOk();
+        $response = $this->getJson(route('api.v1.challenges'))->assertOk();
 
         $response->assertJsonPath('data.0.leaderboard.rank', 3);
         $response->assertJsonPath('data.0.leaderboard.winning_places', 2);
@@ -117,7 +117,7 @@ class MeChallengeControllerTest extends TestCase
         $this->completeOrders($driver, $challenge, 10);
         $this->completeOrders(Driver::factory()->create(), $challenge, 30);
 
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertOk()
             ->assertJsonPath('data.0.leaderboard.rank', 2)
             ->assertJsonPath('data.0.leaderboard.in_winning_range', true);
@@ -142,7 +142,7 @@ class MeChallengeControllerTest extends TestCase
             'prize_id' => $prize->id,
         ]);
 
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertOk()
             ->assertJsonPath('data.0.won.prize_name', 'Téléviseur 43 pouces')
             ->assertJsonPath('data.0.won.collection_note', __('api.prize_collection_note'));
@@ -159,7 +159,7 @@ class MeChallengeControllerTest extends TestCase
             'driver_id' => Driver::factory()->create()->id,
         ]);
 
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertOk()
             ->assertJsonMissingPath('data.0.won');
     }
@@ -180,7 +180,7 @@ class MeChallengeControllerTest extends TestCase
             'orders_completed' => 87,
         ]);
 
-        $history = $this->getJson(route('api.v1.me.challenges'))->assertOk()->json('meta.weekly_history');
+        $history = $this->getJson(route('api.v1.challenges'))->assertOk()->json('meta.weekly_history');
 
         $this->assertCount(12, $history);
         $this->assertSame('S-11', $history[0]['label']);
@@ -203,12 +203,12 @@ class MeChallengeControllerTest extends TestCase
         $this->completeOrders($other, $challenge, 200);
 
         Sanctum::actingAs($mine, ['mobile:*']);
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertOk()
             ->assertJsonPath('data.0.ticketing.orders_completed', 60);
 
         Sanctum::actingAs($other, ['mobile:*']);
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertOk()
             ->assertJsonPath('data.0.ticketing.orders_completed', 200);
     }
@@ -223,7 +223,7 @@ class MeChallengeControllerTest extends TestCase
 
         $this->raffle();
 
-        $this->getJson(route('api.v1.me.challenges'))->assertOk();
+        $this->getJson(route('api.v1.challenges'))->assertOk();
     }
 
     public function test_challenges_that_are_not_live_are_excluded(): void
@@ -234,7 +234,7 @@ class MeChallengeControllerTest extends TestCase
         Challenge::factory()->rejected()->create();
         Challenge::factory()->surprise()->create(['status' => ChallengeStatus::PendingApproval]);
 
-        $this->getJson(route('api.v1.me.challenges'))
+        $this->getJson(route('api.v1.challenges'))
             ->assertOk()
             ->assertJsonCount(0, 'data');
     }

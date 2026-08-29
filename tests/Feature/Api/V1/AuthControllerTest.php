@@ -320,7 +320,7 @@ class AuthControllerTest extends TestCase
         $driver = Driver::factory()->create();
         Sanctum::actingAs($driver, ['mobile:*']);
 
-        $this->putJson(route('api.v1.me.push-token'), ['fcm_token' => 'token-abc'])->assertOk();
+        $this->putJson(route('api.v1.push-token'), ['fcm_token' => 'token-abc'])->assertOk();
 
         $this->assertSame('token-abc', $driver->refresh()->fcm_token);
     }
@@ -329,7 +329,7 @@ class AuthControllerTest extends TestCase
     {
         Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
 
-        $this->putJson(route('api.v1.me.push-token'), [])
+        $this->putJson(route('api.v1.push-token'), [])
             ->assertStatus(422)
             ->assertJsonValidationErrors('fcm_token');
     }
