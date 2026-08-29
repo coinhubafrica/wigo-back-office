@@ -205,6 +205,7 @@ return [
         'proof_available' => 'Justificatif joint',
         'payments_count' => '{0} aucun|{1} 1 versement|[2,*] :count versements',
         'view_driver' => 'Voir la fiche',
+
         // Panneau de la fiche conducteur.
         'panel_title' => 'Cotisations CNPS (RSTI)',
         'reference_amount' => 'Montant mensuel de référence',
@@ -220,6 +221,45 @@ return [
         'payment_on' => 'payé le :date',
         'with_proof' => 'avec justificatif',
     ],
+
+    'recharges' => [
+        // Cartes de tête (libellés du prototype)
+        'kpi_collected_today' => "Encaissé aujourd'hui",
+        'kpi_pending' => 'Rechargements en attente',
+        'kpi_to_replay' => 'Échecs à rejouer',
+        'kpi_wave_balance' => 'Solde Wave Business',
+        'journal_title' => 'Journal des transactions Wave',
+
+        // Filtres
+        'all' => 'Toutes',
+        'search_placeholder' => 'Rechercher un conducteur, une référence TX…',
+
+        // Colonnes
+        'column_transaction' => 'Transaction',
+        'column_amount' => 'Montant',
+        'column_status' => 'Statut',
+
+        // Actions
+        'replay' => '↻ Rejouer',
+        'mark_credited' => '✓ Rechargé',
+        'confirm_replay_title' => 'Rejouer cette transaction ?',
+        'confirm_replay_body' => 'Le crédit du solde Yango sera relancé pour :reference (:amount FCFA). Un compte déjà crédité ne le sera pas deux fois.',
+        'confirm_mark_credited_title' => 'Marquer cette recharge comme créditée ?',
+        'confirm_mark_credited_body' => "À n'utiliser qu'après avoir crédité :reference (:amount FCFA) à la main sur Yango. Aucun crédit automatique ne sera déclenché.",
+        'confirm' => 'Confirmer',
+        'cancel' => 'Annuler',
+
+        // Retours
+        'replayed' => 'Transaction rejouée.',
+        'marked_credited' => 'Compte rechargé sur Yango ✓',
+        'not_replayable' => 'Une transaction « :status » ne peut pas être rejouée.',
+        'not_creditable' => 'Une transaction « :status » ne peut pas être marquée créditée.',
+
+        // Vide
+        'no_rows' => 'Aucune transaction ne correspond.',
+        'no_rows_hint' => 'Modifiez les filtres ou la recherche.',
+        'reset_filters' => 'Réinitialiser',
+        'unknown_balance' => '—',
     ],
 
     'challenges' => [

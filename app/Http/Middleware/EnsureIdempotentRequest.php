@@ -40,7 +40,7 @@ class EnsureIdempotentRequest
         if (! is_string($key) || ! Str::isUuid($key)) {
             return new JsonResponse([
                 'message' => __('api.invalid_data'),
-                'errors' => ['Idempotency-Key' => [__('api.shop.idempotency_key_required')]],
+                'errors' => ['Idempotency-Key' => [__('api.idempotency.key_required')]],
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -50,8 +50,8 @@ class EnsureIdempotentRequest
         if ($existing !== null) {
             if (! $existing->matches($hash)) {
                 return new JsonResponse([
-                    'message' => __('api.shop.idempotency_key_reused'),
-                    'errors' => ['Idempotency-Key' => [__('api.shop.idempotency_key_reused')]],
+                    'message' => __('api.idempotency.key_reused'),
+                    'errors' => ['Idempotency-Key' => [__('api.idempotency.key_reused')]],
                 ], Response::HTTP_CONFLICT);
             }
 

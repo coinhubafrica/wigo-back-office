@@ -125,6 +125,13 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::define('approveSurpriseChallenge', fn (User $user): bool => $user->hasRole('direction'));
 
+        /*
+         * Réconciliation des recharges : rejouer un crédit ou marquer une
+         * transaction créditée touche à l'argent d'un conducteur. La
+         * permission `module.recharges` n'ouvre que la lecture du journal.
+         */
+        Gate::define('reconcileRecharges', fn (User $user): bool => $user->hasAnyRole(['bonus', 'direction']));
+
         // La permission `module.shop` ouvre le catalogue en lecture à tous les
         // profils qui suivent la boutique ; écrire dans le stock reste au
         // magasinier et à la direction.

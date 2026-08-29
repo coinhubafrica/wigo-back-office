@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChallengeController;
 use App\Http\Controllers\Api\V1\CnpsController;
 use App\Http\Controllers\Api\V1\ShopController;
+use App\Http\Controllers\Api\V1\WalletController;
+use App\Http\Controllers\Api\WaveWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,8 +62,32 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('shop/orders', [ShopController::class, 'orders'])->name('shop.orders.index');
         Route::get('shop/orders/{order}', [ShopController::class, 'showOrder'])->name('shop.orders.show');
 
+        // Portefeuille : le solde et l'historique restent lisibles par un
+        // conducteur suspendu — ses recharges passées le regardent —, mais il
+        // ne peut plus en lancer de nouvelle.
+        Route::get('wallet', [WalletController::class, 'show'])->name('wallet.show');
+        Route::get('wallet/recharges', [WalletController::class, 'recharges'])->name('wallet.recharges.index');
+        Route::get('wallet/recharges/{transaction}', [WalletController::class, 'showRecharge'])
+            ->name('wallet.recharges.show');
+
         Route::middleware(['driver.active', 'idempotency'])->group(function (): void {
             Route::post('shop/orders', [ShopController::class, 'storeOrder'])->name('shop.orders.store');
+            Route::post('wallet/recharges', [WalletController::class, 'storeRecharge'])
+                ->name('wallet.recharges.store');
         });
     });
 });
+
+/*
+|--------------------------------------------------------------------------
+| Webhooks
+|--------------------------------------------------------------------------
+|
+| Appels serveur à serveur, hors du contrat mobile (`api_path` de Scramble les
+| exclut). Pas de jeton : la signature tient lieu d'authentification.
+|
+*/
+
+Route::post('webhooks/wave', WaveWebhookController::class)
+    ->middleware('wave.signature')
+    ->name('webhooks.wave');

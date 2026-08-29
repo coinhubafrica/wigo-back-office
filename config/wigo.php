@@ -52,6 +52,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Recharges
+    |--------------------------------------------------------------------------
+    |
+    | Plafonds d'une recharge Wave, en francs CFA entiers. `daily_cap` borne le
+    | cumul d'une journée, sessions ouvertes comprises : une session non payée
+    | réserve son montant tant qu'elle n'a pas expiré.
+    |
+    | Le prototype mobile annonce 150 000 par jour, l'`openapi.yaml` du handoff
+    | 200 000. Les deux documents se contredisent : c'est cette configuration
+    | qui tranche, et elle se change sans toucher au code.
+    |
+    | `balance_ttl_minutes` : fraîcheur du solde Yango gardé en cache sur le
+    | conducteur avant qu'une lecture ne le rafraîchisse auprès de Fleet.
+    |
+    */
+
+    'recharge' => [
+        'min_amount' => (int) env('WIGO_RECHARGE_MIN', 500),
+        'max_amount' => (int) env('WIGO_RECHARGE_MAX', 100000),
+        'daily_cap' => (int) env('WIGO_RECHARGE_DAILY_CAP', 150000),
+        'balance_ttl_minutes' => (int) env('WIGO_BALANCE_TTL', 10),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Documentation de l'API
     |--------------------------------------------------------------------------
     |

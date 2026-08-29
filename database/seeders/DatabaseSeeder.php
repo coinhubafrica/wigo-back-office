@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
                 ChallengeSeeder::class,
                 YangoOrderSeeder::class,
                 CnpsSeeder::class,
+                RechargeSeeder::class,
                 ShopSeeder::class,
             ]);
 

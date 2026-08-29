@@ -1228,6 +1228,239 @@
                     }
                 }
             }
+        },
+        "/wallet": {
+            "get": {
+                "operationId": "v1.wallet.show",
+                "description": "Solde courant et plafonds de recharge. Le solde vient du cache local,\nrafra\u00eechi aupr\u00e8s de Yango d\u00e8s qu'il a vieilli ; il est nul tant qu'aucune\nlecture n'a abouti (conducteur pas encore rapproch\u00e9 du parc).\n\n`remaining_today` dit ce qu'il reste \u00e0 engager aujourd'hui : les sessions\nouvertes mais non pay\u00e9es comptent d\u00e9j\u00e0.",
+                "summary": "Portefeuille Yango Pro",
+                "tags": [
+                    "Wallet"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "balance": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "balance_read_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "currency": {
+                                                    "type": "string"
+                                                },
+                                                "limits": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "min": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max": {
+                                                            "type": "integer"
+                                                        },
+                                                        "daily_cap": {
+                                                            "type": "integer"
+                                                        },
+                                                        "remaining_today": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "min",
+                                                        "max",
+                                                        "daily_cap",
+                                                        "remaining_today"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "balance",
+                                                "balance_read_at",
+                                                "currency",
+                                                "limits"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/wallet/recharges": {
+            "get": {
+                "operationId": "v1.wallet.recharges.index",
+                "description": "De la plus r\u00e9cente \u00e0 la plus ancienne. Pagination par curseur :\n`meta.next_cursor` porte le curseur suivant (`null` sur la derni\u00e8re\npage), \u00e0 renvoyer dans `?cursor=`. `per_page` est plafonn\u00e9 \u00e0 50.",
+                "summary": "Historique des recharges",
+                "tags": [
+                    "Wallet"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/TransactionResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "v1.wallet.recharges.store",
+                "description": "Ouvre une session de paiement Wave et rend `wave_launch_url`, que\nl'application ouvre pour que le conducteur paie. La recharge n'est\ncr\u00e9dit\u00e9e qu'au retour du webhook de Wave \u2014 jamais \u00e0 cette \u00e9tape.\n\nL'en-t\u00eate `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois\nla m\u00eame requ\u00eate ne cr\u00e9e qu'une recharge.",
+                "summary": "Lancer une recharge",
+                "tags": [
+                    "Wallet"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreRechargeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/TransactionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/wallet/recharges/{transaction}": {
+            "get": {
+                "operationId": "v1.wallet.recharges.show",
+                "description": "La recharge d'un autre conducteur r\u00e9pond 404 : rien ne fuit d'un compte\n\u00e0 l'autre.",
+                "summary": "\u00c9tat d'une recharge",
+                "tags": [
+                    "Wallet"
+                ],
+                "parameters": [
+                    {
+                        "name": "transaction",
+                        "in": "path",
+                        "required": true,
+                        "description": "The transaction ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/TransactionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1630,6 +1863,24 @@
                 ],
                 "title": "StoreCnpsDeclarationRequest"
             },
+            "StoreRechargeRequest": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "integer",
+                        "description": "Montant de la recharge, en francs CFA entiers. Le plafond JOURNALIER, lui, ne peut pas s'exprimer ici : il\nd\u00e9pend de ce que le conducteur a d\u00e9j\u00e0 engag\u00e9 aujourd'hui, et\nc'est `RechargeService` qui le fait respecter.",
+                        "examples": [
+                            10000
+                        ],
+                        "minimum": 500,
+                        "maximum": 100000
+                    }
+                },
+                "required": [
+                    "amount"
+                ],
+                "title": "StoreRechargeRequest"
+            },
             "StoreShopOrderRequest": {
                 "type": "object",
                 "properties": {
@@ -1702,6 +1953,122 @@
                     "fulfilment_mode"
                 ],
                 "title": "StoreShopOrderRequest"
+            },
+            "TransactionResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "ref": {
+                        "type": "string",
+                        "examples": [
+                            "RCH-2026-0871"
+                        ]
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "recharge",
+                            "order_payment",
+                            "cnps_declaration",
+                            "bonus_payout"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Le fil est plus \u00e9troit que le stockage : `to_review` \u2014 encaiss\u00e9\npar Wave mais pas encore port\u00e9 au solde \u2014 se lit `failed`, le\nconducteur n'ayant de toute fa\u00e7on rien re\u00e7u.",
+                        "enum": [
+                            "pending",
+                            "credited",
+                            "failed"
+                        ]
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "enum": [
+                            "En attente",
+                            "Pay\u00e9e",
+                            "Recharg\u00e9",
+                            "\u00c9chec",
+                            "\u00c0 v\u00e9rifier"
+                        ]
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "description": "Montant en FCFA.",
+                        "examples": [
+                            10000
+                        ]
+                    },
+                    "currency": {
+                        "type": "string",
+                        "examples": [
+                            "XOF"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "sublabel": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "wave_launch_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Adresse de paiement Wave. Nulle d\u00e8s que la recharge n'est plus\nen attente."
+                    },
+                    "receipt_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "receipt_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "initiated_at": {
+                        "type": "string"
+                    },
+                    "paid_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "credited_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "ref",
+                    "type",
+                    "status",
+                    "status_label",
+                    "amount",
+                    "currency",
+                    "label",
+                    "sublabel",
+                    "wave_launch_url",
+                    "receipt_code",
+                    "receipt_url",
+                    "initiated_at",
+                    "paid_at",
+                    "credited_at"
+                ],
+                "title": "TransactionResource"
             },
             "UpdateCnpsReferenceRequest": {
                 "type": "object",
