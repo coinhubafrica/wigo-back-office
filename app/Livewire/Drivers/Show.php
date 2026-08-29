@@ -5,15 +5,17 @@ namespace App\Livewire\Drivers;
 use App\Enums\BackOfficeModule;
 use App\Enums\DriverPhotoStatus;
 use App\Enums\DriverStatus;
+use App\Http\Resources\CnpsStatementPayload;
 use App\Models\Driver;
+use App\Services\Cnps\CnpsStatementService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Fiche 360° d'un conducteur. Les onglets Requêtes, Transactions et CNPS du
- * prototype arriveront avec leurs modules respectifs — seuls l'identité, le
- * véhicule affecté et la modération de la photo de profil sont réels ici.
+ * Fiche 360° d'un conducteur. Les onglets Requêtes et Transactions du
+ * prototype arriveront avec leurs modules respectifs ; l'identité, le véhicule
+ * affecté, la modération de la photo et le suivi CNPS sont réels ici.
  */
 #[Layout('layouts.app', ['module' => BackOfficeModule::Drivers])]
 class Show extends Component
@@ -70,10 +72,25 @@ class Show extends Component
         $this->dispatch('toast', message: __('backoffice.drivers.reactivated'));
     }
 
-    public function render(): View
+    /**
+     * Relevé CNPS du conducteur : le mois en cours pour la carte du haut, les
+     * douze précédents pour le panneau.
+     *
+     * Même service que l'API mobile — le conducteur et l'agent lisent le même
+     * relevé, il n'y a pas deux façons de compter.
+     *
+     * @return array<string, mixed>
+     */
+    public function cnpsStatement(CnpsStatementService $statement): array
+    {
+        return CnpsStatementPayload::build($this->driver, $statement);
+    }
+
+    public function render(CnpsStatementService $statement): View
     {
         return view('livewire.drivers.show', [
             'driver' => $this->driver->fresh('vehicle'),
+            'cnps' => $this->cnpsStatement($statement),
         ]);
     }
 }

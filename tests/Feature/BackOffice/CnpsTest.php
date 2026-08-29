@@ -216,6 +216,77 @@ class CnpsTest extends TestCase
         );
     }
 
+    // ------------------------------------------------- panneau fiche conducteur
+
+    public function test_the_driver_fiche_shows_the_cnps_panel(): void
+    {
+        $driver = Driver::factory()->create();
+        CnpsReference::factory()->effectiveFrom('2026-01', 9000)->create(['driver_id' => $driver->id]);
+        CnpsDeclaration::factory()->forPeriod('2026-08', 6000)->create(['driver_id' => $driver->id]);
+
+        $this->actingAs($this->user('gestionnaire'))
+            ->get(route('bo.drivers.show', $driver))
+            ->assertOk()
+            ->assertSee('Cotisations CNPS (RSTI)')
+            // La carte du haut ne dit plus « — ».
+            ->assertSee('6 000')
+            ->assertSee('Partiel')
+            ->assertSee('Août 2026');
+    }
+
+    public function test_the_fiche_panel_lists_the_twelve_previous_months(): void
+    {
+        $driver = Driver::factory()->create();
+        CnpsReference::factory()->effectiveFrom('2025-01', 9000)->create(['driver_id' => $driver->id]);
+        CnpsDeclaration::factory()->forPeriod('2026-07', 9000)->create(['driver_id' => $driver->id]);
+
+        $this->actingAs($this->user('gestionnaire'))
+            ->get(route('bo.drivers.show', $driver))
+            ->assertOk()
+            ->assertSee('Juillet 2026')
+            ->assertSee('Payé')
+            // Le mois le plus ancien de la fenêtre.
+            ->assertSee('Août 2025')
+            ->assertSee('En retard');
+    }
+
+    public function test_the_fiche_panel_holds_no_validation_control(): void
+    {
+        $driver = Driver::factory()->create();
+        CnpsDeclaration::factory()->forPeriod('2026-08', 6000)->create(['driver_id' => $driver->id]);
+
+        $this->actingAs($this->user('gestionnaire'))
+            ->get(route('bo.drivers.show', $driver))
+            ->assertOk()
+            ->assertDontSee('Valider')
+            ->assertDontSee('Rejeter');
+    }
+
+    public function test_a_driver_without_a_reference_shows_no_invented_amount(): void
+    {
+        $driver = Driver::factory()->create();
+
+        $this->actingAs($this->user('gestionnaire'))
+            ->get(route('bo.drivers.show', $driver))
+            ->assertOk()
+            ->assertSee('Aucun montant fixé par le conducteur');
+    }
+
+    public function test_the_fiche_panel_only_shows_that_drivers_declarations(): void
+    {
+        $mine = Driver::factory()->create();
+        $other = Driver::factory()->create();
+
+        CnpsDeclaration::factory()->forPeriod('2026-08', 3000)->create(['driver_id' => $mine->id]);
+        CnpsDeclaration::factory()->forPeriod('2026-08', 21000)->create(['driver_id' => $other->id]);
+
+        $this->actingAs($this->user('gestionnaire'))
+            ->get(route('bo.drivers.show', $mine))
+            ->assertOk()
+            ->assertSee('3 000')
+            ->assertDontSee('21 000');
+    }
+
     private function user(string $role): User
     {
         $user = User::factory()->create(['is_active' => true]);
