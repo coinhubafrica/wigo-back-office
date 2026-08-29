@@ -73,7 +73,7 @@ enum BackOfficeModule: string
             self::SupportRequests => 'File de traitement — chaque requête porte son fil de messages avec le conducteur',
             self::Challenges => 'La base de toute gratification : des critères, une période, un prix — classement, tirage au sort ou bonus surprise',
             self::Recharges => 'Journal des transactions Wave, réconciliation, rejeux',
-            self::Cnps => 'File de validation des déclarations, justificatifs',
+            self::Cnps => 'Suivi des cotisations déclarées par les conducteurs, mois par mois',
             self::Shop => 'Catalogue, stock, commandes, livraisons',
             self::Announcements => "Bannières de l'accueil : image ou vidéo 15–30 s",
             self::Broadcasts => 'Envois ciblés : tous / segment / individuel',

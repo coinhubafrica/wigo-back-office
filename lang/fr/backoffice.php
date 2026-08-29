@@ -99,6 +99,27 @@ return [
         'drag_to_reorder' => 'Glisser pour réordonner',
     ],
 
+    'cnps' => [
+        'declared_this_month' => 'Total déclaré',
+        'drivers_declaring' => 'Conducteurs ayant déclaré',
+        'behind' => 'Sans déclaration',
+        'declarative_notice' => 'Suivi déclaratif : les montants sont ceux que les conducteurs déclarent avoir payés. Seuls les états de la CNPS font foi.',
+        'all' => 'Tous',
+        'search_placeholder' => 'Rechercher un conducteur, un téléphone, un compte YAN-CI…',
+        'period' => 'Mois',
+        'column_driver' => 'Conducteur',
+        'column_declared' => 'Déclaré / référence',
+        'column_state' => 'État',
+        'column_payments' => 'Versements',
+        'column_proof' => 'Justificatif',
+        'no_reference' => 'Aucune référence',
+        'no_rows' => 'Aucun conducteur ne correspond.',
+        'reset_filters' => 'Réinitialiser',
+        'proof_available' => 'Justificatif joint',
+        'payments_count' => '{0} aucun|{1} 1 versement|[2,*] :count versements',
+        'view_driver' => 'Voir la fiche',
+    ],
+
     'challenges' => [
         'total' => 'Challenges',
         'count' => '{0} Aucun challenge|{1} :count challenge|[2,*] :count challenges',

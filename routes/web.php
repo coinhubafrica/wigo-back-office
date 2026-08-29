@@ -6,6 +6,7 @@ use App\Livewire\Auth\Login;
 use App\Livewire\Challenges\Index as ChallengesIndex;
 use App\Livewire\Challenges\Prizes as ChallengesPrizes;
 use App\Livewire\Challenges\Show as ChallengesShow;
+use App\Livewire\Cnps\Index as CnpsIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\Drivers\Index as DriversIndex;
 use App\Livewire\Drivers\Show as DriversShow;
@@ -72,4 +73,8 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('challenges/{challenge}', ChallengesShow::class)
         ->middleware('permission:'.BackOfficeModule::Challenges->permission())
         ->name('bo.challenges.show');
+
+    Route::livewire('cnps', CnpsIndex::class)
+        ->middleware('permission:'.BackOfficeModule::Cnps->permission())
+        ->name(BackOfficeModule::Cnps->route());
 });
