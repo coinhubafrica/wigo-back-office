@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Enums\OrderStatus;
+use App\Enums\YangoOrderStatus;
 use App\Models\Driver;
-use App\Models\Order;
+use App\Models\YangoOrder;
 use App\Services\Challenges\DailyActivityService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -16,7 +16,7 @@ use Illuminate\Support\Carbon;
  *
  * Idempotent par (driver_id, yango_id) : rejouable sans dupliquer les lignes.
  */
-class OrderSeeder extends Seeder
+class YangoOrderSeeder extends Seeder
 {
     public function run(): void
     {
@@ -26,7 +26,7 @@ class OrderSeeder extends Seeder
         $drivers = Driver::query()->get()->all();
 
         if ($drivers === []) {
-            $this->command->warn('Aucun conducteur trouvé : exécutez DriverSeeder avant OrderSeeder.');
+            $this->command->warn('Aucun conducteur trouvé : exécutez DriverSeeder avant YangoOrderSeeder.');
 
             return;
         }
@@ -43,10 +43,10 @@ class OrderSeeder extends Seeder
                 for ($i = 0; $i < $ordersPerDay; $i++) {
                     $yangoId = "order-{$driver->id}-{$day->toDateString()}-{$i}";
 
-                    Order::query()->firstOrCreate(
+                    YangoOrder::query()->firstOrCreate(
                         ['driver_id' => $driver->id, 'yango_id' => $yangoId],
                         [
-                            'status' => OrderStatus::Complete,
+                            'status' => YangoOrderStatus::Complete,
                             'week_iso' => $day->format('o-\WW'),
                             'completed_at' => $day->copy()->addHours(random_int(6, 22)),
                         ],
@@ -57,6 +57,6 @@ class OrderSeeder extends Seeder
             }
         }
 
-        $this->command->info('OrderSeeder : courses générées sur 6 jours pour '.count($drivers).' conducteur(s).');
+        $this->command->info('YangoOrderSeeder : courses générées sur 6 jours pour '.count($drivers).' conducteur(s).');
     }
 }

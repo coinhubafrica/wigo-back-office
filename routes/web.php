@@ -10,6 +10,8 @@ use App\Livewire\Cnps\Index as CnpsIndex;
 use App\Livewire\Dashboard;
 use App\Livewire\Drivers\Index as DriversIndex;
 use App\Livewire\Drivers\Show as DriversShow;
+use App\Livewire\Shop\Catalogue as ShopCatalogue;
+use App\Livewire\Shop\Orders as ShopOrders;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -77,4 +79,12 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('cnps', CnpsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Cnps->permission())
         ->name(BackOfficeModule::Cnps->route());
+
+    Route::livewire('shop', ShopCatalogue::class)
+        ->middleware('permission:'.BackOfficeModule::Shop->permission())
+        ->name(BackOfficeModule::Shop->route());
+
+    Route::livewire('shop/orders', ShopOrders::class)
+        ->middleware('permission:'.BackOfficeModule::Shop->permission())
+        ->name('bo.shop.orders');
 });

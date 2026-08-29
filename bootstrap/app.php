@@ -2,6 +2,7 @@
 
 use App\Enums\BackOfficeModule;
 use App\Http\Middleware\EnsureDriverIsActive;
+use App\Http\Middleware\EnsureIdempotentRequest;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // API mobile
             'ability' => CheckForAnyAbility::class,
             'driver.active' => EnsureDriverIsActive::class,
+            'idempotency' => EnsureIdempotentRequest::class,
 
             // Back-office : `permission` et `role` viennent de
             // spatie/laravel-permission (voir aussi les macros de route

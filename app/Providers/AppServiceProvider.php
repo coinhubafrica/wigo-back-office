@@ -124,5 +124,10 @@ class AppServiceProvider extends ServiceProvider
     protected function configureAuthorization(): void
     {
         Gate::define('approveSurpriseChallenge', fn (User $user): bool => $user->hasRole('direction'));
+
+        // La permission `module.shop` ouvre le catalogue en lecture à tous les
+        // profils qui suivent la boutique ; écrire dans le stock reste au
+        // magasinier et à la direction.
+        Gate::define('manageStock', fn (User $user): bool => $user->hasAnyRole(['stock', 'direction']));
     }
 }

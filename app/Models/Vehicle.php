@@ -16,10 +16,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $plate_number
  * @property string|null $brand
  * @property string|null $model
+ * @property string|null $vehicle_model_id
  * @property string|null $color
  * @property string|null $photo_url
  * @property bool $is_active
  * @property CarbonImmutable|null $last_sync_at
+ * @property-read VehicleModel|null $vehicleModel
  */
 class Vehicle extends Model
 {
@@ -45,5 +47,17 @@ class Vehicle extends Model
     public function driver(): BelongsTo
     {
         return $this->belongsTo(Driver::class);
+    }
+
+    /**
+     * Modèle du référentiel boutique, rapproché au mieux des chaînes libres
+     * `brand`/`model` que Yango envoie — jamais saisi à la main. Nul tant que
+     * le catalogue ne connaît pas ce modèle.
+     *
+     * @return BelongsTo<VehicleModel, $this>
+     */
+    public function vehicleModel(): BelongsTo
+    {
+        return $this->belongsTo(VehicleModel::class);
     }
 }

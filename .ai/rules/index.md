@@ -9,6 +9,8 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Services/Cnps/** | .ai/rules/cnps.md |
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
 | app/Http/** | .ai/rules/http.md |
+| app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/middleware.md |
 | database/migrations/** | .ai/rules/migrations.md |
-| app/Models/Vehicle.php | .ai/rules/models.md |
+| app/Models/Vehicle.php, app/Models/Product.php | .ai/rules/models.md |
 | database/seeders/** | .ai/rules/seeders.md |
+| app/Livewire/Shop/** | .ai/rules/shop.md |

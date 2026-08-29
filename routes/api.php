@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChallengeController;
 use App\Http\Controllers\Api\V1\CnpsController;
+use App\Http\Controllers\Api\V1\ShopController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -52,5 +53,15 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         });
 
         Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+
+        // Boutique : la lecture reste ouverte à un conducteur suspendu, la
+        // commande non — comme pour les cotisations.
+        Route::get('shop/products', [ShopController::class, 'index'])->name('shop.products');
+        Route::get('shop/orders', [ShopController::class, 'orders'])->name('shop.orders.index');
+        Route::get('shop/orders/{order}', [ShopController::class, 'showOrder'])->name('shop.orders.show');
+
+        Route::middleware(['driver.active', 'idempotency'])->group(function (): void {
+            Route::post('shop/orders', [ShopController::class, 'storeOrder'])->name('shop.orders.store');
+        });
     });
 });

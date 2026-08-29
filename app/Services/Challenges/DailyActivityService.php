@@ -3,7 +3,7 @@
 namespace App\Services\Challenges;
 
 use App\Enums\ChallengeStatus;
-use App\Enums\OrderStatus;
+use App\Enums\YangoOrderStatus;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\Driver;
@@ -24,8 +24,8 @@ class DailyActivityService
     public function recordDay(Driver $driver, CarbonInterface $date): void
     {
         DB::transaction(function () use ($driver, $date): void {
-            $ordersCompleted = $driver->orders()
-                ->where('status', OrderStatus::Complete)
+            $ordersCompleted = $driver->yangoOrders()
+                ->where('status', YangoOrderStatus::Complete)
                 ->whereDate('completed_at', $date)
                 ->count();
 

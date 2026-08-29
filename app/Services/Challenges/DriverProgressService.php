@@ -3,12 +3,12 @@
 namespace App\Services\Challenges;
 
 use App\Enums\ChallengeType;
-use App\Enums\OrderStatus;
+use App\Enums\YangoOrderStatus;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\Driver;
 use App\Models\DriverDailyActivity;
-use App\Models\Order;
+use App\Models\YangoOrder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -28,9 +28,9 @@ class DriverProgressService
      */
     public function completedOrders(Driver $driver, Challenge $challenge): int
     {
-        return Order::query()
+        return YangoOrder::query()
             ->where('driver_id', $driver->id)
-            ->where('status', OrderStatus::Complete)
+            ->where('status', YangoOrderStatus::Complete)
             ->whereBetween('completed_at', [$challenge->period_start, $challenge->period_end])
             ->count();
     }
@@ -96,8 +96,8 @@ class DriverProgressService
         // Sous-requête : les conducteurs comptant plus de courses que lui.
         // Le dénombrement reste en base — le parc entier ne remonte jamais en
         // mémoire.
-        $ahead = Order::query()
-            ->where('status', OrderStatus::Complete)
+        $ahead = YangoOrder::query()
+            ->where('status', YangoOrderStatus::Complete)
             ->whereBetween('completed_at', [$challenge->period_start, $challenge->period_end])
             ->where('driver_id', '!=', $driver->id)
             ->groupBy('driver_id')

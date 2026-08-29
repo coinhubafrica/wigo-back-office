@@ -9,8 +9,8 @@ use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
 use App\Models\Driver;
 use App\Models\DriverDailyActivity;
-use App\Models\Order;
 use App\Models\Prize;
+use App\Models\YangoOrder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
@@ -259,7 +259,7 @@ class ChallengeControllerTest extends TestCase
 
     private function completeOrders(Driver $driver, Challenge $challenge, int $count): void
     {
-        Order::factory()->count($count)->completedOn($challenge->period_start->addDay())->create([
+        YangoOrder::factory()->count($count)->completedOn($challenge->period_start->addDay())->create([
             'driver_id' => $driver->id,
         ]);
     }

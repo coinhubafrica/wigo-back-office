@@ -4,7 +4,7 @@ namespace App\Services\Challenges;
 
 use App\Enums\ChallengeStatus;
 use App\Enums\ChallengeType;
-use App\Enums\OrderStatus;
+use App\Enums\YangoOrderStatus;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
@@ -105,8 +105,8 @@ class DrawService
     private function driverOrdersInPeriod(Challenge $challenge, string $driverId): int
     {
         return Driver::query()->findOrFail($driverId)
-            ->orders()
-            ->where('status', OrderStatus::Complete)
+            ->yangoOrders()
+            ->where('status', YangoOrderStatus::Complete)
             ->whereBetween('completed_at', [$challenge->period_start, $challenge->period_end])
             ->count();
     }
@@ -114,8 +114,8 @@ class DrawService
     private function insertFlatEntries(Challenge $challenge): void
     {
         $eligibleDriverIds = Driver::query()
-            ->whereHas('orders', function ($query) use ($challenge): void {
-                $query->where('status', OrderStatus::Complete)
+            ->whereHas('yangoOrders', function ($query) use ($challenge): void {
+                $query->where('status', YangoOrderStatus::Complete)
                     ->whereBetween('completed_at', [$challenge->period_start, $challenge->period_end]);
             })
             ->pluck('id');
@@ -202,8 +202,8 @@ class DrawService
     private function drawSurprise(Challenge $challenge): array
     {
         $eligibleDriverIds = Driver::query()
-            ->whereHas('orders', function ($query) use ($challenge): void {
-                $query->where('status', OrderStatus::Complete)
+            ->whereHas('yangoOrders', function ($query) use ($challenge): void {
+                $query->where('status', YangoOrderStatus::Complete)
                     ->whereBetween('completed_at', [$challenge->period_start, $challenge->period_end]);
             })
             ->pluck('id')

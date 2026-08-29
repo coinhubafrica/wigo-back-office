@@ -7,8 +7,8 @@ use App\Enums\BackOfficeModule;
 use App\Enums\ChallengeRecurrence;
 use App\Enums\ChallengeStatus;
 use App\Enums\ChallengeType;
-use App\Enums\OrderStatus;
 use App\Enums\PrizeNature;
+use App\Enums\YangoOrderStatus;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
@@ -215,8 +215,8 @@ class Show extends Component
             ->pluck('aggregate', 'driver_id');
 
         return Driver::query()
-            ->withCount(['orders as period_orders' => fn ($query) => $query
-                ->where('status', OrderStatus::Complete)
+            ->withCount(['yangoOrders as period_orders' => fn ($query) => $query
+                ->where('status', YangoOrderStatus::Complete)
                 ->whereBetween('completed_at', [$this->challenge->period_start, $this->challenge->period_end])])
             ->get()
             ->map(fn (Driver $driver): array => [
