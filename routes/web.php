@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BackOfficeModule;
+use App\Http\Controllers\BackOffice\DriverPhotoController;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Auth\Login;
 use App\Livewire\Challenges\Index as ChallengesIndex;
@@ -60,6 +61,12 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('drivers/{driver}', DriversShow::class)
         ->middleware('permission:'.BackOfficeModule::Drivers->permission())
         ->name('bo.drivers.show');
+
+    // La photo de profil vit sur le disque privé : la fiche ne peut pas la
+    // pointer directement, elle passe par cette route protégée.
+    Route::get('drivers/{driver}/photo', DriverPhotoController::class)
+        ->middleware('permission:'.BackOfficeModule::Drivers->permission())
+        ->name('bo.drivers.photo');
 
     Route::livewire('announcements', AnnouncementsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Announcements->permission())

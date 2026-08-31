@@ -33,8 +33,22 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         // Profil : accessible même suspendu, pour que l'application puisse
         // afficher le motif de la suspension et permettre la déconnexion.
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
-        Route::get('me', [AuthController::class, 'me'])->name('me');
-        Route::put('push-token', [AuthController::class, 'updatePushToken'])->name('push-token');
+
+        /*
+        | Profil du conducteur connecté. Les noms restent à plat (`me`,
+        | `push-token`, `photo`) : ils sont publiés dans le contrat mobile,
+        | seul le chemin est regroupé.
+        */
+        Route::prefix('me')->group(function (): void {
+            Route::get('/', [AuthController::class, 'me'])->name('me');
+            Route::put('push-token', [AuthController::class, 'updatePushToken'])->name('push-token');
+
+            // Photo : lecture par URL signée, dépôt ouvert même suspendu.
+            Route::post('photo', [AuthController::class, 'updatePhoto'])->name('photo.update');
+            Route::get('photo/{driver}', [AuthController::class, 'photo'])
+                ->middleware('signed')
+                ->name('photo');
+        });
 
         Route::get('challenges', [ChallengeController::class, 'index'])->name('challenges');
 

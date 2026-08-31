@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesDriver;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\OtpRequestRequest;
 use App\Http\Requests\Api\V1\OtpVerifyRequest;
+use App\Http\Requests\Api\V1\UpdateDriverPhotoRequest;
 use App\Http\Requests\Api\V1\UpdatePushTokenRequest;
 use App\Http\Resources\DriverResource;
 use App\Models\Driver;
@@ -13,7 +14,9 @@ use App\Services\Auth\OtpService;
 use App\Support\Scramble\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AuthController extends Controller
 {
@@ -148,6 +151,63 @@ class AuthController extends Controller
         ])->save();
 
         return $this->okApiResponse([], __('auth.push_token_saved'));
+    }
+
+    /**
+     * Changer ma photo de profil
+     *
+     * Remplace la photo du conducteur : le profil est mis à jour aussitôt, il
+     * n'y a pas de validation par un agent. L'ancienne photo est supprimée du
+     * disque dans la foulée.
+     *
+     * Accessible même lorsque le compte est suspendu — la photo relève du
+     * profil, pas des opérations métier.
+     *
+     * @response array{
+     *     message: string,
+     *     data: array{
+     *         photo_url: string,
+     *     },
+     * }
+     */
+    public function updatePhoto(UpdateDriverPhotoRequest $request): JsonResponse
+    {
+        $driver = $this->driver($request);
+        $previousPath = $driver->photo_url;
+
+        // Disque privé : un portrait est une donnée personnelle, il n'a rien à
+        // faire derrière une URL publique devinable (comme les justificatifs
+        // CNPS). La lecture passe par `photo`, route signée et temporaire.
+        $path = $request->file('photo')->store("driver-photos/{$driver->id}", 'local');
+
+        $driver->forceFill(['photo_url' => $path])->save();
+
+        if ($previousPath !== null && $previousPath !== $path) {
+            Storage::disk('local')->delete($previousPath);
+        }
+
+        return $this->okApiResponse([
+            'photo_url' => DriverResource::photoUrl($driver),
+        ], __('api.driver.photo_updated'));
+    }
+
+    /**
+     * Télécharger ma photo de profil
+     *
+     * Route signée et temporaire, dont l'URL est fournie par `photo_url` du
+     * profil. La signature ne vaut pas autorisation : le conducteur
+     * authentifié doit être celui de la photo.
+     */
+    public function photo(Request $request, Driver $driver): StreamedResponse
+    {
+        abort_if($driver->id !== $this->driver($request)->id, 403, __('api.forbidden'));
+        abort_if($driver->photo_url === null, 404, __('api.driver.photo_missing'));
+
+        $disk = Storage::disk('local');
+
+        abort_unless($disk->exists($driver->photo_url), 404, __('api.driver.photo_missing'));
+
+        return $disk->response($driver->photo_url);
     }
 
     /**

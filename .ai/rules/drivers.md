@@ -22,3 +22,8 @@ The panel calls `CnpsStatementPayload::build()` — the same builder the mobile 
 Nothing on the panel validates anything. Declarations carry no status by design (see .ai/rules/cnps.md); a test asserts the fiche renders no Valider/Rejeter control.
 
 Still placeholders, still waiting on Fleet trip sync: courses de la semaine and solde Yango. Don't fake either.
+
+## Profile photos are not moderated — the driver's upload lands on the fiche as-is
+An earlier rule recorded photo moderation as real (`drivers.photo_status`, a pending banner, `approvePhoto()`/`rejectPhoto()`). That was dropped on explicit instruction: the driver changes their photo from the mobile app and the profile is updated, nothing more. The `photo_status` column, the `DriverPhotoStatus` enum, `hasPhotoPendingModeration()`, the banner and both actions are gone; a test asserts the fiche renders no approve/reject control. Do not reintroduce them without an explicit ask.
+
+The file lives on the private `local` disk (`driver-photos/{driver}/…`) — a portrait is personal data, never behind a guessable public URL. The fiche cannot point at it directly, so the avatar block reads `bo.drivers.photo` (BackOffice\DriverPhotoController, session + `module.drivers` permission) and falls back to `initials()` when `photo_url` is null. Mobile reads the same file through a temporary signed route (`api.v1.photo`), built by `DriverResource::photoUrl()`; the column stores a path, so never expose it raw.

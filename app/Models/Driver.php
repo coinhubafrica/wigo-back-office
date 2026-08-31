@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\DriverPhotoStatus;
 use App\Enums\DriverStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\DriverFactory;
@@ -27,7 +26,6 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $phone
  * @property string|null $license_number
  * @property string|null $photo_url
- * @property DriverPhotoStatus|null $photo_status
  * @property DriverStatus $status
  * @property string|null $suspension_reason
  * @property string|null $terms_version
@@ -65,7 +63,6 @@ class Driver extends Authenticatable
     {
         return [
             'status' => DriverStatus::class,
-            'photo_status' => DriverPhotoStatus::class,
             'yango_balance' => 'integer',
             'balance_read_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
@@ -159,11 +156,6 @@ class Driver extends Authenticatable
     public function isSuspended(): bool
     {
         return $this->status === DriverStatus::Suspended;
-    }
-
-    public function hasPhotoPendingModeration(): bool
-    {
-        return $this->photo_status === DriverPhotoStatus::Pending;
     }
 
     public function fullName(): string

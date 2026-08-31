@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-4" style="max-width: 720px;">
+<div class="flex max-w-[720px] flex-col gap-4">
     <a href="{{ route(\App\Enums\BackOfficeModule::Drivers->route()) }}" wire:navigate
        class="flex w-fit items-center gap-1.5 rounded border border-line bg-card px-3 py-2 text-sm font-semibold text-ink hover:bg-surface">
         <svg class="size-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -8,9 +8,14 @@
     </a>
 
     <div class="flex items-start gap-3.5 rounded border border-line bg-card p-5">
-        <span class="flex size-12 shrink-0 items-center justify-center rounded bg-primary-tint text-base font-semibold text-primary-text">
-            {{ $driver->initials() }}
-        </span>
+        @if ($driver->photo_url)
+            <img src="{{ route('bo.drivers.photo', $driver) }}" alt="{{ $driver->fullName() }}"
+                 class="size-12 shrink-0 rounded object-cover">
+        @else
+            <span class="flex size-12 shrink-0 items-center justify-center rounded bg-primary-tint text-base font-semibold text-primary-text">
+                {{ $driver->initials() }}
+            </span>
+        @endif
         <div class="min-w-0 flex-1">
             <h2 class="text-lg font-semibold text-ink">{{ $driver->fullName() }}</h2>
             <p class="text-sm text-muted">{{ $driver->phone }}</p>
@@ -20,24 +25,10 @@
         </span>
     </div>
 
-    @if ($driver->hasPhotoPendingModeration())
-        <div class="rounded border border-warn-text/20 bg-warn-bg p-4 text-sm text-ink">
-            {{ __('backoffice.drivers.photo_pending') }}
-            <div class="mt-3 flex gap-2">
-                <button wire:click="approvePhoto" class="rounded bg-ok-text px-3.5 py-2 text-xs font-semibold text-white">
-                    {{ __('backoffice.drivers.approve') }}
-                </button>
-                <button wire:click="rejectPhoto" class="rounded border border-err-text px-3.5 py-2 text-xs font-semibold text-err-text">
-                    {{ __('backoffice.drivers.reject') }}
-                </button>
-            </div>
-        </div>
-    @endif
-
     <div class="rounded border border-line bg-card">
-        <div class="border-b border-line px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
+        <h2 class="border-b border-line px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
             {{ __('backoffice.drivers.identity_and_vehicle') }}
-        </div>
+        </h2>
         <div class="px-5">
             <div class="flex justify-between border-b border-line py-2.5 text-sm">
                 <span class="text-muted">{{ __('backoffice.drivers.vehicle') }}</span>
@@ -89,7 +80,7 @@
         @if ($driver->isSuspended())
             <div>
                 <p class="text-sm text-ink">{{ __('backoffice.drivers.suspension_reason') }}: <b>{{ $driver->suspension_reason }}</b></p>
-                <button wire:click="reactivate" wire:confirm="{{ __('backoffice.drivers.confirm_reactivate') }}"
+                <button wire:click="confirmReactivate"
                         class="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover">
                     {{ __('backoffice.drivers.reactivate') }}
                 </button>
@@ -100,7 +91,7 @@
                     {{ __('backoffice.drivers.suspension_reason') }}
                 </label>
                 <input wire:model="suspensionReason" id="suspensionReason" type="text" required
-                       class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary focus:outline-none">
+                       class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary">
                 @error('suspensionReason')
                     <p class="text-sm text-err-text">{{ $message }}</p>
                 @enderror
@@ -158,7 +149,7 @@
                     'bg-ok-bg text-ok-text' => $currentStatus === \App\Enums\CnpsMonthStatus::Paid,
                     'bg-warn-bg text-warn-text' => $currentStatus === \App\Enums\CnpsMonthStatus::Partial,
                     'bg-err-bg text-err-text' => $currentStatus === \App\Enums\CnpsMonthStatus::Late,
-                    'bg-zinc-100 text-muted' => $currentStatus === \App\Enums\CnpsMonthStatus::Pending,
+                    'bg-neutral-bg text-neutral-text' => $currentStatus === \App\Enums\CnpsMonthStatus::Pending,
                 ])>{{ $currentStatus->label() }}</span>
                 @if ($cnps['current']['remaining'] > 0)
                     <span class="text-xs text-muted">
@@ -168,7 +159,10 @@
                 @endif
             </div>
             @if ($cnps['current']['reference_amount'] !== null)
-                <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface"
+                     role="progressbar" aria-valuenow="{{ (int) $cnps['current']['progress'] }}"
+                     aria-valuemin="0" aria-valuemax="100"
+                     aria-label="{{ __('backoffice.cnps.current_month') }}">
                     <div class="h-full rounded-full bg-ok-text" style="width: {{ $cnps['current']['progress'] }}%"></div>
                 </div>
             @endif
@@ -197,7 +191,7 @@
                                         'bg-ok-bg text-ok-text' => $monthStatus === \App\Enums\CnpsMonthStatus::Paid,
                                         'bg-warn-bg text-warn-text' => $monthStatus === \App\Enums\CnpsMonthStatus::Partial,
                                         'bg-err-bg text-err-text' => $monthStatus === \App\Enums\CnpsMonthStatus::Late,
-                                        'bg-zinc-100 text-muted' => $monthStatus === \App\Enums\CnpsMonthStatus::Pending,
+                                        'bg-neutral-bg text-neutral-text' => $monthStatus === \App\Enums\CnpsMonthStatus::Pending,
                                     ])>{{ $monthStatus->label() }}</span>
                                 </td>
                                 <td class="py-2 text-right text-[11px] text-muted">
@@ -206,7 +200,14 @@
                                             {{ number_format($declaration['declared_amount'], 0, ',', ' ') }}
                                             {{ __('backoffice.cnps.payment_on', ['date' => \Illuminate\Support\Carbon::parse($declaration['payment_date'])->translatedFormat('j M')]) }}
                                             @if ($declaration['has_proof'])
-                                                <span title="{{ __('backoffice.cnps.with_proof') }}">📎</span>
+                                                {{-- Trombone en SVG et non en emoji : le rendu
+                                                     variait selon l'OS et `title` seul n'est pas
+                                                     un nom accessible fiable. --}}
+                                                <svg class="inline-block size-3 align-text-bottom text-muted" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                                                     role="img" aria-label="{{ __('backoffice.cnps.with_proof') }}">
+                                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                                                </svg>
                                             @endif
                                         </span>
                                     @endforeach
@@ -218,4 +219,22 @@
             </div>
         </div>
     </div>
+
+    @if ($confirmingReactivation)
+        <x-modal close="cancelReactivate" max-width="max-w-sm"
+                 :label="__('backoffice.drivers.confirm_reactivate')">
+            <div class="px-5 pb-4 pt-5">
+                <p class="text-sm font-semibold text-ink">{{ __('backoffice.drivers.reactivate') }}</p>
+                <p class="mt-1.5 text-sm text-muted">{{ __('backoffice.drivers.confirm_reactivate') }}</p>
+            </div>
+            <div class="flex justify-end gap-2.5 border-t border-line px-5 py-4">
+                <button wire:click="cancelReactivate" class="rounded border border-line bg-card px-3.5 py-2 text-sm font-semibold text-muted hover:bg-surface">
+                    {{ __('backoffice.drivers.cancel') }}
+                </button>
+                <button wire:click="reactivate" class="rounded bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover">
+                    {{ __('backoffice.drivers.reactivate') }}
+                </button>
+            </div>
+        </x-modal>
+    @endif
 </div>

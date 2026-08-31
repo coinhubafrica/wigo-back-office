@@ -2,17 +2,17 @@
 
 namespace Tests\Feature\BackOffice;
 
-use App\Enums\DriverPhotoStatus;
 use App\Enums\DriverStatus;
 use App\Livewire\Drivers\Show;
 use App\Models\Driver;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-class DriverModerationTest extends TestCase
+class DriverFicheTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
@@ -42,45 +42,63 @@ class DriverModerationTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_the_photo_moderation_banner_only_shows_when_pending(): void
+    public function test_the_fiche_shows_the_photo_when_the_driver_has_one(): void
     {
-        $driver = Driver::factory()->create(['photo_url' => 'https://example.com/photo.jpg', 'photo_status' => DriverPhotoStatus::Pending]);
+        $driver = Driver::factory()->create(['photo_url' => 'driver-photos/selfie.jpg']);
 
         Livewire::actingAs($this->user('direction'))
             ->test(Show::class, ['driver' => $driver])
-            ->assertSee('Photo de profil en attente de modération');
+            ->assertSee(route('bo.drivers.photo', $driver), escape: false);
     }
 
-    public function test_the_photo_moderation_banner_is_hidden_when_not_pending(): void
+    public function test_the_fiche_falls_back_to_the_initials_without_a_photo(): void
     {
-        $driver = Driver::factory()->create(['photo_status' => null]);
+        $driver = Driver::factory()->create(['first_name' => 'Abdoul', 'last_name' => 'COMBA', 'photo_url' => null]);
 
         Livewire::actingAs($this->user('direction'))
             ->test(Show::class, ['driver' => $driver])
-            ->assertDontSee('Photo de profil en attente de modération');
+            ->assertDontSee(route('bo.drivers.photo', $driver), escape: false)
+            ->assertSee('AC');
     }
 
-    public function test_approving_the_photo_sets_the_status_and_clears_the_banner(): void
+    public function test_the_fiche_offers_no_photo_moderation_control(): void
     {
-        $driver = Driver::factory()->create(['photo_url' => 'https://example.com/photo.jpg', 'photo_status' => DriverPhotoStatus::Pending]);
+        $driver = Driver::factory()->create(['photo_url' => 'driver-photos/selfie.jpg']);
 
         Livewire::actingAs($this->user('direction'))
             ->test(Show::class, ['driver' => $driver])
-            ->call('approvePhoto')
-            ->assertDontSee('Photo de profil en attente de modération');
-
-        $this->assertSame(DriverPhotoStatus::Approved, $driver->fresh()->photo_status);
+            ->assertDontSee('approvePhoto')
+            ->assertDontSee('rejectPhoto');
     }
 
-    public function test_rejecting_the_photo_sets_the_status(): void
+    public function test_the_photo_route_streams_the_file(): void
     {
-        $driver = Driver::factory()->create(['photo_url' => 'https://example.com/photo.jpg', 'photo_status' => DriverPhotoStatus::Pending]);
+        Storage::fake('local');
+        Storage::disk('local')->put('driver-photos/selfie.jpg', 'binaire');
 
-        Livewire::actingAs($this->user('direction'))
-            ->test(Show::class, ['driver' => $driver])
-            ->call('rejectPhoto');
+        $driver = Driver::factory()->create(['photo_url' => 'driver-photos/selfie.jpg']);
 
-        $this->assertSame(DriverPhotoStatus::Rejected, $driver->fresh()->photo_status);
+        $this->actingAs($this->user('direction'))
+            ->get(route('bo.drivers.photo', $driver))
+            ->assertOk();
+    }
+
+    public function test_the_photo_route_404s_without_a_photo(): void
+    {
+        $driver = Driver::factory()->create(['photo_url' => null]);
+
+        $this->actingAs($this->user('direction'))
+            ->get(route('bo.drivers.photo', $driver))
+            ->assertNotFound();
+    }
+
+    public function test_the_photo_route_is_closed_without_the_drivers_permission(): void
+    {
+        $driver = Driver::factory()->create(['photo_url' => 'driver-photos/selfie.jpg']);
+
+        $this->actingAs($this->user('stock'))
+            ->get(route('bo.drivers.photo', $driver))
+            ->assertForbidden();
     }
 
     public function test_suspending_a_driver_requires_a_reason(): void
@@ -118,11 +136,29 @@ class DriverModerationTest extends TestCase
 
         Livewire::actingAs($this->user('direction'))
             ->test(Show::class, ['driver' => $driver])
-            ->call('reactivate');
+            ->call('confirmReactivate')
+            ->assertSet('confirmingReactivation', true)
+            ->call('reactivate')
+            ->assertSet('confirmingReactivation', false);
 
         $driver->refresh();
         $this->assertSame(DriverStatus::Active, $driver->status);
         $this->assertNull($driver->suspension_reason);
+    }
+
+    public function test_cancelling_the_reactivation_leaves_the_driver_suspended(): void
+    {
+        $driver = Driver::factory()->suspended('Documents non conformes')->create();
+
+        Livewire::actingAs($this->user('direction'))
+            ->test(Show::class, ['driver' => $driver])
+            ->call('confirmReactivate')
+            ->call('cancelReactivate')
+            ->assertSet('confirmingReactivation', false);
+
+        $driver->refresh();
+        $this->assertSame(DriverStatus::Suspended, $driver->status);
+        $this->assertSame('Documents non conformes', $driver->suspension_reason);
     }
 
     private function user(string $role): User

@@ -286,7 +286,7 @@
                 }
             }
         },
-        "/push-token": {
+        "/me/push-token": {
             "put": {
                 "operationId": "v1.push-token",
                 "description": "Requis pour recevoir les notifications push (messages data-only).",
@@ -335,6 +335,137 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/me/photo": {
+            "post": {
+                "operationId": "v1.photo.update",
+                "description": "Remplace la photo du conducteur : le profil est mis \u00e0 jour aussit\u00f4t, il\nn'y a pas de validation par un agent. L'ancienne photo est supprim\u00e9e du\ndisque dans la foul\u00e9e.\n\nAccessible m\u00eame lorsque le compte est suspendu \u2014 la photo rel\u00e8ve du\nprofil, pas des op\u00e9rations m\u00e9tier.",
+                "summary": "Changer ma photo de profil",
+                "tags": [
+                    "Auth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateDriverPhotoRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "photo_url": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "photo_url"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/me/photo/{driver}": {
+            "get": {
+                "operationId": "v1.photo",
+                "description": "Route sign\u00e9e et temporaire, dont l'URL est fournie par `photo_url` du\nprofil. La signature ne vaut pas autorisation : le conducteur\nauthentifi\u00e9 doit \u00eatre celui de la photo.",
+                "summary": "T\u00e9l\u00e9charger ma photo de profil",
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "name": "driver",
+                        "in": "path",
+                        "required": true,
+                        "description": "The driver ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Transfer-Encoding": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chunked"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -1536,7 +1667,8 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "URL sign\u00e9e et temporaire (une heure). Rafra\u00eechie \u00e0 chaque\nlecture du profil."
                     },
                     "status": {
                         "type": "string",
@@ -2091,6 +2223,21 @@
                     "amount"
                 ],
                 "title": "UpdateCnpsReferenceRequest"
+            },
+            "UpdateDriverPhotoRequest": {
+                "type": "object",
+                "properties": {
+                    "photo": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Photo de profil : jpg, png ou webp, 5 Mo au plus. Le type est\nv\u00e9rifi\u00e9 sur le contenu, pas sur l'extension, et `dimensions`\n\u00e9carte les images trop petites pour \u00eatre reconnaissables."
+                    }
+                },
+                "required": [
+                    "photo"
+                ],
+                "title": "UpdateDriverPhotoRequest"
             },
             "UpdatePushTokenRequest": {
                 "type": "object",

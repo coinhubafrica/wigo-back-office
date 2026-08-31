@@ -3,7 +3,6 @@
 namespace App\Livewire\Drivers;
 
 use App\Enums\BackOfficeModule;
-use App\Enums\DriverPhotoStatus;
 use App\Enums\DriverStatus;
 use App\Http\Resources\CnpsStatementPayload;
 use App\Models\Driver;
@@ -15,7 +14,10 @@ use Livewire\Component;
 /**
  * Fiche 360° d'un conducteur. Les onglets Requêtes et Transactions du
  * prototype arriveront avec leurs modules respectifs ; l'identité, le véhicule
- * affecté, la modération de la photo et le suivi CNPS sont réels ici.
+ * affecté et le suivi CNPS sont réels ici.
+ *
+ * La photo de profil n'est pas modérée : le conducteur la change depuis
+ * l'application, la fiche ne fait que l'afficher.
  */
 #[Layout('layouts.app', ['module' => BackOfficeModule::Drivers])]
 class Show extends Component
@@ -26,23 +28,15 @@ class Show extends Component
 
     public string $suspensionReason = '';
 
+    /**
+     * Modale de confirmation plutôt que `wire:confirm` : le dialogue natif
+     * bloque l'automatisation navigateur, comme constaté sur les recharges.
+     */
+    public bool $confirmingReactivation = false;
+
     public function mount(Driver $driver): void
     {
         $this->driver = $driver->load('vehicle');
-    }
-
-    public function approvePhoto(): void
-    {
-        $this->driver->update(['photo_status' => DriverPhotoStatus::Approved]);
-
-        $this->dispatch('toast', message: __('backoffice.drivers.photo_approved'));
-    }
-
-    public function rejectPhoto(): void
-    {
-        $this->driver->update(['photo_status' => DriverPhotoStatus::Rejected]);
-
-        $this->dispatch('toast', message: __('backoffice.drivers.photo_rejected'));
     }
 
     public function suspend(): void
@@ -62,8 +56,20 @@ class Show extends Component
         $this->dispatch('toast', message: __('backoffice.drivers.driver_suspended'));
     }
 
+    public function confirmReactivate(): void
+    {
+        $this->confirmingReactivation = true;
+    }
+
+    public function cancelReactivate(): void
+    {
+        $this->confirmingReactivation = false;
+    }
+
     public function reactivate(): void
     {
+        $this->confirmingReactivation = false;
+
         $this->driver->update([
             'status' => DriverStatus::Active,
             'suspension_reason' => null,

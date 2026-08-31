@@ -26,6 +26,15 @@ return [
         'Système' => 'Système',
     ],
 
+    'dashboard' => [
+        'active_drivers' => 'Chauffeurs actifs',
+        'suspended_drivers' => 'Chauffeurs suspendus',
+        'stock_alerts' => 'Alertes de stock',
+        'recharges_to_replay' => 'Recharges à relancer',
+        'see_module' => 'Ouvrir le module',
+        'pending_modules_notice' => "Les indicateurs d'activité, les escalades SLA et la performance du support seront alimentés par les modules correspondants.",
+    ],
+
     'drivers' => [
         'fleet_size' => 'Parc référencé',
         'active' => 'Actifs',
@@ -48,11 +57,6 @@ return [
         'trips_this_week' => 'Courses cette semaine',
         'yango_balance' => 'Solde Yango',
         'cnps_this_month' => 'CNPS ce mois',
-        'photo_pending' => 'Photo de profil en attente de modération.',
-        'approve' => 'Approuver',
-        'reject' => 'Rejeter',
-        'photo_approved' => 'Photo approuvée.',
-        'photo_rejected' => 'Photo rejetée.',
         'suspend' => 'Suspendre',
         'suspension_reason' => 'Motif de suspension',
         'confirm_suspend' => 'Confirmer la suspension',
@@ -115,6 +119,9 @@ return [
         'manage_brands' => 'Gérer les marques',
         'brand_name' => 'Marque',
         'model_name' => 'Modèle',
+        'add_brand' => 'Ajouter la marque',
+        'add_model' => 'Ajouter le modèle',
+        'delete_model' => 'Supprimer le modèle :model',
         'brand_created' => 'Marque ajoutée.',
         'model_created' => 'Modèle ajouté.',
         'brand_delete_blocked' => 'Cette marque porte des modèles : supprimez-les d\'abord.',

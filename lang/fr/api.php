@@ -9,6 +9,12 @@ return [
     'prize_collection_note' => "À retirer au siège ATCP · pièce d'identité",
     'server_error' => 'Une erreur est survenue. Réessayez plus tard.',
 
+    'driver' => [
+        'photo_updated' => 'Votre photo de profil a été mise à jour.',
+        'photo_too_small' => 'La photo doit faire au moins 200 pixels de côté.',
+        'photo_missing' => "Aucune photo n'est associée à ce conducteur.",
+    ],
+
     'shop' => [
         'order_placed' => 'Votre commande a été enregistrée.',
         'insufficient_stock' => 'Stock insuffisant pour « :product » : il n\'en reste que :stock.',
