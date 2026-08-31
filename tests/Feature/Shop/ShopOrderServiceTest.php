@@ -130,6 +130,7 @@ class ShopOrderServiceTest extends TestCase
     {
         $driver = Driver::factory()->create();
         $product = Product::factory()->create(['stock_quantity' => 1]);
+        PickupPoint::factory()->create();
 
         $this->service->place($driver, [['product_id' => $product->id, 'qty' => 1]], FulfilmentMode::Pickup);
 
@@ -142,6 +143,7 @@ class ShopOrderServiceTest extends TestCase
     {
         $driver = Driver::factory()->create();
         $product = Product::factory()->create(['stock_quantity' => 10]);
+        PickupPoint::factory()->create();
 
         $first = $this->service->place($driver, [['product_id' => $product->id, 'qty' => 1]], FulfilmentMode::Pickup);
         $second = $this->service->place($driver, [['product_id' => $product->id, 'qty' => 1]], FulfilmentMode::Pickup);
@@ -155,6 +157,7 @@ class ShopOrderServiceTest extends TestCase
     {
         $driver = Driver::factory()->create();
         $product = Product::factory()->create(['stock_quantity' => 5]);
+        PickupPoint::factory()->create();
 
         $order = $this->service->place($driver, [['product_id' => $product->id, 'qty' => 3]], FulfilmentMode::Pickup);
         $this->assertSame(2, $product->fresh()->stock_quantity);
@@ -170,6 +173,7 @@ class ShopOrderServiceTest extends TestCase
     {
         $driver = Driver::factory()->create();
         $product = Product::factory()->create(['stock_quantity' => 5]);
+        PickupPoint::factory()->create();
         $order = $this->service->place($driver, [['product_id' => $product->id, 'qty' => 1]], FulfilmentMode::Pickup);
 
         // `ordered` ne mène pas directement à « livrée ».

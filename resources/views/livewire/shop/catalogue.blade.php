@@ -21,12 +21,16 @@
     </div>
 
     <div class="mt-5 flex flex-wrap items-center gap-2">
+        {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
+             invisible pour un lecteur d'écran sans cet état. --}}
         <button wire:click="filterByCategory(null)"
+                aria-pressed="{{ $category === null ? 'true' : 'false' }}"
                 @class(['rounded-full border px-3.5 py-1.5 text-xs font-semibold', 'border-primary bg-primary-tint text-primary-text' => $category === null, 'border-line text-muted hover:bg-surface' => $category !== null])>
             {{ __('backoffice.shop.all_categories') }}
         </button>
         @foreach ($categories as $partCategory)
             <button wire:key="cat-{{ $partCategory->id }}" wire:click="filterByCategory('{{ $partCategory->id }}')"
+                    aria-pressed="{{ $category === $partCategory->id ? 'true' : 'false' }}"
                     @class(['rounded-full border px-3.5 py-1.5 text-xs font-semibold', 'border-primary bg-primary-tint text-primary-text' => $category === $partCategory->id, 'border-line text-muted hover:bg-surface' => $category !== $partCategory->id])>
                 {{ $partCategory->name }}
             </button>
@@ -34,10 +38,12 @@
 
         <span class="flex-1"></span>
 
-        <div class="flex items-center gap-2 rounded border border-line bg-card px-3 py-1.5">
+        {{-- L'anneau de focus est porté par l'enveloppe : le champ est sans
+             bordure, un anneau sur le champ seul serait collé à l'icône. --}}
+        <div class="flex items-center gap-2 rounded border border-line bg-card px-3 py-1.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
             <svg class="size-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <input wire:model.live.debounce.400ms="search" type="search" placeholder="{{ __('backoffice.shop.search_placeholder') }}"
-                   class="w-48 border-0 p-0 text-sm focus:outline-none focus:ring-0">
+                   class="w-48 border-0 p-0 text-sm focus:outline-none">
         </div>
 
         @if ($canManageStock)
@@ -88,7 +94,7 @@
                                     </td>
                                     <td class="px-4 py-3 text-sm text-muted">
                                         @if ($product->isUniversal())
-                                            <span class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-500">{{ __('backoffice.shop.universal') }}</span>
+                                            <span class="rounded-full bg-neutral-bg px-2.5 py-1 text-xs font-semibold text-neutral-text">{{ __('backoffice.shop.universal') }}</span>
                                         @else
                                             {{ $product->vehicleModel->fullName() }}
                                         @endif
@@ -100,8 +106,9 @@
                                     <td class="px-4 py-3 text-right">
                                         @if ($canManageStock)
                                             <div class="flex items-center justify-end gap-2">
-                                                <button wire:click="startRestock('{{ $product->id }}')" class="rounded bg-ok-text px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90">
-                                                    ＋ {{ __('backoffice.shop.restock') }}
+                                                <button wire:click="startRestock('{{ $product->id }}')" class="flex items-center gap-1.5 rounded bg-ok-text px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90">
+                                                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                                                    {{ __('backoffice.shop.restock') }}
                                                 </button>
                                                 <button wire:click="edit('{{ $product->id }}')" class="rounded border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:bg-line">
                                                     {{ __('backoffice.announcements.modify') }}
@@ -154,8 +161,9 @@
     @include('livewire.shop.partials.referential-modal')
 
     @if ($confirmingDeleteId !== null)
-        <div wire:click="cancelDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/45 p-6">
-            <div wire:click.stop class="w-full max-w-sm rounded bg-card p-5 shadow-xl">
+        <x-modal close="cancelDelete" max-width="max-w-sm"
+                 :label="__('backoffice.shop.confirm_delete_product')">
+            <div class="p-5">
                 <p class="text-sm font-semibold text-ink">{{ __('backoffice.shop.confirm_delete_product') }}</p>
                 <div class="mt-4 flex justify-end gap-2">
                     <button wire:click="cancelDelete" class="rounded border border-line px-3 py-2 text-sm font-semibold text-muted hover:bg-surface">
@@ -166,6 +174,6 @@
                     </button>
                 </div>
             </div>
-        </div>
+        </x-modal>
     @endif
 </div>

@@ -20,7 +20,10 @@
 
     <div class="mt-5 flex flex-wrap items-center gap-3">
         <div class="flex flex-wrap gap-1.5">
+            {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
+                 invisible pour un lecteur d'écran sans cet état. --}}
             <button wire:click="filterByStatus(null)"
+                    aria-pressed="{{ $status === null ? 'true' : 'false' }}"
                     @class([
                         'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
                         'border-primary bg-primary-tint text-primary-text' => $status === null,
@@ -30,6 +33,7 @@
             </button>
             @foreach (\App\Enums\DriverStatus::cases() as $case)
                 <button wire:click="filterByStatus('{{ $case->value }}')"
+                        aria-pressed="{{ $status === $case->value ? 'true' : 'false' }}"
                         @class([
                             'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
                             'border-primary bg-primary-tint text-primary-text' => $status === $case->value,
@@ -44,7 +48,7 @@
 
         <input wire:model.live.debounce.400ms="search" type="search"
                placeholder="{{ __('backoffice.drivers.search_placeholder') }}"
-               class="w-72 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary focus:outline-none">
+               class="w-72 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary">
     </div>
 
     <div class="mt-4 overflow-hidden rounded border border-line bg-card">
@@ -59,15 +63,20 @@
                 </thead>
                 <tbody>
                     @forelse ($drivers as $driver)
-                        <tr wire:key="driver-{{ $driver->id }}" class="cursor-pointer hover:bg-surface"
-                            onclick="window.location='{{ route('bo.drivers.show', $driver) }}'">
+                        {{-- La navigation est portée par le lien du nom, pas par un
+                             `onclick` sur la ligne : la ligne restait inatteignable au
+                             clavier et court-circuitait `wire:navigate`. --}}
+                        <tr wire:key="driver-{{ $driver->id }}" class="group transition-colors hover:bg-surface">
                             <td class="border-b border-line px-4 py-3">
                                 <div class="flex items-center gap-2.5">
                                     <span class="flex size-9 shrink-0 items-center justify-center rounded bg-primary-tint text-sm font-semibold text-primary-text">
                                         {{ $driver->initials() }}
                                     </span>
-                                    <span>
-                                        <b class="block text-sm text-ink">{{ $driver->fullName() }}</b>
+                                    <span class="min-w-0">
+                                        <a href="{{ route('bo.drivers.show', $driver) }}" wire:navigate
+                                           class="block text-sm font-bold text-ink group-hover:text-primary-text">
+                                            {{ $driver->fullName() }}
+                                        </a>
                                         <span class="text-xs text-muted">{{ $driver->vehicle?->plate_number ?? __('backoffice.drivers.no_vehicle') }}</span>
                                     </span>
                                 </div>

@@ -71,6 +71,30 @@ class ModuleAccessTest extends TestCase
             ->assertOk();
     }
 
+    public function test_the_dashboard_only_shows_cards_for_modules_the_user_can_reach(): void
+    {
+        // `gestionnaire` a Chauffeurs et Boutique, mais pas Recharges : la carte
+        // des recharges pointerait vers un 403 et exposerait un agrégat interdit.
+        $this->actingAs($this->user('gestionnaire'))
+            ->get(route(BackOfficeModule::Dashboard->route()))
+            ->assertOk()
+            ->assertSee(__('backoffice.dashboard.active_drivers'))
+            ->assertSee(__('backoffice.dashboard.stock_alerts'))
+            ->assertDontSee(__('backoffice.dashboard.recharges_to_replay'));
+    }
+
+    public function test_the_dashboard_shows_no_cards_when_no_source_module_is_permitted(): void
+    {
+        // `admin` atteint le tableau de bord mais n'a ni Chauffeurs, ni Boutique,
+        // ni Recharges : aucune carte ne doit s'afficher.
+        $this->actingAs($this->user('admin'))
+            ->get(route(BackOfficeModule::Dashboard->route()))
+            ->assertOk()
+            ->assertDontSee(__('backoffice.dashboard.active_drivers'))
+            ->assertDontSee(__('backoffice.dashboard.stock_alerts'))
+            ->assertDontSee(__('backoffice.dashboard.recharges_to_replay'));
+    }
+
     public function test_a_user_without_the_permission_gets_403_on_direct_access(): void
     {
         // Le rôle `stock` n'a pas `module.dashboard` : l'URL directe est refusée.

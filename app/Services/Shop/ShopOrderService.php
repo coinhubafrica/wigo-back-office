@@ -5,6 +5,7 @@ namespace App\Services\Shop;
 use App\Enums\FulfilmentMode;
 use App\Enums\ShopOrderStatus;
 use App\Models\Driver;
+use App\Models\PickupPoint;
 use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Models\User;
@@ -83,7 +84,9 @@ class ShopOrderService
 
             $order->delivery()->create([
                 'mode' => $mode,
-                'pickup_point_id' => $mode === FulfilmentMode::Pickup ? ($fulfilment['pickup_point_id'] ?? null) : null,
+                'pickup_point_id' => $mode === FulfilmentMode::Pickup
+                    ? ($fulfilment['pickup_point_id'] ?? $this->defaultPickupPointId())
+                    : null,
                 'latitude' => $mode === FulfilmentMode::Delivery ? ($fulfilment['latitude'] ?? null) : null,
                 'longitude' => $mode === FulfilmentMode::Delivery ? ($fulfilment['longitude'] ?? null) : null,
                 'address_hint' => $fulfilment['address_hint'] ?? null,
@@ -232,6 +235,28 @@ class ShopOrderService
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /**
+     * Agence par défaut quand la commande n'en désigne aucune : la plus
+     * ancienne encore active — le siège ATCP (Koumassi Prodomo) en production.
+     *
+     * @throws ValidationException Aucune agence active.
+     */
+    private function defaultPickupPointId(): string
+    {
+        $id = PickupPoint::query()
+            ->where('is_active', true)
+            ->orderBy('created_at')
+            ->value('id');
+
+        if ($id === null) {
+            throw ValidationException::withMessages([
+                'pickup_point_id' => __('api.shop.no_pickup_point'),
+            ]);
+        }
+
+        return $id;
     }
 
     /**

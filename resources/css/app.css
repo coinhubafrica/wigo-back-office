@@ -34,6 +34,11 @@
     --color-err-bg: #FDECEC;
     --color-err-text: #DC2626;
 
+    /* Pastille neutre (état en attente, « universel », annonce en pause).
+     * `text-muted` sur `bg-zinc-100` ne donnait que 4,40:1 : sous le seuil AA. */
+    --color-neutral-bg: #F4F4F5;
+    --color-neutral-text: #52525B;
+
     /* Pastilles de type de challenge (prototype, `TYPES`). Le classement
      * réutilise la teinte primaire, les deux autres ont la leur. */
     --color-type-raffle-bg: #E8EEF7;
@@ -60,5 +65,18 @@
     :focus-visible {
         outline: 2px solid var(--color-primary);
         outline-offset: 2px;
+    }
+
+    /* Le back-office n'anime que des transitions courtes ; on les neutralise
+     * plutôt que de les décliner composant par composant. */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
     }
 }

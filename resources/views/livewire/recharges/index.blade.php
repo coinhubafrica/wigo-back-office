@@ -30,7 +30,10 @@
 
     <div class="mt-5 flex flex-wrap items-center gap-3">
         <div class="flex flex-wrap gap-1.5">
+            {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
+                 invisible pour un lecteur d'écran sans cet état. --}}
             <button wire:click="filterByStatus(null)"
+                    aria-pressed="{{ $status === null ? 'true' : 'false' }}"
                     @class([
                         'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
                         'border-primary bg-primary-tint text-primary-text' => $status === null,
@@ -40,6 +43,7 @@
             </button>
             @foreach (\App\Enums\TransactionStatus::cases() as $case)
                 <button wire:click="filterByStatus('{{ $case->value }}')"
+                        aria-pressed="{{ $status === $case->value ? 'true' : 'false' }}"
                         @class([
                             'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
                             'border-primary bg-primary-tint text-primary-text' => $status === $case->value,
@@ -54,7 +58,7 @@
 
         <input wire:model.live.debounce.400ms="search" type="search"
                placeholder="{{ __('backoffice.recharges.search_placeholder') }}"
-               class="w-80 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary focus:outline-none">
+               class="w-80 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary">
     </div>
 
     <div class="mt-4 overflow-hidden rounded border border-line bg-card">
@@ -133,8 +137,8 @@
                 'amount' => number_format($pendingConfirmation->amount, 0, ',', ' '),
             ];
         @endphp
-        <div wire:click="cancelConfirmation" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/45 p-6">
-            <div wire:click.stop class="w-full max-w-sm overflow-hidden rounded bg-card shadow-xl">
+        <x-modal close="cancelConfirmation" max-width="max-w-sm"
+                 :label="$isReplay ? __('backoffice.recharges.confirm_replay_title') : __('backoffice.recharges.confirm_mark_credited_title')">
                 <div class="px-5 pb-4 pt-5">
                     <p class="text-sm font-semibold text-ink">
                         {{ $isReplay ? __('backoffice.recharges.confirm_replay_title') : __('backoffice.recharges.confirm_mark_credited_title') }}
@@ -153,7 +157,6 @@
                         {{ __('backoffice.recharges.confirm') }}
                     </button>
                 </div>
-            </div>
-        </div>
+        </x-modal>
     @endif
 </div>
