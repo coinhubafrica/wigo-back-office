@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\Enums\OtpChannel;
+use App\Settings\OtpSettings;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,6 +23,6 @@ class OtpRequestRequest extends FormRequest
     public function channel(): OtpChannel
     {
         return $this->enum('channel', OtpChannel::class)
-            ?? OtpChannel::from((string) config('wigo.otp.default_channel'));
+            ?? OtpChannel::from(app(OtpSettings::class)->default_channel);
     }
 }

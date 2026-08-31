@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Settings\RechargeSettings;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRechargeRequest extends FormRequest
@@ -24,8 +25,8 @@ class StoreRechargeRequest extends FormRequest
             'amount' => [
                 'required',
                 'integer',
-                'min:'.(int) config('wigo.recharge.min_amount'),
-                'max:'.(int) config('wigo.recharge.max_amount'),
+                'min:'.app(RechargeSettings::class)->min_amount,
+                'max:'.app(RechargeSettings::class)->max_amount,
             ],
         ];
     }
@@ -37,10 +38,10 @@ class StoreRechargeRequest extends FormRequest
     {
         return [
             'amount.min' => __('api.recharge.amount_below_min', [
-                'min' => number_format((int) config('wigo.recharge.min_amount'), 0, ',', ' '),
+                'min' => number_format(app(RechargeSettings::class)->min_amount, 0, ',', ' '),
             ]),
             'amount.max' => __('api.recharge.amount_above_max', [
-                'max' => number_format((int) config('wigo.recharge.max_amount'), 0, ',', ' '),
+                'max' => number_format(app(RechargeSettings::class)->max_amount, 0, ',', ' '),
             ]),
         ];
     }

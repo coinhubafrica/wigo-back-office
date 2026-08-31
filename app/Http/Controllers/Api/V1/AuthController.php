@@ -11,6 +11,7 @@ use App\Http\Requests\Api\V1\UpdatePushTokenRequest;
 use App\Http\Resources\DriverResource;
 use App\Models\Driver;
 use App\Services\Auth\OtpService;
+use App\Settings\OtpSettings;
 use App\Support\Scramble\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -62,7 +63,7 @@ class AuthController extends Controller
             $payload['code'] = $plainCode;
         }
 
-        return $this->okApiResponse($payload, __('otp.sent', ['minutes' => config('wigo.otp.ttl_minutes')]));
+        return $this->okApiResponse($payload, __('otp.sent', ['minutes' => app(OtpSettings::class)->ttl_minutes]));
     }
 
     /**

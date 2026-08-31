@@ -6,6 +6,7 @@ use App\Contracts\SmsSender;
 use App\Enums\OtpChannel;
 use App\Models\Driver;
 use App\Models\OtpCode;
+use App\Settings\OtpSettings;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,7 @@ class OtpService
      */
     private ?string $lastPlainCode = null;
 
-    public function __construct(private SmsSender $smsSender) {}
+    public function __construct(private SmsSender $smsSender, private OtpSettings $settings) {}
 
     /**
      * Émet un code et l'envoie sur le canal demandé.
@@ -40,7 +41,7 @@ class OtpService
         $this->assertNotLocked($driver);
 
         $code = $this->generateCode();
-        $ttl = (int) config('wigo.otp.ttl_minutes');
+        $ttl = $this->settings->ttl_minutes;
 
         $otpCode = $driver->otpCodes()->create([
             'code_hash' => Hash::make($code),
@@ -171,7 +172,7 @@ class OtpService
      */
     private function registerFailedAttempt(Driver $driver, $usable): void
     {
-        $maxAttempts = (int) config('wigo.otp.max_attempts');
+        $maxAttempts = $this->settings->max_attempts;
         $attempts = $usable->max('attempts') + 1;
 
         if ($attempts < $maxAttempts) {
@@ -183,7 +184,7 @@ class OtpService
         $driver->otpCodes()->whereIn('id', $usable->pluck('id'))->update([
             'attempts' => $attempts,
             'consumed_at' => now(),
-            'locked_until' => now()->addMinutes((int) config('wigo.otp.lock_minutes')),
+            'locked_until' => now()->addMinutes($this->settings->lock_minutes),
         ]);
     }
 
@@ -203,7 +204,7 @@ class OtpService
      */
     private function generateCode(): string
     {
-        $length = (int) config('wigo.otp.length');
+        $length = $this->settings->length;
 
         return str_pad(
             (string) random_int(0, (10 ** $length) - 1),

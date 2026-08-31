@@ -12,6 +12,7 @@ use App\Models\Driver;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\RechargeCredited;
+use App\Settings\RechargeSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -32,6 +33,7 @@ class RechargeService
     public function __construct(
         private WaveClient $wave,
         private FleetClient $fleet,
+        private RechargeSettings $settings,
     ) {}
 
     /**
@@ -229,11 +231,11 @@ class RechargeService
      */
     public function limitsFor(Driver $driver): array
     {
-        $cap = (int) config('wigo.recharge.daily_cap');
+        $cap = $this->settings->daily_cap;
 
         return [
-            'min' => (int) config('wigo.recharge.min_amount'),
-            'max' => (int) config('wigo.recharge.max_amount'),
+            'min' => $this->settings->min_amount,
+            'max' => $this->settings->max_amount,
             'daily_cap' => $cap,
             'remaining_today' => max(0, $cap - $this->dailyTotalFor($driver)),
         ];
@@ -251,7 +253,7 @@ class RechargeService
             $driver = $driver->fresh() ?? $driver;
         }
 
-        $ttl = (int) config('wigo.recharge.balance_ttl_minutes');
+        $ttl = $this->settings->balance_ttl_minutes;
         $isFresh = $driver->balance_read_at !== null
             && $driver->balance_read_at->gt(now()->subMinutes($ttl));
 
@@ -346,9 +348,9 @@ class RechargeService
      */
     private function assertWithinLimits(Driver $driver, int $amount): void
     {
-        $min = (int) config('wigo.recharge.min_amount');
-        $max = (int) config('wigo.recharge.max_amount');
-        $cap = (int) config('wigo.recharge.daily_cap');
+        $min = $this->settings->min_amount;
+        $max = $this->settings->max_amount;
+        $cap = $this->settings->daily_cap;
 
         if ($amount < $min) {
             throw ValidationException::withMessages([

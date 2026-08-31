@@ -2,6 +2,7 @@
 
 use App\Models\IdempotencyKey;
 use App\Models\OtpCode;
+use App\Settings\OtpSettings;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -18,7 +19,7 @@ Artisan::command('inspire', function () {
 
 // Purge de l'historique OTP au-delà de la durée de rétention.
 Schedule::call(fn () => OtpCode::query()
-    ->where('created_at', '<', now()->subDays((int) config('wigo.otp.retention_days')))
+    ->where('created_at', '<', now()->subDays(app(OtpSettings::class)->retention_days))
     ->delete())
     ->daily()
     ->name('otp:prune-codes');

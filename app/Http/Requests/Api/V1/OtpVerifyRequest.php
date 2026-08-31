@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Settings\OtpSettings;
 use Illuminate\Foundation\Http\FormRequest;
 
 class OtpVerifyRequest extends FormRequest
@@ -13,7 +14,7 @@ class OtpVerifyRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'regex:/^\+[1-9]\d{7,14}$/'],
-            'code' => ['required', 'string', 'digits:'.config('wigo.otp.length')],
+            'code' => ['required', 'string', 'digits:'.app(OtpSettings::class)->length],
             'device_name' => ['required', 'string', 'max:120'],
             'terms_version' => ['sometimes', 'string', 'max:20'],
         ];

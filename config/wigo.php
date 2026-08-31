@@ -1,5 +1,19 @@
 <?php
 
+/*
+|--------------------------------------------------------------------------
+| Réglages pilotés par l'environnement
+|--------------------------------------------------------------------------
+|
+| Ne restent ici que les interrupteurs de sécurité et de déploiement. Les
+| valeurs métier (barème OTP, plafonds de recharge, délais SLA du support)
+| vivent en base et se modifient depuis « Paramètres » : voir `app/Settings`.
+|
+| La distinction est volontaire — un contournement d'authentification ou un
+| jeton de documentation ne doit pas être modifiable depuis une page web.
+|
+*/
+
 return [
 
     /*
@@ -7,35 +21,19 @@ return [
     | OTP
     |--------------------------------------------------------------------------
     |
-    | Le code est stocké haché sur le conducteur (cf. MCD : pas de table dédiée).
-    | `throttle` borne les ENVOIS ; les tentatives de saisie sont bornées par
-    | `max_attempts` puis un verrouillage temporaire (`lock_minutes`).
+    | Renvoie le code OTP en clair dans la réponse de `POST /auth/otp/request`,
+    | pour les tests automatisés et le développement local sans accès aux logs.
+    |
+    | ATTENTION : contourne entièrement l'authentification par OTP. Le drapeau
+    | est ignoré dès que l'application tourne en production, quelle que soit la
+    | valeur de l'environnement (cf. OtpService::exposesCode()).
+    |
+    | Le reste du barème OTP (longueur, durée de vie, tentatives, verrouillage,
+    | throttle, rétention) est dans App\Settings\OtpSettings.
     |
     */
 
     'otp' => [
-        'length' => 6,
-        'ttl_minutes' => 5,
-        'max_attempts' => 5,
-        'lock_minutes' => 15,
-        'default_channel' => 'sms',
-        'throttle' => [
-            'max_sends' => 3,
-            'decay_minutes' => 10,
-        ],
-
-        // Rétention de l'historique des codes (trace d'audit) avant purge.
-        'retention_days' => 30,
-
-        /*
-        | Renvoie le code OTP en clair dans la réponse de
-        | `POST /auth/otp/request`, pour les tests automatisés et le
-        | développement local sans accès aux logs.
-        |
-        | ATTENTION : contourne entièrement l'authentification par OTP. Le
-        | drapeau est ignoré dès que l'application tourne en production, quelle
-        | que soit la valeur de l'environnement (cf. OtpService::exposesCode()).
-        */
         'expose_code' => (bool) env('WIGO_OTP_EXPOSE_CODE', false),
     ],
 
@@ -45,35 +43,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | Version courante des CGU. L'acceptation est enregistrée au premier login.
+    | Reste ici : la valeur accompagne la publication d'un document juridique,
+    | ce n'est pas un réglage que l'on ajuste depuis le back-office.
     |
     */
 
     'terms_version' => env('WIGO_TERMS_VERSION', '1.0'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Recharges
-    |--------------------------------------------------------------------------
-    |
-    | Plafonds d'une recharge Wave, en francs CFA entiers. `daily_cap` borne le
-    | cumul d'une journée, sessions ouvertes comprises : une session non payée
-    | réserve son montant tant qu'elle n'a pas expiré.
-    |
-    | Le prototype mobile annonce 150 000 par jour, l'`openapi.yaml` du handoff
-    | 200 000. Les deux documents se contredisent : c'est cette configuration
-    | qui tranche, et elle se change sans toucher au code.
-    |
-    | `balance_ttl_minutes` : fraîcheur du solde Yango gardé en cache sur le
-    | conducteur avant qu'une lecture ne le rafraîchisse auprès de Fleet.
-    |
-    */
-
-    'recharge' => [
-        'min_amount' => (int) env('WIGO_RECHARGE_MIN', 500),
-        'max_amount' => (int) env('WIGO_RECHARGE_MAX', 100000),
-        'daily_cap' => (int) env('WIGO_RECHARGE_DAILY_CAP', 150000),
-        'balance_ttl_minutes' => (int) env('WIGO_BALANCE_TTL', 10),
-    ],
 
     /*
     |--------------------------------------------------------------------------
