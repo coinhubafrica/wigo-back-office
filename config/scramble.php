@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureApiDocsAreEnabled;
+use App\Support\Scramble\DocumentIdempotencyKey;
 use App\Support\Scramble\WrapApiEnvelope;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 use Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy;
@@ -179,6 +180,10 @@ return [
         // Réintroduit l'enveloppe `{message, data}` du trait ApiResponses,
         // que Scramble ne peut pas déduire en traversant le trait.
         WrapApiEnvelope::class,
+
+        // Publie l'en-tête `Idempotency-Key` et le 409 du rejeu sur les
+        // écritures protégées par le middleware `idempotency`.
+        DocumentIdempotencyKey::class,
     ],
 
     /*

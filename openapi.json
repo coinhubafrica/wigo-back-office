@@ -1306,6 +1306,19 @@
                 "tags": [
                     "Shop"
                 ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "description": "UUID propre \u00e0 la requ\u00eate. Renvoyer deux fois le m\u00eame appel avec la m\u00eame cl\u00e9 ne cr\u00e9e qu'une ressource : la r\u00e9ponse enregistr\u00e9e est rendue telle quelle. La cl\u00e9 expire au bout de 24 h.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1345,6 +1358,30 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "409": {
+                        "description": "La cl\u00e9 a d\u00e9j\u00e0 servi pour une requ\u00eate au corps diff\u00e9rent ; rien n'est cr\u00e9\u00e9.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "Erreurs par champ ; ici la cl\u00e9 `Idempotency-Key`."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1539,6 +1576,19 @@
                 "tags": [
                     "Wallet"
                 ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "description": "UUID propre \u00e0 la requ\u00eate. Renvoyer deux fois le m\u00eame appel avec la m\u00eame cl\u00e9 ne cr\u00e9e qu'une ressource : la r\u00e9ponse enregistr\u00e9e est rendue telle quelle. La cl\u00e9 expire au bout de 24 h.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1578,6 +1628,30 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "409": {
+                        "description": "La cl\u00e9 a d\u00e9j\u00e0 servi pour une requ\u00eate au corps diff\u00e9rent ; rien n'est cr\u00e9\u00e9.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "Erreurs par champ ; ici la cl\u00e9 `Idempotency-Key`."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }

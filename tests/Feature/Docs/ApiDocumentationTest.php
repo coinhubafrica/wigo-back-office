@@ -67,6 +67,36 @@ class ApiDocumentationTest extends TestCase
         $this->assertArrayHasKey('422', $paths['/me/push-token']['put']['responses']);
     }
 
+    public function test_idempotent_writes_publish_their_header_and_conflict(): void
+    {
+        $paths = $this->document()['paths'];
+
+        // Le middleware `idempotency` est invisible à Scramble : sans cette
+        // extension, l'essai depuis /docs/api part sans en-tête et prend 422.
+        foreach (['/shop/orders', '/wallet/recharges'] as $path) {
+            $operation = $paths[$path]['post'];
+
+            $header = collect($operation['parameters'])->firstWhere('name', 'Idempotency-Key');
+
+            $this->assertNotNull($header, "L'en-tête manque sur {$path}.");
+            $this->assertSame('header', $header['in']);
+            $this->assertTrue($header['required']);
+            $this->assertSame('uuid', $header['schema']['format']);
+
+            $this->assertArrayHasKey('409', $operation['responses']);
+        }
+    }
+
+    public function test_writes_without_the_middleware_do_not_advertise_the_header(): void
+    {
+        $operation = $this->document()['paths']['/me/push-token']['put'];
+
+        $names = collect($operation['parameters'] ?? [])->pluck('name');
+
+        $this->assertFalse($names->contains('Idempotency-Key'));
+        $this->assertArrayNotHasKey('409', $operation['responses']);
+    }
+
     public function test_the_documentation_is_reachable_in_local(): void
     {
         config(['wigo.docs.enabled' => true]);
