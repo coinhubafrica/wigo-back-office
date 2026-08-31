@@ -1,3 +1,6 @@
+// Client temps réel (Reverb). Ne construit rien sans identifiants configurés.
+import './echo'
+
 /**
  * Comportement de modale partagé : piège de tabulation, focus initial et
  * retour du focus sur l'élément déclencheur.
@@ -87,6 +90,82 @@ document.addEventListener('alpine:init', () => {
             } else if (! event.shiftKey && document.activeElement === last) {
                 event.preventDefault()
                 first.focus()
+            }
+        },
+    }))
+})
+
+/**
+ * Temps réel de la file de traitement.
+ *
+ * Le composant écoute la file et le fil ouvert, et se contente de demander un
+ * rechargement : la trame reçue est un signal, jamais la source du rendu. Rien
+ * ne s'affiche donc qui n'ait été autorisé côté serveur.
+ *
+ * Sans `window.Echo` — pas d'identifiants Reverb configurés — le composant ne
+ * fait rien et l'écran retombe sur son `wire:poll`.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('supportRealtime', (selected) => ({
+        /** Identifiant de la conversation suivie, pour pouvoir s'en détacher. */
+        followed: null,
+
+        init() {
+            if (! window.Echo) {
+                return
+            }
+
+            window.Echo.private('support-queue')
+                .listen('.message.sent', () => this.refresh())
+
+            this.follow(selected)
+
+            this.$watch('$wire.selected', (id) => this.follow(id))
+
+            // `livewire:navigating` : quitter la page sans se désabonner
+            // laisserait la connexion accumuler des canaux morts.
+            this.leaveOnNavigate = () => this.unfollow()
+            window.addEventListener('livewire:navigating', this.leaveOnNavigate)
+        },
+
+        destroy() {
+            this.unfollow()
+            window.removeEventListener('livewire:navigating', this.leaveOnNavigate)
+            window.Echo?.leave('support-queue')
+        },
+
+        /**
+         * Recharge le composant, puis ramène le fil en bas : un message qui
+         * arrive sous la ligne de flottaison passerait inaperçu.
+         */
+        async refresh() {
+            await this.$wire.$refresh()
+
+            window.dispatchEvent(new CustomEvent('thread-updated'))
+        },
+
+        follow(id) {
+            if (this.followed === id) {
+                return
+            }
+
+            this.unfollow()
+
+            if (! id) {
+                return
+            }
+
+            this.followed = id
+
+            window.Echo.private(`conversation.${id}`)
+                .listen('.message.sent', () => this.refresh())
+                .listen('.message.read', () => this.refresh())
+        },
+
+        unfollow() {
+            if (this.followed) {
+                window.Echo?.leave(`conversation.${this.followed}`)
+                this.followed = null
             }
         },
     }))

@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
                 CnpsSeeder::class,
                 RechargeSeeder::class,
                 ShopSeeder::class,
+                SupportSeeder::class,
             ]);
 
             // Gel du pool de tirage "à effectuer" : nécessite les courses

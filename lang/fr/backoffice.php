@@ -157,6 +157,56 @@ return [
         'select_order' => 'Sélectionnez une commande pour en voir le détail.',
     ],
 
+    'broadcasts' => [
+        'title' => 'Diffusions',
+        'hint' => "Envois ciblés vers l'application conducteur : tout le parc, un segment ou un conducteur nommé.",
+        'new' => 'Nouvelle diffusion',
+
+        'column_broadcast' => 'Diffusion',
+        'column_audience' => 'Cible',
+        'column_status' => 'Statut',
+        'column_recipients' => 'Destinataires',
+        'column_read' => 'Lectures',
+        'column_author' => 'Auteur',
+        'column_date' => 'Date',
+
+        'none' => 'Aucune diffusion',
+        'none_hint' => 'Composez une diffusion pour prévenir les conducteurs.',
+        'unknown_author' => '—',
+        'send' => 'Envoyer',
+
+        'compose_title' => 'Nouvelle diffusion',
+        'field_title' => 'Titre',
+        'field_body' => 'Message',
+        'field_deeplink' => 'Lien interne (facultatif)',
+        'deeplink_hint' => "Ouvre un écran de l'application à la lecture. Doit commencer par wigo://.",
+
+        'audience_label' => 'Cible',
+        'segment_status_label' => 'Statuts retenus',
+        'segment_vehicle_label' => 'Véhicule',
+        'vehicle_any' => 'Indifférent',
+        'vehicle_with' => 'Avec véhicule',
+        'vehicle_without' => 'Sans véhicule',
+
+        'driver_search_label' => 'Rechercher un conducteur',
+        'driver_search_placeholder' => 'Nom, prénom ou téléphone…',
+        'driver_search_empty' => 'Aucun conducteur ne correspond.',
+        'driver_search_hint' => 'Saisissez un nom ou un numéro pour chercher.',
+        'selected_drivers' => '{0} Aucun conducteur sélectionné|{1} :count conducteur sélectionné|[2,*] :count conducteurs sélectionnés',
+
+        'recipient_count' => '{0} Aucun destinataire|{1} :count destinataire|[2,*] :count destinataires',
+        'recipient_count_hint' => "Nombre calculé maintenant, sur les mêmes règles que l'envoi.",
+
+        'save_draft' => 'Enregistrer le brouillon',
+        'cancel' => 'Annuler',
+
+        'confirm_send_title' => 'Envoyer cette diffusion ?',
+        'confirm_send_body' => 'La notification partira immédiatement. Cette action est définitive : une diffusion envoyée ne se rappelle pas.',
+
+        'draft_saved' => 'Diffusion « :title » enregistrée en brouillon.',
+        'sending' => "Envoi en cours — les destinataires sont en train d'être notifiés.",
+    ],
+
     'announcements' => [
         'total' => 'Annonces',
         'active' => 'Actives',
@@ -227,6 +277,78 @@ return [
         'nothing_declared' => 'Aucune déclaration',
         'payment_on' => 'payé le :date',
         'with_proof' => 'avec justificatif',
+    ],
+
+    'support_requests' => [
+        // Onglets et compteurs de tête.
+        'tab_triage' => 'À trier',
+        'tab_tickets' => 'Tickets',
+        'kpi_triage' => 'Messages à trier',
+        'kpi_tickets' => 'Tickets en cours',
+
+        // File de gauche.
+        'search_placeholder' => 'Rechercher un conducteur ou un téléphone…',
+        'all' => 'Tous',
+        'assigned_to_me' => 'Qui me sont assignés',
+        'breached_only' => 'En retard seulement',
+        'waiting_since' => 'attend depuis :duration',
+        'no_preview' => 'Pièce jointe ou message système',
+        'late' => 'En retard',
+        'unassigned' => 'Non assigné',
+        'unread_count' => '{1} 1 non lu|[2,*] :count non lus',
+        'no_subject' => 'Sans objet',
+        'empty_triage' => 'Rien à trier. La file est vide.',
+        'empty_tickets' => 'Aucun ticket ne correspond à ces filtres.',
+
+        // Volet de droite.
+        'pick_conversation' => 'Choisissez une conversation dans la file pour ouvrir son fil.',
+        'pick_conversation_hint' => "Le fil montre tout l'historique du conducteur, pas seulement le ticket en cours.",
+        'view_driver' => 'Voir la fiche',
+        'untriaged_banner' => '{1} 1 message en attente de tri|[2,*] :count messages en attente de tri',
+        'create_ticket' => 'Créer un ticket',
+        'reply_without_ticket' => 'Répondre sans ticket',
+        'history_title' => 'Tickets du conducteur',
+        'history_empty' => 'Aucun ticket sur cette conversation.',
+        'load_older' => 'Charger les messages précédents',
+        'system_sender' => 'Système',
+        'driver_sender' => 'Conducteur',
+        'attachment' => 'Pièce jointe',
+        'thread_empty' => 'Aucun message dans ce fil.',
+
+        // Barre d'actions et zone de saisie.
+        'assign_to_me' => "M'assigner",
+        'assigned_to' => 'Assigné à :name',
+        'category' => 'Catégorie',
+        'resolve' => 'Résoudre',
+        'compose_placeholder' => 'Écrire une réponse au conducteur…',
+        'send' => 'Envoyer',
+        'templates' => 'Réponses types',
+        'no_live_request' => 'Créez un ticket avant de répondre : sans ticket, la réponse ne serait rattachée à rien.',
+
+        // Modales.
+        'ticket_form_title' => 'Créer un ticket',
+        'ticket_form_hint' => 'La priorité et les délais découlent de la catégorie : ils ne se saisissent pas.',
+        'field_category' => 'Catégorie',
+        'field_subject' => 'Objet',
+        'subject_placeholder' => 'Résumé en une ligne',
+        'resolve_title' => 'Résoudre ce ticket ?',
+        'resolve_body' => 'Le ticket sort de la file. La conversation du conducteur reste ouverte : son prochain message rouvrira un tri.',
+        'dismiss_title' => 'Répondre sans ticket ?',
+        'dismiss_body' => 'Aucun ticket ne sera créé. Les messages sortent de la file de tri mais restent visibles dans le fil du conducteur.',
+        'templates_title' => 'Réponses types',
+        'templates_empty' => 'Aucune réponse type active.',
+
+        // Boutons partagés.
+        'cancel' => 'Annuler',
+        'confirm' => 'Confirmer',
+        'create' => 'Créer',
+
+        // Messages de confirmation (dispatchés par le composant).
+        'ticket_created' => 'Ticket créé.',
+        'dismissed' => 'Messages écartés sans ticket.',
+        'assigned' => 'Ticket assigné.',
+        'recategorised' => 'Catégorie mise à jour.',
+        'resolved' => 'Ticket résolu.',
     ],
 
     'recharges' => [
@@ -548,4 +670,34 @@ return [
         'none' => 'Aucun lot enregistré',
         'none_hint' => 'Créez un lot pour pouvoir le proposer au tirage d\'une tombola.',
     ],
+
+    'settings' => [
+        'otp_title' => 'Authentification par OTP',
+        'otp_hint' => 'Barème du code envoyé au conducteur à la connexion.',
+        'otp_length' => 'Longueur du code',
+        'otp_ttl' => 'Durée de validité (minutes)',
+        'otp_max_attempts' => 'Tentatives avant verrouillage',
+        'otp_lock' => 'Durée du verrouillage (minutes)',
+        'otp_throttle_sends' => 'Envois autorisés',
+        'otp_throttle_decay' => 'Fenêtre des envois (minutes)',
+        'otp_retention' => "Rétention de l'historique (jours)",
+        'otp_saved' => 'Barème OTP enregistré.',
+
+        'recharge_title' => 'Plafonds de recharge',
+        'recharge_hint' => 'Montants en francs CFA. Le plafond journalier borne le cumul, sessions ouvertes comprises.',
+        'recharge_min' => 'Montant minimum',
+        'recharge_max' => 'Montant maximum',
+        'recharge_daily_cap' => 'Plafond journalier',
+        'recharge_balance_ttl' => 'Fraîcheur du solde Yango (minutes)',
+        'recharge_saved' => 'Plafonds de recharge enregistrés.',
+
+        'save' => 'Enregistrer',
+
+        'env_title' => "Réglages pilotés par l'environnement",
+        'env_hint' => 'Ces valeurs ne se modifient pas ici : elles touchent à la sécurité ou au déploiement et se changent avec une mise en production.',
+        'env_otp_expose' => "Exposition du code OTP en clair — désactivée d'office en production.",
+        'env_docs' => "Accès à la documentation de l'API et son jeton.",
+        'env_terms' => 'Version courante des conditions générales.',
+    ],
+
 ];

@@ -4,6 +4,7 @@ use App\Enums\BackOfficeModule;
 use App\Http\Controllers\BackOffice\DriverPhotoController;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Auth\Login;
+use App\Livewire\Broadcasts\Index as BroadcastsIndex;
 use App\Livewire\Challenges\Index as ChallengesIndex;
 use App\Livewire\Challenges\Prizes as ChallengesPrizes;
 use App\Livewire\Challenges\Show as ChallengesShow;
@@ -12,8 +13,11 @@ use App\Livewire\Dashboard;
 use App\Livewire\Drivers\Index as DriversIndex;
 use App\Livewire\Drivers\Show as DriversShow;
 use App\Livewire\Recharges\Index as RechargesIndex;
+use App\Livewire\Settings\Index as SettingsIndex;
 use App\Livewire\Shop\Catalogue as ShopCatalogue;
 use App\Livewire\Shop\Orders as ShopOrders;
+use App\Livewire\SupportRequests\Index as SupportRequestsIndex;
+use App\Livewire\SupportRequests\Templates as SupportRequestsTemplates;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -99,4 +103,20 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('shop/orders', ShopOrders::class)
         ->middleware('permission:'.BackOfficeModule::Shop->permission())
         ->name('bo.shop.orders');
+
+    Route::livewire('broadcasts', BroadcastsIndex::class)
+        ->middleware('permission:'.BackOfficeModule::Broadcasts->permission())
+        ->name(BackOfficeModule::Broadcasts->route());
+
+    Route::livewire('support-requests', SupportRequestsIndex::class)
+        ->middleware('permission:'.BackOfficeModule::SupportRequests->permission())
+        ->name(BackOfficeModule::SupportRequests->route());
+
+    Route::livewire('support-requests/reponses-types', SupportRequestsTemplates::class)
+        ->middleware('permission:'.BackOfficeModule::SupportRequests->permission())
+        ->name('bo.support-requests.templates');
+
+    Route::livewire('settings', SettingsIndex::class)
+        ->middleware('permission:'.BackOfficeModule::Settings->permission())
+        ->name(BackOfficeModule::Settings->route());
 });
