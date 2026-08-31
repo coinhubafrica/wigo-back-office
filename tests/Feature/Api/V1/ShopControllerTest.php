@@ -106,6 +106,44 @@ class ShopControllerTest extends TestCase
         $this->assertSame(5, $product->fresh()->stock_quantity);
     }
 
+    public function test_a_pickup_order_without_an_agency_uses_the_default_pickup_point(): void
+    {
+        $driver = Driver::factory()->create();
+        Sanctum::actingAs($driver, ['mobile:*']);
+
+        $product = Product::factory()->create();
+        PickupPoint::factory()->create(['is_active' => false, 'created_at' => now()->subDays(2)]);
+        $headquarters = PickupPoint::factory()->create(['created_at' => now()->subDay()]);
+
+        $this->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson(route('api.v1.shop.orders.store'), [
+                'lines' => [['product_id' => $product->id, 'qty' => 1]],
+                'fulfilment_mode' => FulfilmentMode::Pickup->value,
+            ])
+            ->assertCreated();
+
+        $this->assertSame($headquarters->id, ShopOrder::query()->sole()->delivery?->pickup_point_id);
+    }
+
+    public function test_a_pickup_order_is_refused_when_no_agency_is_active(): void
+    {
+        $driver = Driver::factory()->create();
+        Sanctum::actingAs($driver, ['mobile:*']);
+
+        $product = Product::factory()->create(['stock_quantity' => 3]);
+        PickupPoint::factory()->create(['is_active' => false]);
+
+        $this->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson(route('api.v1.shop.orders.store'), [
+                'lines' => [['product_id' => $product->id, 'qty' => 1]],
+                'fulfilment_mode' => FulfilmentMode::Pickup->value,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('pickup_point_id');
+
+        $this->assertSame(3, $product->fresh()->stock_quantity);
+    }
+
     public function test_a_delivery_order_requires_a_position_and_a_contact(): void
     {
         $driver = Driver::factory()->create();

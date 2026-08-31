@@ -23,10 +23,9 @@ class StoreShopOrderRequest extends FormRequest
              */
             'fulfilment_mode' => ['required', Rule::enum(FulfilmentMode::class)],
 
-            // Un retrait désigne une agence ; une livraison, une position et
-            // un numéro où joindre le conducteur.
+            // Agence de retrait. Facultatif : sans agence désignée, le retrait
+            // s'effectue au siège ATCP (Koumassi Prodomo).
             'pickup_point_id' => [
-                Rule::requiredIf(fn (): bool => $this->input('fulfilment_mode') === FulfilmentMode::Pickup->value),
                 'nullable',
                 'string',
                 Rule::exists('pickup_points', 'id')->where('is_active', true),

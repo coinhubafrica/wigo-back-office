@@ -31,49 +31,11 @@
     par Échap et le retour du focus sur l'élément déclencheur. Le contenu
     reste propre à chaque module et arrive par le slot.
 --}}
+{{-- `modalFocus` : piège de tabulation, focus initial et retour du focus.
+     Défini dans `resources/js/app.js` pour que l'assistant Challenges, qui a
+     sa propre coquille, partage exactement le même comportement. --}}
 <div
-    x-data="{
-        /** Élément focalisé avant l'ouverture, pour y revenir à la fermeture. */
-        previouslyFocused: null,
-
-        init() {
-            this.previouslyFocused = document.activeElement;
-
-            // Le premier contrôle du panneau reçoit le focus : sans cela, la
-            // tabulation repartirait du haut du document, derrière la modale.
-            this.$nextTick(() => this.focusables()[0]?.focus());
-        },
-
-        destroy() {
-            this.previouslyFocused?.focus();
-        },
-
-        focusables() {
-            return [...this.$refs.panel.querySelectorAll(
-                'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\'-1\'])'
-            )].filter((el) => el.offsetParent !== null);
-        },
-
-        /** Piège de tabulation : le focus boucle dans le panneau. */
-        trap(event) {
-            const items = this.focusables();
-
-            if (items.length === 0) {
-                return;
-            }
-
-            const first = items[0];
-            const last = items[items.length - 1];
-
-            if (event.shiftKey && document.activeElement === first) {
-                event.preventDefault();
-                last.focus();
-            } else if (! event.shiftKey && document.activeElement === last) {
-                event.preventDefault();
-                first.focus();
-            }
-        },
-    }"
+    x-data="modalFocus"
     x-on:keydown.escape.window="$wire.{{ $close }}()"
     x-on:keydown.tab="trap($event)"
     wire:click="{{ $close }}"

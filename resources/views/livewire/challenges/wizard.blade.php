@@ -9,47 +9,12 @@
     @if ($open)
         {{-- Échap ferme la modale ; le clic sur le fond aussi, mais pas sur
              le panneau (`stop`), sinon chaque interaction la refermerait. --}}
-        {{-- Le piège de tabulation et le retour du focus reprennent ceux de
-             `<x-modal>` : sans eux, la tabulation sortait derrière la modale. --}}
+        {{-- Même `modalFocus` que `<x-modal>` : l'assistant garde sa propre
+             coquille pour le bandeau d'étapes, pas son propre piège de
+             tabulation. --}}
         <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/70 p-6 backdrop-blur-sm"
              wire:key="wizard-modal"
-             x-data="{
-                 previouslyFocused: null,
-
-                 init() {
-                     this.previouslyFocused = document.activeElement;
-                     this.$nextTick(() => this.focusables()[0]?.focus());
-                 },
-
-                 destroy() {
-                     this.previouslyFocused?.focus();
-                 },
-
-                 focusables() {
-                     return [...this.$refs.panel.querySelectorAll(
-                         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\'-1\'])'
-                     )].filter((el) => el.offsetParent !== null);
-                 },
-
-                 trap(event) {
-                     const items = this.focusables();
-
-                     if (items.length === 0) {
-                         return;
-                     }
-
-                     const first = items[0];
-                     const last = items[items.length - 1];
-
-                     if (event.shiftKey && document.activeElement === first) {
-                         event.preventDefault();
-                         last.focus();
-                     } else if (! event.shiftKey && document.activeElement === last) {
-                         event.preventDefault();
-                         first.focus();
-                     }
-                 },
-             }"
+             x-data="modalFocus"
              x-on:keydown.escape.window="$wire.close()"
              x-on:keydown.tab="trap($event)"
              x-on:click="$wire.close()">

@@ -2047,7 +2047,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Un retrait d\u00e9signe une agence ; une livraison, une position et\nun num\u00e9ro o\u00f9 joindre le conducteur."
+                        "description": "Agence de retrait. Facultatif : sans agence d\u00e9sign\u00e9e, le retrait\ns'effectue au si\u00e8ge ATCP (Koumassi Prodomo)."
                     },
                     "latitude": {
                         "type": [
