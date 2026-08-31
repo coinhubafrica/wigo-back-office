@@ -73,6 +73,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         // Boutique : la lecture reste ouverte à un conducteur suspendu, la
         // commande non — comme pour les cotisations.
         Route::get('shop/products', [ShopController::class, 'index'])->name('shop.products');
+        Route::get('shop/pickup-points', [ShopController::class, 'pickupPoints'])->name('shop.pickup-points');
         Route::get('shop/orders', [ShopController::class, 'orders'])->name('shop.orders.index');
         Route::get('shop/orders/{order}', [ShopController::class, 'showOrder'])->name('shop.orders.show');
 

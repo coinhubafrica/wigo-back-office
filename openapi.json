@@ -1210,6 +1210,47 @@
                 }
             }
         },
+        "/shop/pickup-points": {
+            "get": {
+                "operationId": "v1.shop.pickup-points",
+                "description": "Les agences ouvertes au retrait, tri\u00e9es par nom. Un identifiant de cette\nliste alimente `pickup_point_id` \u00e0 la commande.\n\nListe courte et non pagin\u00e9e : la r\u00e9ponse porte toutes les agences.",
+                "summary": "Points de retrait",
+                "tags": [
+                    "Shop"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PickupPointResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/shop/orders": {
             "get": {
                 "operationId": "v1.shop.orders.index",
@@ -1784,6 +1825,37 @@
                 ],
                 "title": "OtpVerifyRequest"
             },
+            "PickupPointResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "address": {
+                        "type": "string"
+                    },
+                    "opening_hours": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Horaires d'ouverture en clair, `null` si l'agence n'en publie pas.",
+                        "examples": [
+                            "Lun\u2013Sam 8 h \u2013 18 h"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "address",
+                    "opening_hours"
+                ],
+                "title": "PickupPointResource"
+            },
             "ProductResource": {
                 "type": "object",
                 "properties": {
@@ -2047,7 +2119,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Agence de retrait. Facultatif : sans agence d\u00e9sign\u00e9e, le retrait\ns'effectue au si\u00e8ge ATCP (Koumassi Prodomo)."
+                        "description": "Agence de retrait, parmi celles que rend `GET /shop/pickup-points`. Obligatoire en mode `pickup`, sauf s'il n'existe qu'une seule\nagence ouverte : elle est alors prise par d\u00e9faut. Une livraison\nd\u00e9signe \u00e0 la place une position et un num\u00e9ro o\u00f9 joindre le\nconducteur."
                     },
                     "latitude": {
                         "type": [

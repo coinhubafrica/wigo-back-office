@@ -28,6 +28,7 @@ class ApiDocumentationTest extends TestCase
         $this->assertArrayHasKey('/auth/logout', $document['paths']);
         $this->assertArrayHasKey('/me', $document['paths']);
         $this->assertArrayHasKey('/me/push-token', $document['paths']);
+        $this->assertArrayHasKey('/shop/pickup-points', $document['paths']);
     }
 
     public function test_the_webhook_is_excluded_from_the_mobile_contract(): void

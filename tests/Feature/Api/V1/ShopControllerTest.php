@@ -160,6 +160,74 @@ class ShopControllerTest extends TestCase
             ->assertJsonValidationErrors(['latitude', 'longitude', 'contact_phone']);
     }
 
+    public function test_a_driver_lists_the_active_pickup_points(): void
+    {
+        Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+        PickupPoint::factory()->create(['name' => 'Agence Yopougon']);
+        PickupPoint::factory()->create(['name' => 'Agence Cocody']);
+        PickupPoint::factory()->create(['name' => 'Agence fermée', 'is_active' => false]);
+
+        $response = $this->getJson(route('api.v1.shop.pickup-points'))
+            ->assertOk()
+            ->assertJsonStructure(['message', 'data' => [['id', 'name', 'address', 'opening_hours']]])
+            ->assertJsonCount(2, 'data');
+
+        // Triées par nom, et une agence fermée ne se propose pas au retrait.
+        $this->assertSame(['Agence Cocody', 'Agence Yopougon'], $response->json('data.*.name'));
+    }
+
+    public function test_a_suspended_driver_still_lists_the_pickup_points(): void
+    {
+        Sanctum::actingAs(Driver::factory()->create(['status' => DriverStatus::Suspended]), ['mobile:*']);
+        PickupPoint::factory()->create();
+
+        $this->getJson(route('api.v1.shop.pickup-points'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_a_pickup_order_falls_back_to_the_only_active_point(): void
+    {
+        $driver = Driver::factory()->create();
+        Sanctum::actingAs($driver, ['mobile:*']);
+
+        $product = Product::factory()->create(['stock_quantity' => 3]);
+        $point = PickupPoint::factory()->create();
+        PickupPoint::factory()->create(['is_active' => false]);
+
+        // Les versions déjà déployées de l'application n'envoient pas
+        // `pickup_point_id` : une agence unique lève l'ambiguïté.
+        $this->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson(route('api.v1.shop.orders.store'), [
+                'lines' => [['product_id' => $product->id, 'qty' => 1]],
+                'fulfilment_mode' => FulfilmentMode::Pickup->value,
+            ])
+            ->assertCreated();
+
+        $order = ShopOrder::query()->where('driver_id', $driver->id)->sole();
+
+        $this->assertSame($point->id, $order->delivery?->pickup_point_id);
+    }
+
+    public function test_a_pickup_order_still_requires_a_point_when_several_are_active(): void
+    {
+        Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+        $product = Product::factory()->create();
+        PickupPoint::factory()->count(2)->create();
+
+        // Deux agences ouvertes : deviner reviendrait à envoyer le conducteur
+        // au mauvais comptoir sans le dire.
+        $this->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->postJson(route('api.v1.shop.orders.store'), [
+                'lines' => [['product_id' => $product->id, 'qty' => 1]],
+                'fulfilment_mode' => FulfilmentMode::Pickup->value,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('pickup_point_id');
+    }
+
     public function test_ordering_more_than_the_stock_is_refused(): void
     {
         $driver = Driver::factory()->create();

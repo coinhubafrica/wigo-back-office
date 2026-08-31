@@ -7,8 +7,10 @@ use App\Enums\ProductStatus;
 use App\Http\Controllers\Concerns\ResolvesDriver;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreShopOrderRequest;
+use App\Http\Resources\PickupPointResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\ShopOrderResource;
+use App\Models\PickupPoint;
 use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Services\Shop\ShopOrderService;
@@ -59,6 +61,25 @@ class ShopController extends Controller
             ->cursorPaginate($this->perPage($request));
 
         return $this->okApiResponse(ProductResource::collection($products));
+    }
+
+    /**
+     * Points de retrait
+     *
+     * Les agences ouvertes au retrait, triées par nom. Un identifiant de cette
+     * liste alimente `pickup_point_id` à la commande.
+     *
+     * Liste courte et non paginée : la réponse porte toutes les agences.
+     */
+    #[ApiResponse(PickupPointResource::class, collection: true)]
+    public function pickupPoints(): JsonResponse
+    {
+        $points = PickupPoint::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return $this->okApiResponse(PickupPointResource::collection($points));
     }
 
     /**
