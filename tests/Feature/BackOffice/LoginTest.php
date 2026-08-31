@@ -1,223 +1,199 @@
 <?php
 
-namespace Tests\Feature\BackOffice;
-
 use App\Enums\BackOfficeModule;
 use App\Livewire\Auth\Login;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
-use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
-use Tests\TestCase;
 
-class LoginTest extends TestCase
-{
-    use LazilyRefreshDatabase;
+beforeEach(function (): void {
+    $this->seed(RolePermissionSeeder::class);
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+it('the login screen is reachable', function (): void {
+    $this->get(route('bo.login'))
+        ->assertOk()
+        ->assertSeeLivewire(Login::class);
+});
 
-        $this->seed(RolePermissionSeeder::class);
-    }
+it('valid credentials authenticate and land on the first module', function (): void {
+    $user = loginUser('direction');
 
-    public function test_the_login_screen_is_reachable(): void
-    {
-        $this->get(route('bo.login'))
-            ->assertOk()
-            ->assertSeeLivewire(Login::class);
-    }
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'motdepasse')
+        ->call('login')
+        ->assertHasNoErrors()
+        ->assertRedirect(route(BackOfficeModule::Dashboard->route()));
 
-    public function test_valid_credentials_authenticate_and_land_on_the_first_module(): void
-    {
-        $user = $this->user('direction');
+    $this->assertAuthenticatedAs($user);
+    $this->assertNotNull($user->fresh()->last_login_at);
+});
 
-        Livewire::test(Login::class)
-            ->set('email', $user->email)
-            ->set('password', 'motdepasse')
-            ->call('login')
-            ->assertHasNoErrors()
-            ->assertRedirect(route(BackOfficeModule::Dashboard->route()));
+it('a user is refused when none of their modules is built yet', function (): void {
+    // Un compte dont aucun module accessible n'a de route doit échouer.
+    // `Audit` est le dernier module non livré ; le jour où il l'est, ce test
+    // n'aura plus de module à lui donner et devra être repensé.
+    // proprement plutôt que rediriger vers une route absente. Les rôles
+    // seedés ont tous au moins un module construit : on fabrique donc un
+    // rôle ne portant qu'une permission encore sans écran.
+    $role = Role::findOrCreate('diffusions-seules', 'web');
+    $role->givePermissionTo(BackOfficeModule::Audit->permission());
 
-        $this->assertAuthenticatedAs($user);
-        $this->assertNotNull($user->fresh()->last_login_at);
-    }
+    $user = User::factory()->create(['is_active' => true, 'password' => Hash::make('motdepasse')]);
+    $user->assignRole($role);
 
-    public function test_a_user_is_refused_when_none_of_their_modules_is_built_yet(): void
-    {
-        // Un compte dont aucun module accessible n'a de route doit échouer
-        // proprement plutôt que rediriger vers une route absente. Les rôles
-        // seedés ont tous au moins un module construit : on fabrique donc un
-        // rôle ne portant qu'une permission encore sans écran.
-        $role = Role::findOrCreate('requetes-seules', 'web');
-        $role->givePermissionTo(BackOfficeModule::SupportRequests->permission());
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'motdepasse')
+        ->call('login')
+        ->assertHasErrors('email');
 
-        $user = User::factory()->create(['is_active' => true, 'password' => Hash::make('motdepasse')]);
-        $user->assignRole($role);
+    $this->assertGuest();
+});
 
-        Livewire::test(Login::class)
-            ->set('email', $user->email)
-            ->set('password', 'motdepasse')
-            ->call('login')
-            ->assertHasErrors('email');
+it('the stock role lands on the support queue', function (): void {
+    // `stock` n'a pas de tableau de bord : sa première route disponible est
+    // la file des requêtes, construite depuis.
+    $user = loginUser('stock');
 
-        $this->assertGuest();
-    }
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'motdepasse')
+        ->call('login')
+        ->assertHasNoErrors()
+        ->assertRedirect(route(BackOfficeModule::SupportRequests->route()));
 
-    public function test_the_stock_role_lands_on_the_shop(): void
-    {
-        // `stock` n'a ni tableau de bord ni requêtes construites : sa première
-        // route disponible est la boutique.
-        $user = $this->user('stock');
+    $this->assertAuthenticatedAs($user);
+});
 
-        Livewire::test(Login::class)
-            ->set('email', $user->email)
-            ->set('password', 'motdepasse')
-            ->call('login')
-            ->assertHasNoErrors()
-            ->assertRedirect(route(BackOfficeModule::Shop->route()));
+it('a wrong password is rejected', function (): void {
+    $user = loginUser('direction');
 
-        $this->assertAuthenticatedAs($user);
-    }
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'mauvais')
+        ->call('login')
+        ->assertHasErrors('email');
 
-    public function test_a_wrong_password_is_rejected(): void
-    {
-        $user = $this->user('direction');
+    $this->assertGuest();
+});
 
+it('an unknown email is rejected', function (): void {
+    Livewire::test(Login::class)
+        ->set('email', 'inconnu@atconfortplus.ci')
+        ->set('password', 'motdepasse')
+        ->call('login')
+        ->assertHasErrors('email');
+
+    $this->assertGuest();
+});
+
+it('a disabled account cannot sign in', function (): void {
+    $user = loginUser('gestionnaire', ['is_active' => false]);
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'motdepasse')
+        ->call('login')
+        ->assertHasErrors('email');
+
+    $this->assertGuest();
+});
+
+it('a user without any module is refused', function (): void {
+    $user = User::factory()->create(['is_active' => true]);
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'motdepasse')
+        ->call('login')
+        ->assertHasErrors('email');
+
+    $this->assertGuest();
+});
+
+it('the form requires both fields', function (): void {
+    Livewire::test(Login::class)
+        ->call('login')
+        ->assertHasErrors(['email' => 'required', 'password' => 'required']);
+});
+
+it('the email must be well formed', function (): void {
+    Livewire::test(Login::class)
+        ->set('email', 'pas-un-email')
+        ->set('password', 'motdepasse')
+        ->call('login')
+        ->assertHasErrors(['email' => 'email']);
+});
+
+it('six attempts are throttled', function (): void {
+    $user = loginUser('direction');
+
+    for ($attempt = 0; $attempt < 5; $attempt++) {
         Livewire::test(Login::class)
             ->set('email', $user->email)
             ->set('password', 'mauvais')
             ->call('login')
             ->assertHasErrors('email');
-
-        $this->assertGuest();
     }
 
-    public function test_an_unknown_email_is_rejected(): void
-    {
-        Livewire::test(Login::class)
-            ->set('email', 'inconnu@atconfortplus.ci')
-            ->set('password', 'motdepasse')
-            ->call('login')
-            ->assertHasErrors('email');
+    // Le 6ᵉ essai est bloqué : même le bon mot de passe est refusé.
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'motdepasse')
+        ->call('login')
+        ->assertHasErrors('email');
 
-        $this->assertGuest();
-    }
+    $this->assertGuest();
+    RateLimiter::clear(mb_strtolower($user->email).'|127.0.0.1');
+});
 
-    public function test_a_disabled_account_cannot_sign_in(): void
-    {
-        $user = $this->user('gestionnaire', ['is_active' => false]);
+it('logout ends the session', function (): void {
+    $user = loginUser('direction');
 
-        Livewire::test(Login::class)
-            ->set('email', $user->email)
-            ->set('password', 'motdepasse')
-            ->call('login')
-            ->assertHasErrors('email');
+    $this->actingAs($user)
+        ->post(route('bo.logout'))
+        ->assertRedirect(route('bo.login'));
 
-        $this->assertGuest();
-    }
+    $this->assertGuest();
+});
 
-    public function test_a_user_without_any_module_is_refused(): void
-    {
-        $user = User::factory()->create(['is_active' => true]);
+it('an authenticated user is kept away from the login screen', function (): void {
+    $this->actingAs(loginUser('direction'))
+        ->get(route('bo.login'))
+        ->assertRedirect(route(BackOfficeModule::Dashboard->route()));
+});
 
-        Livewire::test(Login::class)
-            ->set('email', $user->email)
-            ->set('password', 'motdepasse')
-            ->call('login')
-            ->assertHasErrors('email');
+it('the root url does not loop for an authenticated user', function (): void {
+    // `/` redirects guests to `/login`; `/login`'s `guest` middleware then
+    // redirects an authenticated visitor away. Without an explicit
+    // `redirectUsersTo` target, that target defaults to `home` (`/`),
+    // which loops forever. Regression for ERR_TOO_MANY_REDIRECTS.
+    $this->actingAs(loginUser('direction'))
+        ->get('/')
+        ->assertRedirect('/login');
 
-        $this->assertGuest();
-    }
+    $this->actingAs(loginUser('direction'))
+        ->get('/login')
+        ->assertRedirect(route(BackOfficeModule::Dashboard->route()));
+});
 
-    public function test_the_form_requires_both_fields(): void
-    {
-        Livewire::test(Login::class)
-            ->call('login')
-            ->assertHasErrors(['email' => 'required', 'password' => 'required']);
-    }
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function loginUser(string $role, array $attributes = []): User
+{
+    $user = User::factory()->create([
+        'password' => 'motdepasse',
+        'is_active' => true,
+        ...$attributes,
+    ]);
 
-    public function test_the_email_must_be_well_formed(): void
-    {
-        Livewire::test(Login::class)
-            ->set('email', 'pas-un-email')
-            ->set('password', 'motdepasse')
-            ->call('login')
-            ->assertHasErrors(['email' => 'email']);
-    }
+    $user->assignRole($role);
 
-    public function test_six_attempts_are_throttled(): void
-    {
-        $user = $this->user('direction');
-
-        for ($attempt = 0; $attempt < 5; $attempt++) {
-            Livewire::test(Login::class)
-                ->set('email', $user->email)
-                ->set('password', 'mauvais')
-                ->call('login')
-                ->assertHasErrors('email');
-        }
-
-        // Le 6ᵉ essai est bloqué : même le bon mot de passe est refusé.
-        Livewire::test(Login::class)
-            ->set('email', $user->email)
-            ->set('password', 'motdepasse')
-            ->call('login')
-            ->assertHasErrors('email');
-
-        $this->assertGuest();
-        RateLimiter::clear(mb_strtolower($user->email).'|127.0.0.1');
-    }
-
-    public function test_logout_ends_the_session(): void
-    {
-        $user = $this->user('direction');
-
-        $this->actingAs($user)
-            ->post(route('bo.logout'))
-            ->assertRedirect(route('bo.login'));
-
-        $this->assertGuest();
-    }
-
-    public function test_an_authenticated_user_is_kept_away_from_the_login_screen(): void
-    {
-        $this->actingAs($this->user('direction'))
-            ->get(route('bo.login'))
-            ->assertRedirect(route(BackOfficeModule::Dashboard->route()));
-    }
-
-    public function test_the_root_url_does_not_loop_for_an_authenticated_user(): void
-    {
-        // `/` redirects guests to `/login`; `/login`'s `guest` middleware then
-        // redirects an authenticated visitor away. Without an explicit
-        // `redirectUsersTo` target, that target defaults to `home` (`/`),
-        // which loops forever. Regression for ERR_TOO_MANY_REDIRECTS.
-        $this->actingAs($this->user('direction'))
-            ->get('/')
-            ->assertRedirect('/login');
-
-        $this->actingAs($this->user('direction'))
-            ->get('/login')
-            ->assertRedirect(route(BackOfficeModule::Dashboard->route()));
-    }
-
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    private function user(string $role, array $attributes = []): User
-    {
-        $user = User::factory()->create([
-            'password' => 'motdepasse',
-            'is_active' => true,
-            ...$attributes,
-        ]);
-
-        $user->assignRole($role);
-
-        return $user;
-    }
+    return $user;
 }

@@ -22,7 +22,19 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="WIGO_OTP_EXPOSE_CODE" value="true"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <!--
+            `null` : aucune diffusion ne part pendant les tests.
+
+            Une exception : la suite d'autorisation des canaux a besoin d'un
+            vrai pilote, parce que `Broadcast::channel()` enregistre sur le
+            pilote par défaut au moment du démarrage. Elle le fixe elle-même
+            avec `putenv()`, avant le boot — voir
+            tests/Feature/Support/ChannelAuthorizationTest.php.
+        -->
         <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="REVERB_APP_ID" value="app-de-test"/>
+        <env name="REVERB_APP_KEY" value="cle-de-test"/>
+        <env name="REVERB_APP_SECRET" value="secret-de-test"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
