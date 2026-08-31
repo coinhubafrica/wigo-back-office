@@ -3,8 +3,11 @@
 namespace Tests\Feature\BackOffice;
 
 use App\Enums\BackOfficeModule;
+use App\Enums\ChallengeStatus;
 use App\Livewire\Challenges\Prizes;
+use App\Livewire\Challenges\Show;
 use App\Models\Challenge;
+use App\Models\ChallengeWinner;
 use App\Models\Prize;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -99,6 +102,35 @@ class ChallengesTest extends TestCase
             ->call('delete');
 
         $this->assertModelMissing($prize);
+    }
+
+    public function test_crediting_all_winners_requires_a_confirmation(): void
+    {
+        $challenge = Challenge::factory()->create(['status' => ChallengeStatus::PayoutPending]);
+        $winner = ChallengeWinner::factory()->for($challenge)->create(['credited' => false]);
+
+        Livewire::actingAs($this->user('direction'))
+            ->test(Show::class, ['challenge' => $challenge])
+            ->call('confirmAction', 'credit_all')
+            ->assertSet('pendingAction', 'credit_all')
+            ->call('creditAll')
+            ->assertSet('pendingAction', null);
+
+        $this->assertTrue($winner->refresh()->credited);
+    }
+
+    public function test_cancelling_the_confirmation_leaves_winners_uncredited(): void
+    {
+        $challenge = Challenge::factory()->create(['status' => ChallengeStatus::PayoutPending]);
+        $winner = ChallengeWinner::factory()->for($challenge)->create(['credited' => false]);
+
+        Livewire::actingAs($this->user('direction'))
+            ->test(Show::class, ['challenge' => $challenge])
+            ->call('confirmAction', 'credit_all')
+            ->call('cancelAction')
+            ->assertSet('pendingAction', null);
+
+        $this->assertFalse($winner->refresh()->credited);
     }
 
     private function user(string $role): User

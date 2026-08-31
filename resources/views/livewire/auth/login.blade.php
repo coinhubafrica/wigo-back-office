@@ -15,7 +15,7 @@
             </label>
             <input wire:model="email" id="email" type="email" name="email"
                    autocomplete="username" required autofocus
-                   class="mt-1.5 block w-full rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary focus:outline-none"
+                   class="mt-1.5 block w-full rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary"
                    placeholder="prenom.nom@atconfortplus.ci">
             @error('email')
                 <p class="mt-1.5 text-sm text-err-text">{{ $message }}</p>
@@ -28,7 +28,7 @@
             </label>
             <input wire:model="password" id="password" type="password" name="password"
                    autocomplete="current-password" required
-                   class="mt-1.5 block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary focus:outline-none">
+                   class="mt-1.5 block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary">
             @error('password')
                 <p class="mt-1.5 text-sm text-err-text">{{ $message }}</p>
             @enderror

@@ -27,18 +27,24 @@
 
         <div class="flex flex-wrap gap-1.5 border-b border-line px-5 py-3.5">
             @foreach ($chips as $chip)
+                {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
+                     invisible pour un lecteur d'écran sans cet état. --}}
                 <button type="button" wire:click="setFilter('{{ $chip['key'] }}')"
+                        aria-pressed="{{ $filter === $chip['key'] ? 'true' : 'false' }}"
                         @class([
                             'flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
                             'border-primary bg-primary-tint text-primary-text' => $filter === $chip['key'],
-                            'border-line bg-card text-ink hover:border-primary' => $filter !== $chip['key'],
-                            'opacity-55' => $chip['count'] === 0 && $filter !== $chip['key'],
+                            'border-line bg-card text-ink hover:border-primary' => $filter !== $chip['key'] && $chip['count'] > 0,
+                            {{-- Une pastille vide s'efface par une teinte plus douce
+                                 et non par `opacity`, qui faisait passer le libellé
+                                 sous le seuil de contraste AA. --}}
+                            'border-line bg-card text-muted hover:border-primary' => $filter !== $chip['key'] && $chip['count'] === 0,
                         ])>
                     {{ $chip['label'] }}
                     <span @class([
                         'rounded-full px-1.5 py-0.5 text-[10.5px] font-bold',
                         'bg-primary text-white' => $filter === $chip['key'],
-                        'bg-zinc-100 text-muted' => $filter !== $chip['key'],
+                        'bg-neutral-bg text-neutral-text' => $filter !== $chip['key'],
                     ])>{{ $chip['count'] }}</span>
                 </button>
             @endforeach
@@ -100,7 +106,9 @@
                             <td class="border-b border-line px-4 py-3 text-right">
                                 <a href="{{ route('bo.challenges.show', $challenge) }}" wire:navigate
                                    aria-label="{{ __('backoffice.challenges.open_challenge', ['name' => $challenge->name]) }}"
-                                   class="inline-block px-1 text-primary transition-transform group-hover:translate-x-0.5">→</a>
+                                   class="inline-flex items-center px-1 text-primary transition-transform group-hover:translate-x-0.5">
+                                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                                </a>
                             </td>
                         </tr>
                     @empty

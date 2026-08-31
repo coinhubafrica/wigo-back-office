@@ -28,7 +28,7 @@
                     <img src="{{ Vite::asset('resources/images/logo-wigo-pro-white.png') }}"
                          alt="WiGO PRO" class="w-[130px]">
                 </a>
-                <p class="mt-2 text-[11px] font-semibold uppercase tracking-widest text-zinc-500">
+                <p class="mt-2 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
                     {{ __('backoffice.back_office') }}
                 </p>
             </div>
@@ -36,7 +36,7 @@
             <nav class="flex-1 overflow-y-auto px-3 py-4">
                 @foreach ($grouped as $group => $groupModules)
                     @if ($group !== '')
-                        <p class="mt-5 mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                        <p class="mt-5 mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                             {{ $group }}
                         </p>
                     @endif
@@ -46,24 +46,27 @@
                             $isActive = $module === $item;
                             $isBuilt = \Illuminate\Support\Facades\Route::has($item->route());
                         @endphp
-                        <a href="{{ $isBuilt ? route($item->route()) : '#' }}"
-                           @if ($isBuilt) wire:navigate @endif
+                        {{-- Un module non livré est rendu en `<span>` et non en
+                             ancre morte : `aria-disabled` sur un `<a href="#">`
+                             restait focalisable et offrait un arrêt sans issue au
+                             clavier. La pastille « bientôt » porte le sens. --}}
+                        <{{ $isBuilt ? 'a' : 'span' }}
+                           @if ($isBuilt) href="{{ route($item->route()) }}" wire:navigate @endif
                            @class([
                                'mb-0.5 flex items-center gap-2.5 rounded px-2.5 py-2 text-sm transition-colors',
                                'bg-primary font-medium text-white' => $isActive,
                                'text-zinc-300 hover:bg-sidebar-line hover:text-white' => ! $isActive && $isBuilt,
-                               'cursor-default text-zinc-500' => ! $isBuilt,
+                               'cursor-default text-zinc-400' => ! $isBuilt,
                            ])
-                           @if ($isActive) aria-current="page" @endif
-                           @unless ($isBuilt) aria-disabled="true" onclick="return false;" @endunless>
+                           @if ($isActive) aria-current="page" @endif>
                             <svg class="size-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="{{ $item->icon() }}"/>
                             </svg>
                             {{ $item->label() }}
                             @unless ($isBuilt)
-                                <span class="ml-auto text-[10px] font-semibold uppercase tracking-wide text-zinc-600">{{ __('backoffice.soon') }}</span>
+                                <span class="ml-auto text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{{ __('backoffice.soon') }}</span>
                             @endunless
-                        </a>
+                        </{{ $isBuilt ? 'a' : 'span' }}>
                     @endforeach
                 @endforeach
             </nav>
@@ -122,6 +125,7 @@
             messages.push({ id, text: $event.detail.message ?? $event.detail });
             setTimeout(() => messages = messages.filter(m => m.id !== id), 4000);
          "
+         role="status" aria-live="polite" aria-atomic="false"
          class="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex flex-col items-center gap-2">
         <template x-for="message in messages" :key="message.id">
             <div x-transition

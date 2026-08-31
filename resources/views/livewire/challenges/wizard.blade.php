@@ -9,11 +9,54 @@
     @if ($open)
         {{-- Échap ferme la modale ; le clic sur le fond aussi, mais pas sur
              le panneau (`stop`), sinon chaque interaction la refermerait. --}}
+        {{-- Le piège de tabulation et le retour du focus reprennent ceux de
+             `<x-modal>` : sans eux, la tabulation sortait derrière la modale. --}}
         <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/70 p-6 backdrop-blur-sm"
              wire:key="wizard-modal"
+             x-data="{
+                 previouslyFocused: null,
+
+                 init() {
+                     this.previouslyFocused = document.activeElement;
+                     this.$nextTick(() => this.focusables()[0]?.focus());
+                 },
+
+                 destroy() {
+                     this.previouslyFocused?.focus();
+                 },
+
+                 focusables() {
+                     return [...this.$refs.panel.querySelectorAll(
+                         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\'-1\'])'
+                     )].filter((el) => el.offsetParent !== null);
+                 },
+
+                 trap(event) {
+                     const items = this.focusables();
+
+                     if (items.length === 0) {
+                         return;
+                     }
+
+                     const first = items[0];
+                     const last = items[items.length - 1];
+
+                     if (event.shiftKey && document.activeElement === first) {
+                         event.preventDefault();
+                         last.focus();
+                     } else if (! event.shiftKey && document.activeElement === last) {
+                         event.preventDefault();
+                         first.focus();
+                     }
+                 },
+             }"
              x-on:keydown.escape.window="$wire.close()"
+             x-on:keydown.tab="trap($event)"
              x-on:click="$wire.close()">
-            <div class="w-full max-w-4xl overflow-hidden rounded-lg bg-card shadow-[0_24px_64px_-12px_rgba(9,9,11,0.45)] ring-1 ring-ink/10" x-on:click.stop>
+            <div class="w-full max-w-4xl overflow-hidden rounded-lg bg-card shadow-[0_24px_64px_-12px_rgba(9,9,11,0.45)] ring-1 ring-ink/10"
+                 x-ref="panel"
+                 x-on:click.stop
+                 role="dialog" aria-modal="true" aria-labelledby="wizard-title">
                 {{-- Bandeau d'en-tête teinté : détache le titre du corps du
                      formulaire et ancre l'étape en cours. --}}
                 <div class="flex items-start justify-between gap-4 border-b border-line bg-surface px-7 py-5">
@@ -21,11 +64,13 @@
                         <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-primary-text">
                             {{ __('backoffice.challenges.wizard_eyebrow', ['step' => $step, 'total' => \App\Livewire\Challenges\Wizard::LAST_STEP]) }}
                         </p>
-                        <h2 class="mt-1.5 text-2xl font-bold tracking-tight text-ink">{{ $this->stepTitle() }}</h2>
+                        <h2 id="wizard-title" class="mt-1.5 text-2xl font-bold tracking-tight text-ink">{{ $this->stepTitle() }}</h2>
                     </div>
                     <button type="button" wire:click="close"
-                            class="flex size-8 shrink-0 items-center justify-center rounded border border-line bg-card text-lg leading-none text-muted transition-colors hover:border-input hover:text-ink"
-                            aria-label="{{ __('backoffice.challenges.cancel') }}">&times;</button>
+                            class="flex size-8 shrink-0 items-center justify-center rounded border border-line bg-card text-muted transition-colors hover:border-input hover:text-ink"
+                            aria-label="{{ __('backoffice.challenges.cancel') }}">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    </button>
                 </div>
 
                 {{-- Onglets d'étape : l'étape courante est pleine, les étapes
@@ -47,7 +92,13 @@
                                 'flex size-5 shrink-0 items-center justify-center rounded-full text-[10.5px] font-bold',
                                 'bg-primary text-white' => $isCurrent || $isDone,
                                 'bg-line text-muted' => ! $isCurrent && ! $isDone,
-                            ])>{{ $isDone ? '✓' : $index + 1 }}</span>
+                            ])>
+                                @if ($isDone)
+                                    <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                                @else
+                                    {{ $index + 1 }}
+                                @endif
+                            </span>
                             <span @class([
                                 'text-[13px] font-bold' => $isCurrent,
                                 'text-[13px] font-semibold' => ! $isCurrent,
@@ -101,12 +152,20 @@
                                                 <p class="mb-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted">
                                                     {{ __('backoffice.challenges.raffle_option') }}
                                                 </p>
-                                                <button type="button" wire:click="$toggle('isTicketBased')" class="flex w-full items-start gap-2.5 text-left">
+                                                {{-- Case à cocher simulée : `aria-pressed` porte
+                                                     l'état, que seul le glyphe indiquait. --}}
+                                                <button type="button" wire:click="$toggle('isTicketBased')"
+                                                        aria-pressed="{{ $isTicketBased ? 'true' : 'false' }}"
+                                                        class="flex w-full items-start gap-2.5 text-left">
                                                     <span @class([
-                                                        'mt-0.5 flex size-[19px] shrink-0 items-center justify-center rounded border-2 text-xs font-bold text-white',
+                                                        'mt-0.5 flex size-[19px] shrink-0 items-center justify-center rounded border-2 text-white',
                                                         'border-primary bg-primary' => $isTicketBased,
                                                         'border-input bg-card' => ! $isTicketBased,
-                                                    ])>{{ $isTicketBased ? '✓' : '' }}</span>
+                                                    ])>
+                                                        @if ($isTicketBased)
+                                                            <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                                                        @endif
+                                                    </span>
                                                     <span>
                                                         <b class="block text-[13.5px] text-ink">{{ __('backoffice.challenges.is_ticket_based') }}</b>
                                                         <span class="block text-xs leading-relaxed text-muted">{{ __('backoffice.challenges.is_ticket_based_hint') }}</span>
@@ -117,7 +176,7 @@
                                                     <div class="mt-3.5 flex flex-wrap items-center gap-2.5 border-t border-line pt-3.5 text-[13px] text-muted">
                                                         <span>{{ __('backoffice.challenges.one_ticket_per') }}</span>
                                                         <input wire:model.live="minOrders" type="number" min="1"
-                                                               class="w-[92px] rounded border border-input bg-card px-2.5 py-1.5 text-center text-[13.5px] font-bold text-ink focus:border-primary focus:outline-none">
+                                                               class="w-[92px] rounded border border-input bg-card px-2.5 py-1.5 text-center text-[13.5px] font-bold text-ink focus:border-primary">
                                                         <span>{{ __('backoffice.challenges.unit_orders') }}</span>
                                                     </div>
                                                     @error('minOrders') <p class="mt-1.5 text-sm text-err-text">{{ $message }}</p> @enderror
@@ -137,7 +196,7 @@
                                 {{ __('backoffice.challenges.field_name') }}
                             </label>
                             <input wire:model="name" id="wizard-name" type="text" placeholder="{{ $this->suggestedName() }}"
-                                   class="mt-1.5 block w-full rounded border border-input px-3 py-2.5 text-sm placeholder:text-muted focus:border-primary focus:outline-none">
+                                   class="mt-1.5 block w-full rounded border border-input px-3 py-2.5 text-sm placeholder:text-muted focus:border-primary">
                             @error('name') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
 
                             @if ($this->isTicketBasedRaffle())
@@ -166,12 +225,21 @@
                                             'border-primary bg-primary-tint' => $crit['on'],
                                             'border-line bg-card' => ! $crit['on'],
                                         ])>
+                                            {{-- Case à cocher simulée : sans `aria-pressed` ni
+                                                 intitulé, ce bouton de 19 px était annoncé
+                                                 vide et sans état. --}}
                                             <button type="button" wire:click="$toggle('{{ $crit['toggle'] }}')"
+                                                    aria-pressed="{{ $crit['on'] ? 'true' : 'false' }}"
+                                                    aria-label="{{ $crit['label'] }}"
                                                     @class([
-                                                        'flex size-[19px] shrink-0 items-center justify-center rounded border-2 text-xs font-bold text-white',
+                                                        'flex size-[19px] shrink-0 items-center justify-center rounded border-2 text-white',
                                                         'border-primary bg-primary' => $crit['on'],
                                                         'border-input bg-line' => ! $crit['on'],
-                                                    ])>{{ $crit['on'] ? '✓' : '' }}</button>
+                                                    ])>
+                                                @if ($crit['on'])
+                                                    <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                                                @endif
+                                            </button>
 
                                             <span class="min-w-0 flex-1">
                                                 <b class="block text-[13.5px] text-ink">{{ $crit['label'] }}</b>
@@ -198,13 +266,13 @@
                                 <div>
                                     <label for="wizard-start" class="block text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{{ __('backoffice.challenges.period_start') }}</label>
                                     <input wire:model.live="periodStart" id="wizard-start" type="date"
-                                           class="mt-1.5 block w-full rounded border border-input px-3 py-2.5 text-sm focus:border-primary focus:outline-none">
+                                           class="mt-1.5 block w-full rounded border border-input px-3 py-2.5 text-sm focus:border-primary">
                                     @error('periodStart') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label for="wizard-end" class="block text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{{ __('backoffice.challenges.period_end') }}</label>
                                     <input wire:model.live="periodEnd" id="wizard-end" type="date"
-                                           class="mt-1.5 block w-full rounded border border-input px-3 py-2.5 text-sm focus:border-primary focus:outline-none">
+                                           class="mt-1.5 block w-full rounded border border-input px-3 py-2.5 text-sm focus:border-primary">
                                     @error('periodEnd') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
                                 </div>
                             </div>
@@ -248,7 +316,7 @@
                             @if ($prizeNature === PrizeNature::Cash->value)
                                 <label for="wizard-amount" class="mt-4 block text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{{ __('backoffice.challenges.amount_per_winner') }}</label>
                                 <input wire:model.live="rewardAmount" id="wizard-amount" type="number" min="1"
-                                       class="mt-1.5 block w-full max-w-[260px] rounded border border-input px-3 py-2.5 text-sm focus:border-primary focus:outline-none">
+                                       class="mt-1.5 block w-full max-w-[260px] rounded border border-input px-3 py-2.5 text-sm focus:border-primary">
                                 @error('rewardAmount') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
                             @else
                                 <div class="mt-4 flex items-baseline justify-between gap-3">
@@ -327,7 +395,7 @@
                                                         {{ __('backoffice.challenges.winners_count') }}
                                                     </label>
                                                     <input wire:model.live="winnersCount" id="wizard-winners" type="number" min="1"
-                                                           class="mt-1.5 block w-[120px] rounded border border-input bg-card px-3 py-2 text-center text-[13.5px] font-bold text-ink focus:border-primary focus:outline-none">
+                                                           class="mt-1.5 block w-[120px] rounded border border-input bg-card px-3 py-2 text-center text-[13.5px] font-bold text-ink focus:border-primary">
                                                     <p class="mt-1.5 text-xs leading-relaxed text-muted">
                                                         {{ $topNEnabled ? __('backoffice.challenges.winners_aligned', ['top' => $topN]) : __('backoffice.challenges.winners_fallback') }}
                                                     </p>
@@ -342,7 +410,7 @@
                             @if ($type === ChallengeType::Surprise->value)
                                 <label for="wizard-population" class="mt-4 block text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{{ __('backoffice.challenges.population_max') }}</label>
                                 <input wire:model.live="populationMax" id="wizard-population" type="number" min="1"
-                                       class="mt-1.5 block w-full max-w-[260px] rounded border border-input px-3 py-2.5 text-sm focus:border-primary focus:outline-none">
+                                       class="mt-1.5 block w-full max-w-[260px] rounded border border-input px-3 py-2.5 text-sm focus:border-primary">
                                 @error('populationMax') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
                             @endif
 
@@ -440,7 +508,7 @@
                     @if ($step < \App\Livewire\Challenges\Wizard::LAST_STEP)
                         <button type="button" wire:click="nextStep" wire:loading.attr="disabled"
                                 class="flex shrink-0 items-center gap-2.5 rounded bg-ink px-5 py-3 text-[13.5px] font-bold text-white transition-colors hover:bg-sidebar-line disabled:opacity-60">
-                            {{ __('backoffice.challenges.continue') }} <span class="font-extrabold">→</span>
+                            {{ __('backoffice.challenges.continue') }} <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                         </button>
                     @else
                         <button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save"
@@ -449,7 +517,7 @@
                                 {{ auth()->user()?->hasRole('direction') ? __('backoffice.challenges.create_and_schedule') : __('backoffice.challenges.submit_to_direction') }}
                             </span>
                             <span wire:loading wire:target="save">{{ __('backoffice.challenges.saving') }}</span>
-                            <span class="font-extrabold">→</span>
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                         </button>
                     @endif
                 </div>

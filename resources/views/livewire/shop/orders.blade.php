@@ -1,11 +1,15 @@
 <div>
     <div class="flex flex-wrap items-center gap-2">
+        {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
+             invisible pour un lecteur d'écran sans cet état. --}}
         <button wire:click="filterByStatus(null)"
+                aria-pressed="{{ $status === null ? 'true' : 'false' }}"
                 @class(['rounded-full border px-3.5 py-1.5 text-xs font-semibold', 'border-primary bg-primary-tint text-primary-text' => $status === null, 'border-line text-muted hover:bg-surface' => $status !== null])>
             {{ __('backoffice.shop.all_statuses') }}
         </button>
         @foreach ($statuses as $orderStatus)
             <button wire:key="status-{{ $orderStatus->value }}" wire:click="filterByStatus('{{ $orderStatus->value }}')"
+                    aria-pressed="{{ $status === $orderStatus->value ? 'true' : 'false' }}"
                     @class(['rounded-full border px-3.5 py-1.5 text-xs font-semibold', 'border-primary bg-primary-tint text-primary-text' => $status === $orderStatus->value, 'border-line text-muted hover:bg-surface' => $status !== $orderStatus->value])>
                 {{ $orderStatus->label() }}
             </button>
@@ -13,10 +17,12 @@
 
         <span class="flex-1"></span>
 
-        <div class="flex items-center gap-2 rounded border border-line bg-card px-3 py-1.5">
+        {{-- L'anneau de focus est porté par l'enveloppe : le champ est sans
+             bordure, un anneau sur le champ seul serait collé à l'icône. --}}
+        <div class="flex items-center gap-2 rounded border border-line bg-card px-3 py-1.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
             <svg class="size-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <input wire:model.live.debounce.400ms="search" type="search" placeholder="{{ __('backoffice.shop.col_reference') }} / {{ __('backoffice.shop.col_driver') }}"
-                   class="w-56 border-0 p-0 text-sm focus:outline-none focus:ring-0">
+                   class="w-56 border-0 p-0 text-sm focus:outline-none">
         </div>
     </div>
 
@@ -44,7 +50,15 @@
                         </thead>
                         <tbody>
                             @foreach ($orders as $order)
+                                {{-- Sélection (et non navigation) : la ligne est rendue
+                                     opérable au clavier plutôt que d'être un simple
+                                     `wire:click` inatteignable sans souris. --}}
                                 <tr wire:key="order-{{ $order->id }}" wire:click="select('{{ $order->id }}')"
+                                    role="button" tabindex="0"
+                                    aria-pressed="{{ $selected === $order->id ? 'true' : 'false' }}"
+                                    aria-label="{{ __('backoffice.shop.select_order') }} {{ $order->reference }}"
+                                    wire:keydown.enter="select('{{ $order->id }}')"
+                                    wire:keydown.space.prevent="select('{{ $order->id }}')"
                                     @class(['cursor-pointer border-b border-line last:border-0 hover:bg-surface', 'bg-primary-tint' => $selected === $order->id])>
                                     <td class="px-4 py-3 font-mono text-xs font-semibold text-ink">{{ $order->reference }}</td>
                                     <td class="px-4 py-3 text-sm text-ink">{{ $order->driver->first_name }} {{ $order->driver->last_name }}</td>
@@ -141,7 +155,7 @@
                                     <form wire:submit="markCollected" class="space-y-2">
                                         <label for="pickupCode" class="block text-xs font-semibold text-muted">{{ __('backoffice.shop.pickup_code_prompt') }}</label>
                                         <input wire:model="pickupCode" id="pickupCode" type="text" inputmode="numeric" maxlength="6"
-                                               class="block w-full rounded border border-input px-3 py-2 font-mono text-sm tracking-widest focus:border-primary focus:outline-none">
+                                               class="block w-full rounded border border-input px-3 py-2 font-mono text-sm tracking-widest focus:border-primary">
                                         @error('pickupCode') <p class="text-sm text-err-text">{{ $message }}</p> @enderror
                                         <button type="submit" class="w-full rounded bg-ok-text px-3.5 py-2 text-sm font-semibold text-white hover:opacity-90">
                                             {{ __('backoffice.shop.mark_collected') }}
@@ -155,7 +169,7 @@
                                     <form wire:submit="cancelOrder" class="space-y-2 border-t border-line pt-3">
                                         <label for="cancelReason" class="block text-xs font-semibold text-muted">{{ __('backoffice.shop.cancel_reason') }}</label>
                                         <input wire:model="cancelReason" id="cancelReason" type="text"
-                                               class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary focus:outline-none">
+                                               class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary">
                                         @error('cancelReason') <p class="text-sm text-err-text">{{ $message }}</p> @enderror
                                         <div class="flex gap-2">
                                             <button type="button" wire:click="cancelCancel" class="flex-1 rounded border border-line px-3 py-2 text-sm font-semibold text-muted hover:bg-surface">

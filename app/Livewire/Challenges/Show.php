@@ -49,6 +49,13 @@ class Show extends Component
 
     public string $winnerFilter = 'tous';
 
+    /**
+     * Action destructrice en attente de confirmation (`close_period` ou
+     * `credit_all`). Une modale plutôt que `wire:confirm` : le dialogue natif
+     * bloque l'automatisation navigateur, comme constaté sur les recharges.
+     */
+    public ?string $pendingAction = null;
+
     public function mount(Challenge $challenge): void
     {
         $this->challenge = $challenge;
@@ -92,8 +99,20 @@ class Show extends Component
      * Clôture manuelle : gèle le pool et, pour un classement, passe
      * directement au dépôt des bonus puisqu'il n'y a pas de tirage.
      */
+    public function confirmAction(string $action): void
+    {
+        $this->pendingAction = $action;
+    }
+
+    public function cancelAction(): void
+    {
+        $this->pendingAction = null;
+    }
+
     public function closePeriod(): void
     {
+        $this->pendingAction = null;
+
         $draw = app(DrawService::class);
         $draw->freezePool($this->challenge);
         $this->challenge->refresh();
@@ -149,6 +168,8 @@ class Show extends Component
      */
     public function creditAll(): void
     {
+        $this->pendingAction = null;
+
         $this->challenge->winners()->where('credited', false)->update([
             'credited' => true,
             'credited_by' => auth()->id(),

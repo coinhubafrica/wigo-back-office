@@ -36,7 +36,10 @@
         <div wire:sort="reorder" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($announcements as $announcement)
                 <div wire:key="announcement-{{ $announcement->id }}" wire:sort:item="{{ $announcement->id }}"
-                     class="rounded border border-line bg-card {{ $announcement->is_active ? '' : 'opacity-60' }}">
+                     {{-- Une annonce en pause s'atténue par son fond et non par
+                          `opacity`, qui faisait passer titre et libellés sous le
+                          seuil AA. La pastille « en pause » porte l'état. --}}
+                     class="rounded border border-line {{ $announcement->is_active ? 'bg-card' : 'bg-surface' }}">
                     <div class="flex items-center gap-2 border-b border-line px-4 py-3">
                         <span wire:sort:handle title="{{ __('backoffice.announcements.drag_to_reorder') }}" class="flex cursor-grab items-center text-muted active:cursor-grabbing">
                             <svg class="size-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="6" r="1.4"/><circle cx="16" cy="6" r="1.4"/><circle cx="8" cy="12" r="1.4"/><circle cx="16" cy="12" r="1.4"/><circle cx="8" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/></svg>
@@ -45,14 +48,17 @@
                             {{ $announcement->media_type === \App\Enums\AnnouncementMediaType::Video ? __('backoffice.announcements.video_badge') : __('backoffice.announcements.image_badge') }}
                         </span>
                         <span class="flex-1"></span>
-                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $announcement->is_active ? 'bg-ok-bg text-ok-text' : 'bg-zinc-100 text-zinc-500' }}">
+                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $announcement->is_active ? 'bg-ok-bg text-ok-text' : 'bg-neutral-bg text-neutral-text' }}">
                             {{ $announcement->is_active ? __('backoffice.announcements.status_active') : __('backoffice.announcements.status_paused') }}
                         </span>
                     </div>
                     <div class="p-4">
                         <div class="mb-3 overflow-hidden rounded border border-line bg-surface">
                             @if ($announcement->media_type === \App\Enums\AnnouncementMediaType::Video)
-                                <video src="{{ \Illuminate\Support\Facades\Storage::url($announcement->media_url) }}" class="h-40 w-full object-cover" controls></video>
+                                {{-- `preload="none"` : la grille chargeait chaque vidéo
+                                     au rendu, pour des vignettes rarement lues. --}}
+                                <video src="{{ \Illuminate\Support\Facades\Storage::url($announcement->media_url) }}"
+                                       class="h-40 w-full object-cover" controls preload="none"></video>
                             @else
                                 <img src="{{ \Illuminate\Support\Facades\Storage::url($announcement->media_url) }}" alt="{{ $announcement->title }}" class="h-40 w-full object-cover">
                             @endif
@@ -82,29 +88,19 @@
     @endif
 
     @if ($formOpen)
-        <div wire:click="closeForm" class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/45 p-6 py-10">
-            <div wire:click.stop class="w-full max-w-lg overflow-hidden rounded bg-card shadow-xl">
-                <div class="flex items-center gap-3 border-b border-line px-5 py-4">
-                    <p class="text-sm font-semibold text-ink">
-                        {{ $editingId === null ? __('backoffice.announcements.new') : __('backoffice.announcements.modify') }}
-                    </p>
-                    <span class="flex-1"></span>
-                    <button wire:click="closeForm" class="flex size-8 items-center justify-center rounded text-muted hover:bg-surface hover:text-ink">
-                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
-                    </button>
-                </div>
-
+        <x-modal close="closeForm" align="start"
+                 :title="$editingId === null ? __('backoffice.announcements.new') : __('backoffice.announcements.modify')">
                 <form wire:submit="save" class="space-y-4 px-5 py-4">
                     <div>
                         <label for="title" class="mb-1.5 block text-xs font-semibold text-muted">{{ __('backoffice.announcements.field_title') }}</label>
                         <input wire:model="title" id="title" type="text"
-                               class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary focus:outline-none">
+                               class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary">
                         @error('title') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label for="mediaType" class="mb-1.5 block text-xs font-semibold text-muted">{{ __('backoffice.announcements.field_media_type') }}</label>
-                        <select wire:model="mediaType" id="mediaType" class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary focus:outline-none">
+                        <select wire:model="mediaType" id="mediaType" class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary">
                             <option value="image">{{ __('backoffice.announcements.image_badge') }}</option>
                             <option value="video">{{ __('backoffice.announcements.video_badge') }}</option>
                         </select>
@@ -132,13 +128,12 @@
                         {{ $editingId === null ? __('backoffice.announcements.create') : __('backoffice.announcements.save') }}
                     </button>
                 </div>
-            </div>
-        </div>
+        </x-modal>
     @endif
 
     @if ($confirmingDeleteId !== null)
-        <div wire:click="cancelDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/45 p-6">
-            <div wire:click.stop class="w-full max-w-sm overflow-hidden rounded bg-card shadow-xl">
+        <x-modal close="cancelDelete" max-width="max-w-sm"
+                 :label="__('backoffice.announcements.confirm_delete_title')">
                 <div class="px-5 pb-4 pt-5">
                     <p class="text-sm font-semibold text-ink">{{ __('backoffice.announcements.confirm_delete_title') }}</p>
                     <p class="mt-1.5 text-sm text-muted">{{ __('backoffice.announcements.confirm_delete_body') }}</p>
@@ -151,7 +146,6 @@
                         {{ __('backoffice.announcements.delete') }}
                     </button>
                 </div>
-            </div>
-        </div>
+        </x-modal>
     @endif
 </div>

@@ -26,7 +26,10 @@
 
     <div class="mt-5 flex flex-wrap items-center gap-3">
         <div class="flex flex-wrap gap-1.5">
+            {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
+                 invisible pour un lecteur d'écran sans cet état. --}}
             <button wire:click="filterByState(null)"
+                    aria-pressed="{{ $state === null ? 'true' : 'false' }}"
                     @class([
                         'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
                         'border-primary bg-primary-tint text-primary-text' => $state === null,
@@ -36,6 +39,7 @@
             </button>
             @foreach (\App\Enums\CnpsMonthStatus::cases() as $case)
                 <button wire:click="filterByState('{{ $case->value }}')"
+                        aria-pressed="{{ $state === $case->value ? 'true' : 'false' }}"
                         @class([
                             'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
                             'border-primary bg-primary-tint text-primary-text' => $state === $case->value,
@@ -49,7 +53,7 @@
         <span class="flex-1"></span>
 
         <select wire:model.live="period"
-                class="rounded border border-input bg-card px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none">
+                class="rounded border border-input bg-card px-3 py-2 text-sm text-ink focus:border-primary">
             @foreach ($periodOptions as $value => $label)
                 <option value="{{ $value }}">{{ $label }}</option>
             @endforeach
@@ -57,7 +61,7 @@
 
         <input wire:model.live.debounce.400ms="search" type="search"
                placeholder="{{ __('backoffice.cnps.search_placeholder') }}"
-               class="w-80 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary focus:outline-none">
+               class="w-80 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary">
     </div>
 
     <div class="mt-4 overflow-hidden rounded border border-line bg-card">
@@ -98,13 +102,20 @@
                                     'bg-ok-bg text-ok-text' => $status === \App\Enums\CnpsMonthStatus::Paid,
                                     'bg-warn-bg text-warn-text' => $status === \App\Enums\CnpsMonthStatus::Partial,
                                     'bg-err-bg text-err-text' => $status === \App\Enums\CnpsMonthStatus::Late,
-                                    'bg-zinc-100 text-muted' => $status === \App\Enums\CnpsMonthStatus::Pending,
+                                    'bg-neutral-bg text-neutral-text' => $status === \App\Enums\CnpsMonthStatus::Pending,
                                 ])>{{ $status->label() }}</span>
                             </td>
                             <td class="border-b border-line px-4 py-2.5 text-[13px] text-muted">
                                 {{ trans_choice('backoffice.cnps.payments_count', $row->period_payments, ['count' => $row->period_payments]) }}
                                 @if ($row->period_proofs > 0)
-                                    <span class="ml-1.5" title="{{ __('backoffice.cnps.proof_available') }}">📎</span>
+                                    {{-- Trombone en SVG et non en emoji : le rendu
+                                         variait selon l'OS et `title` seul n'est pas
+                                         un nom accessible fiable. --}}
+                                    <svg class="ml-1.5 inline-block size-3.5 align-text-bottom text-muted" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                                         role="img" aria-label="{{ __('backoffice.cnps.proof_available') }}">
+                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                                    </svg>
                                 @endif
                             </td>
                             <td class="border-b border-line px-4 py-2.5 text-right">

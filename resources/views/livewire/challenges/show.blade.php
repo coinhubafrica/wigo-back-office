@@ -10,7 +10,9 @@
 <div class="flex flex-col gap-4">
     <a href="{{ route(\App\Enums\BackOfficeModule::Challenges->route()) }}" wire:navigate
        class="flex w-fit items-center gap-2 text-sm font-semibold text-ink hover:text-primary-text">
-        <span class="text-base leading-none">←</span>
+        <svg class="size-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
         {{ __('backoffice.challenges.all_challenges') }}
     </a>
 
@@ -43,8 +45,9 @@
                 @if ($challenge->status === ChallengeStatus::PendingApproval)
                     @can('approveSurpriseChallenge')
                         <button wire:click="approve"
-                                class="rounded bg-ok-text px-3.5 py-2.5 text-[13px] font-bold text-white hover:brightness-110">
-                            ✓ {{ __('backoffice.challenges.approve_challenge') }}
+                                class="flex items-center justify-center gap-2 rounded bg-ok-text px-3.5 py-2.5 text-[13px] font-bold text-white hover:brightness-110">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                            {{ __('backoffice.challenges.approve_challenge') }}
                         </button>
                         <button wire:click="$toggle('showRejectForm')"
                                 class="rounded border border-err-text px-3.5 py-2.5 text-[13px] font-bold text-err-text hover:bg-err-bg">
@@ -52,14 +55,12 @@
                         </button>
                     @endcan
                 @elseif ($challenge->status === ChallengeStatus::Active && $canManage)
-                    <button wire:click="closePeriod"
-                            wire:confirm="{{ __('backoffice.challenges.confirm_close_period') }}"
+                    <button wire:click="confirmAction('close_period')"
                             class="rounded border border-input bg-line px-3.5 py-2.5 text-left text-[13px] font-bold text-ink hover:bg-input">
                         {{ __('backoffice.challenges.close_period_now') }}
                     </button>
                 @elseif ($challenge->status === ChallengeStatus::PayoutPending && $canManage && $creditedCount < $totalWinners)
-                    <button wire:click="creditAll"
-                            wire:confirm="{{ __('backoffice.challenges.confirm_credit_all') }}"
+                    <button wire:click="confirmAction('credit_all')"
                             class="rounded bg-ok-text px-3.5 py-2.5 text-left text-[13px] font-bold text-white hover:brightness-110">
                         {{ __('backoffice.challenges.deposit_all_on_yango') }}
                     </button>
@@ -83,7 +84,7 @@
                 </label>
                 <input wire:model="rejectionReason" id="rejection" type="text" required
                        placeholder="{{ __('backoffice.challenges.rejection_reason_placeholder') }}"
-                       class="mt-1.5 block w-full max-w-xl rounded border border-input px-3 py-2.5 text-sm focus:border-primary focus:outline-none">
+                       class="mt-1.5 block w-full max-w-xl rounded border border-input px-3 py-2.5 text-sm focus:border-primary">
                 @error('rejectionReason') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
                 <div class="mt-3 flex gap-2">
                     <button type="submit" class="rounded bg-err-text px-4 py-2 text-[13px] font-bold text-white">
@@ -107,10 +108,16 @@
             @endforeach
         </div>
 
+        {{-- Chevron pivotant en SVG plutôt que ▲/▼, et `aria-expanded` : l'état
+             déplié n'était porté que par le glyphe. --}}
         <button wire:click="$toggle('definitionOpen')"
+                aria-expanded="{{ $definitionOpen ? 'true' : 'false' }}"
                 class="flex w-full items-center gap-2 border-t border-line bg-surface px-5 py-3 text-left text-[13px] font-semibold text-ink hover:bg-line/60">
             {{ $definitionOpen ? __('backoffice.challenges.hide_definition') : __('backoffice.challenges.show_definition') }}
-            <span class="text-[10px] text-muted">{{ $definitionOpen ? '▲' : '▼' }}</span>
+            <svg @class(['size-3.5 text-muted transition-transform', 'rotate-180' => $definitionOpen])
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
+            </svg>
         </button>
 
         @if ($definitionOpen)
@@ -228,7 +235,7 @@
                         <button wire:click="executeDraw" @disabled(! $challenge->draw_seed)
                                 class="mt-4 flex w-full items-center justify-between rounded bg-primary px-5 py-3.5 text-[14px] font-bold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
                             {{ $challenge->type === ChallengeType::Surprise ? __('backoffice.challenges.draw_random_winners') : __('backoffice.challenges.execute_draw') }}
-                            <span class="font-extrabold">→</span>
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                         </button>
                     @else
                         <p class="mt-4 rounded bg-warn-bg px-4 py-3 text-[13px] text-warn-text">
@@ -247,8 +254,11 @@
             <p class="text-xs text-muted">{{ $progress['caption'] }}</p>
         </div>
 
-        <div class="mt-3 h-[6px] overflow-hidden rounded-full bg-line">
-            <div class="h-full rounded-full bg-primary transition-[width] duration-500" style="width: {{ $progress['percent'] }}%"></div>
+        <div class="mt-3 h-[6px] overflow-hidden rounded-full bg-line"
+             role="progressbar" aria-valuenow="{{ (int) $progress['percent'] }}"
+             aria-valuemin="0" aria-valuemax="100"
+             aria-label="{{ $progress['title'] }}">
+            <div class="h-full rounded-full bg-primary transition-[width] duration-500 motion-reduce:transition-none" style="width: {{ $progress['percent'] }}%"></div>
         </div>
 
         <div class="mt-5 grid gap-5 sm:grid-cols-3">
@@ -269,9 +279,13 @@
                 <span class="ml-1.5 text-sm font-normal text-muted">{{ $this->listSummary() }}</span>
             </p>
             <button wire:click="$toggle('listOpen')"
+                    aria-expanded="{{ $listOpen ? 'true' : 'false' }}"
                     class="flex items-center gap-2 rounded border border-line bg-card px-3.5 py-2 text-[13px] font-bold text-ink hover:bg-surface">
                 {{ $listOpen ? __('backoffice.challenges.hide_list') : __('backoffice.challenges.show_list') }}
-                <span class="text-[10px] text-muted">{{ $listOpen ? '▲' : '▼' }}</span>
+                <svg @class(['size-3.5 text-muted transition-transform', 'rotate-180' => $listOpen])
+                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"/>
+                </svg>
             </button>
         </div>
 
@@ -281,7 +295,7 @@
             <div class="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3.5">
                 <input wire:model.live.debounce.400ms="listSearch" type="search"
                        placeholder="{{ __('backoffice.challenges.search_driver') }}"
-                       class="min-w-[240px] flex-1 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary focus:outline-none">
+                       class="min-w-[240px] flex-1 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary">
 
                 @if ($challenge->type === ChallengeType::Leaderboard)
                     @foreach ([
@@ -289,7 +303,10 @@
                         'gagnants' => __('backoffice.challenges.in_top', ['top' => (int) ($challenge->winners_count ?? 0)]),
                         'hors' => __('backoffice.challenges.outside_ranking'),
                     ] as $key => $label)
+                        {{-- `aria-pressed` : la sélection est signalée par la couleur
+                             seule, invisible pour un lecteur d'écran sans cet état. --}}
                         <button wire:click="$set('listFilter', '{{ $key }}')"
+                                aria-pressed="{{ $listFilter === $key ? 'true' : 'false' }}"
                                 @class([
                                     'rounded-full border px-3.5 py-1.5 text-xs font-semibold',
                                     'border-primary bg-primary-tint text-primary-text' => $listFilter === $key,
@@ -329,7 +346,7 @@
                                     <td class="border-b border-line px-4 py-2.5 text-right text-[13px] font-semibold text-ink">{{ $row['tickets'] }}</td>
                                 @endif
                                 <td class="border-b border-line px-4 py-2.5">
-                                    <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $row['isWinner'] ? 'bg-ok-bg text-ok-text' : 'bg-zinc-100 text-muted' }}">
+                                    <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $row['isWinner'] ? 'bg-ok-bg text-ok-text' : 'bg-neutral-bg text-neutral-text' }}">
                                         {{ $row['label'] }}
                                     </span>
                                 </td>
@@ -397,7 +414,7 @@
                 <div class="flex items-center gap-3">
                     <b class="text-[15px] text-ok-text">{{ $this->committedBudget() }}</b>
                     @if ($canManage && $creditedCount < $totalWinners)
-                        <button wire:click="creditAll" wire:confirm="{{ __('backoffice.challenges.confirm_credit_all') }}"
+                        <button wire:click="confirmAction('credit_all')"
                                 class="rounded bg-primary px-4 py-2.5 text-[13px] font-bold text-white hover:bg-primary-hover">
                             {{ __('backoffice.challenges.deposit_all') }}
                         </button>
@@ -408,14 +425,17 @@
             <div class="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3.5">
                 <input wire:model.live.debounce.400ms="winnerSearch" type="search"
                        placeholder="{{ __('backoffice.challenges.search_winner') }}"
-                       class="min-w-[240px] flex-1 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary focus:outline-none">
+                       class="min-w-[240px] flex-1 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary">
 
                 @foreach ([
                     'tous' => __('backoffice.challenges.all'),
                     'adeposer' => __('backoffice.challenges.to_deposit'),
                     'deposes' => __('backoffice.challenges.deposited'),
                 ] as $key => $label)
+                    {{-- `aria-pressed` : la sélection est signalée par la couleur
+                         seule, invisible pour un lecteur d'écran sans cet état. --}}
                     <button wire:click="$set('winnerFilter', '{{ $key }}')"
+                            aria-pressed="{{ $winnerFilter === $key ? 'true' : 'false' }}"
                             @class([
                                 'rounded-full border px-3.5 py-1.5 text-xs font-semibold',
                                 'border-primary bg-primary-tint text-primary-text' => $winnerFilter === $key,
@@ -475,6 +495,39 @@
                 </table>
             </div>
         </div>
+    @endif
+
+    {{-- Modale plutôt que `wire:confirm` : le dialogue natif bloque
+         l'automatisation navigateur (cf. le module Recharges). --}}
+    @if ($pendingAction !== null)
+        @php
+            $isClosePeriod = $pendingAction === 'close_period';
+            $confirmLabel = $isClosePeriod
+                ? __('backoffice.challenges.close_period_now')
+                : __('backoffice.challenges.deposit_all_on_yango');
+            $confirmBody = $isClosePeriod
+                ? __('backoffice.challenges.confirm_close_period')
+                : __('backoffice.challenges.confirm_credit_all');
+        @endphp
+        <x-modal close="cancelAction" max-width="max-w-sm" :label="$confirmBody">
+            <div class="px-5 pb-4 pt-5">
+                <p class="text-sm font-semibold text-ink">{{ $confirmLabel }}</p>
+                <p class="mt-1.5 text-sm text-muted">{{ $confirmBody }}</p>
+            </div>
+            <div class="flex justify-end gap-2.5 border-t border-line px-5 py-4">
+                <button wire:click="cancelAction" class="rounded border border-line bg-card px-3.5 py-2 text-sm font-semibold text-muted hover:bg-surface">
+                    {{ __('backoffice.challenges.cancel') }}
+                </button>
+                <button wire:click="{{ $isClosePeriod ? 'closePeriod' : 'creditAll' }}"
+                        @class([
+                            'rounded px-4 py-2 text-sm font-semibold text-white',
+                            'bg-primary hover:bg-primary-hover' => $isClosePeriod,
+                            'bg-ok-text hover:brightness-110' => ! $isClosePeriod,
+                        ])>
+                    {{ $confirmLabel }}
+                </button>
+            </div>
+        </x-modal>
     @endif
 
     <livewire:challenges.wizard wire:key="challenge-wizard-show" />

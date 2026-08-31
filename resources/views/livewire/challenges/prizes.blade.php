@@ -26,7 +26,7 @@
                             {{ __('backoffice.prizes.field_name') }}
                         </label>
                         <input wire:model="name" id="prize-name" type="text"
-                               class="mt-1.5 block w-full rounded border border-input bg-card px-3 py-2.5 text-sm focus:border-primary focus:outline-none">
+                               class="mt-1.5 block w-full rounded border border-input bg-card px-3 py-2.5 text-sm focus:border-primary">
                         @error('name') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
                     </div>
 
