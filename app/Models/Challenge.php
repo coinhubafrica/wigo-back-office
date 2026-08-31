@@ -50,9 +50,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $draw_pool_hash
  * @property CarbonImmutable|null $drawn_at
  * @property string|null $rejection_reason
- * @property int|null $approved_by
+ * @property string|null $approved_by
  * @property CarbonImmutable|null $approved_at
- * @property int $created_by
+ * @property string $created_by
  * @property-read Prize|null $prize
  * @property-read User|null $approvedBy
  * @property-read User $createdBy

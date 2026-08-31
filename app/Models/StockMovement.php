@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property string $id
  * @property string $product_id
- * @property int|null $user_id
+ * @property string|null $user_id
  * @property string|null $shop_order_id
  * @property StockMovementType $movement_type
  * @property int $quantity

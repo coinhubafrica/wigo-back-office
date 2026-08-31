@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * pas et ne se supprime pas.
  *
  * @property string $id
- * @property int|null $user_id
+ * @property string|null $user_id
  * @property string|null $driver_id
  * @property string $action
  * @property string|null $subject_type

@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $prize_id
  * @property int|null $winning_range_number
  * @property bool $credited
- * @property int|null $credited_by
+ * @property string|null $credited_by
  * @property CarbonImmutable|null $credited_at
  * @property-read Challenge $challenge
  * @property-read Driver $driver

@@ -65,10 +65,10 @@ return new class extends Migration
 
             // Cycle de vie.
             $table->text('rejection_reason')->nullable();
-            $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUlid('approved_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('approved_at')->nullable();
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
+            $table->foreignUlid('created_by')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
         });
     }

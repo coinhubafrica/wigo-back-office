@@ -26,4 +26,11 @@ Both are nullable: a driver or vehicle not yet reconciled with the park simply y
 
 `vehicles.vehicle_model_id` (nullable) rapproche le véhicule du référentiel boutique. `brand` et `model` restent les chaînes libres de Yango et font foi : le lien est un rapprochement au mieux, jamais saisi à la main, nul si le catalogue ignore ce modèle.
 
-`stock_movements.user_id` est un `foreignId` (les agents sont dans `users`, clé auto-incrémentée), pas un `foreignUlid` comme le reste du schéma.
+## Le schéma est en ULID de bout en bout, `users` compris
+
+`users.id` a longtemps été la seule clé auto-incrémentée du schéma ; elle est passée en ULID (`HasUlids` sur le modèle). Toute colonne qui référence un agent est donc un `foreignUlid` : `stock_movements.user_id`, `audit_logs.user_id`, `challenges.approved_by` / `created_by`, `challenge_winners.credited_by`, ainsi que `sessions.user_id`.
+
+Deux exceptions volontaires demeurent, à ne pas « corriger » :
+
+- `roles.id` et `permissions.id` restent des entiers auto-incrémentés — spatie/laravel-permission les gère lui-même et seule sa clé de morph a bougé (`config/permission.php` : `model_morph_key => 'model_uuid'`, colonnes `model_has_roles.model_uuid` / `model_has_permissions.model_uuid` en `ulid`).
+- Les tables pivot de spatie portent une clé primaire composite incluant cette colonne : la retyper impose de reconstruire la clé et l'index.

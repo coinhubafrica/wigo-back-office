@@ -18,16 +18,14 @@ return new class extends Migration
      * des faits : le libellé ne doit pas changer parce que le code a évolué
      * depuis, ni dépendre de lignes qui peuvent disparaître.
      *
-     * `user_id` est un `foreignId` — les agents vivent dans `users`, à clé
-     * auto-incrémentée, contrairement au reste du schéma en ULID. Nul quand
-     * l'action vient d'un automate (webhook, tâche planifiée) plutôt que d'un
-     * agent.
+     * `user_id` est nul quand l'action vient d'un automate (webhook, tâche
+     * planifiée) plutôt que d'un agent.
      */
     public function up(): void
     {
         Schema::create('audit_logs', function (Blueprint $table): void {
             $table->ulid('id')->primary();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignUlid('user_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignUlid('driver_id')->nullable()->constrained()->nullOnDelete();
             $table->string('action', 60)->index();
             $table->nullableUlidMorphs('subject');

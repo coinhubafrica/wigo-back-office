@@ -19,7 +19,7 @@ return new class extends Migration
         Schema::create('stock_movements', function (Blueprint $table): void {
             $table->ulid('id')->primary();
             $table->foreignUlid('product_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignUlid('user_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignUlid('shop_order_id')->nullable()->constrained()->nullOnDelete();
             $table->string('movement_type', 20)->index();
             $table->integer('quantity');

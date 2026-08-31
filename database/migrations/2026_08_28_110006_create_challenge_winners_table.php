@@ -28,7 +28,7 @@ return new class extends Migration
             $table->unsignedInteger('winning_range_number')->nullable();
 
             $table->boolean('credited')->default(false);
-            $table->foreignId('credited_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUlid('credited_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('credited_at')->nullable();
             $table->timestamp('created_at')->nullable();
         });
