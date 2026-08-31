@@ -1,11 +1,13 @@
 <?php
 
 use App\Models\IdempotencyKey;
+use App\Models\MessageAttachment;
 use App\Models\OtpCode;
 use App\Settings\OtpSettings;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Storage;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -31,3 +33,19 @@ Schedule::call(fn () => IdempotencyKey::query()
     ->delete())
     ->daily()
     ->name('idempotency:prune-keys');
+
+// Purge des pièces jointes jamais rattachées à un message : le mobile
+// téléverse d'abord et rattache ensuite, un envoi abandonné laisse donc un
+// fichier orphelin. Le fichier part avec la ligne — une purge qui ne
+// nettoierait que la base laisserait le disque grossir sans fin.
+Schedule::call(function (): void {
+    MessageAttachment::query()
+        ->whereNull('message_id')
+        ->where('created_at', '<', now()->subDay())
+        ->each(function (MessageAttachment $attachment): void {
+            Storage::disk($attachment->disk)->delete($attachment->path);
+            $attachment->delete();
+        });
+})
+    ->daily()
+    ->name('support:prune-orphan-attachments');

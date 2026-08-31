@@ -48,4 +48,9 @@ return [
         'reference_updated' => 'Votre montant mensuel de référence a été mis à jour.',
         'proof_missing' => 'Aucun justificatif n\'est attaché à cette déclaration.',
     ],
+
+    'support' => [
+        'message_sent' => 'Votre message a été transmis au support.',
+        'attachment_unavailable' => 'Une des pièces jointes est introuvable ou déjà envoyée.',
+    ],
 ];

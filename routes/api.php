@@ -2,11 +2,15 @@
 
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BroadcastController;
 use App\Http\Controllers\Api\V1\ChallengeController;
 use App\Http\Controllers\Api\V1\CnpsController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ShopController;
+use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\WalletController;
 use App\Http\Controllers\Api\WaveWebhookController;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,6 +32,14 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::post('auth/otp/verify', [AuthController::class, 'verifyOtp'])
         ->middleware('throttle:otp-verify')
         ->name('auth.otp.verify');
+
+    /*
+    | Autorisation des canaux privés pour le mobile : jeton Sanctum, sans
+    | cookie ni CSRF. Route distincte de celle du back-office pour que chaque
+    | garde reste sans ambiguïté, et pour que l'habilitation `mobile:*`
+    | s'applique — un jeton d'un autre usage ne doit pas pouvoir s'abonner.
+    */
+    Broadcast::routes(['middleware' => ['auth:sanctum', 'ability:mobile:*', 'throttle:mobile']]);
 
     Route::middleware(['auth:sanctum', 'ability:mobile:*', 'throttle:mobile'])->group(function (): void {
         // Profil : accessible même suspendu, pour que l'application puisse
@@ -84,6 +96,45 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('wallet/recharges', [WalletController::class, 'recharges'])->name('wallet.recharges.index');
         Route::get('wallet/recharges/{transaction}', [WalletController::class, 'showRecharge'])
             ->name('wallet.recharges.show');
+
+        /*
+        | Support. La lecture ET l'écriture restent ouvertes à un conducteur
+        | suspendu, à rebours des autres modules : contester sa suspension est
+        | précisément ce pour quoi il a besoin du support, et
+        | `EnsureDriverIsActive` renvoie déjà le motif pour que l'application
+        | l'affiche. L'écriture arrive à l'étape suivante.
+        */
+        Route::prefix('support')->name('support.')->group(function (): void {
+            Route::get('conversation', [SupportController::class, 'conversation'])->name('conversation');
+            Route::get('conversation/messages', [SupportController::class, 'messages'])->name('messages.index');
+            Route::post('conversation/read', [SupportController::class, 'markRead'])->name('read');
+            Route::get('unread', [SupportController::class, 'unread'])->name('unread');
+
+            // Pièce jointe : lecture par URL signée, comme la photo de profil.
+            Route::get('attachments/{attachment}', [SupportController::class, 'downloadAttachment'])
+                ->middleware('signed')
+                ->name('attachments.show');
+
+            // Écriture : idempotente, et volontairement hors `driver.active`.
+            Route::middleware('idempotency')->group(function (): void {
+                Route::post('conversation/messages', [SupportController::class, 'sendMessage'])
+                    ->name('messages.store');
+                Route::post('attachments', [SupportController::class, 'uploadAttachment'])
+                    ->name('attachments.store');
+            });
+        });
+
+        // Diffusions reçues. En lecture seule : une diffusion ne se répond
+        // pas, l'application ouvre le fil du support si besoin.
+        Route::get('broadcasts', [BroadcastController::class, 'index'])->name('broadcasts.index');
+        Route::post('broadcasts/{broadcast}/read', [BroadcastController::class, 'markRead'])
+            ->name('broadcasts.read');
+
+        // Écran « Notifications » : la table est écrite d'abord, le push n'est
+        // qu'un réveil. Lisible même suspendu, comme le profil.
+        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+        Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
         Route::middleware(['driver.active', 'idempotency'])->group(function (): void {
             Route::post('shop/orders', [ShopController::class, 'storeOrder'])->name('shop.orders.store');

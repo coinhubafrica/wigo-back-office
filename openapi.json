@@ -470,6 +470,140 @@
                 }
             }
         },
+        "/broadcasting/auth": {
+            "get": {
+                "operationId": "v1.",
+                "summary": "Authenticate the request for channel access",
+                "tags": [
+                    "Broadcast"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/broadcasts": {
+            "get": {
+                "operationId": "v1.broadcasts.index",
+                "description": "Les plus r\u00e9centes d'abord. Seules celles qui lui ont \u00e9t\u00e9 adress\u00e9es\napparaissent : l'audience est fig\u00e9e \u00e0 l'envoi.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la derni\u00e8re page), \u00e0 renvoyer dans `?cursor=`. `per_page`\nest plafonn\u00e9 \u00e0 50.",
+                "summary": "Diffusions du conducteur",
+                "tags": [
+                    "Broadcast"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/BroadcastResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/broadcasts/{broadcast}/read": {
+            "post": {
+                "operationId": "v1.broadcasts.read",
+                "description": "R\u00e9pond 404 pour une diffusion qui ne lui a pas \u00e9t\u00e9 adress\u00e9e : rien ne\ndoit fuir d'un compte \u00e0 l'autre, pas m\u00eame son existence.",
+                "summary": "Marquer une diffusion comme lue",
+                "tags": [
+                    "Broadcast"
+                ],
+                "parameters": [
+                    {
+                        "name": "broadcast",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/BroadcastResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/challenges": {
             "get": {
                 "operationId": "v1.challenges",
@@ -1151,6 +1285,160 @@
                 }
             }
         },
+        "/notifications": {
+            "get": {
+                "operationId": "v1.notifications.index",
+                "description": "Les plus r\u00e9centes d'abord. La charge utile de chaque notification est\naplatie \u00e0 la racine (`type`, `category`, `title`, `body`, `deeplink`).\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la derni\u00e8re page), \u00e0 renvoyer dans `?cursor=`. `per_page`\nest plafonn\u00e9 \u00e0 50.",
+                "summary": "Notifications du conducteur",
+                "tags": [
+                    "Notification"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/NotificationResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/notifications/read-all": {
+            "post": {
+                "operationId": "v1.notifications.read-all",
+                "summary": "Tout marquer comme lu",
+                "tags": [
+                    "Notification"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "unread_count": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "unread_count"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/notifications/{notification}/read": {
+            "post": {
+                "operationId": "v1.notifications.read",
+                "description": "R\u00e9pond 404 pour une notification qui n'appartient pas au conducteur :\nrien ne doit fuir d'un compte \u00e0 l'autre, pas m\u00eame son existence.",
+                "summary": "Marquer une notification comme lue",
+                "tags": [
+                    "Notification"
+                ],
+                "parameters": [
+                    {
+                        "name": "notification",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/NotificationResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/shop/products": {
             "get": {
                 "operationId": "v1.shop.products",
@@ -1434,6 +1722,465 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/support/conversation": {
+            "get": {
+                "operationId": "v1.support.conversation",
+                "description": "L'\u00e9tat de la conversation : aper\u00e7u du dernier message et nombre de\nmessages non lus, de quoi alimenter la pastille de l'\u00e9cran d'accueil.\n\nLa conversation est cr\u00e9\u00e9e \u00e0 la vol\u00e9e si le conducteur n'a jamais \u00e9crit,\npour que l'application n'ait pas de cas particulier \u00e0 traiter.",
+                "summary": "Fil du conducteur",
+                "tags": [
+                    "Support"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ConversationResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/support/conversation/messages": {
+            "get": {
+                "operationId": "v1.support.messages.index",
+                "description": "Tout l'historique du conducteur, du plus r\u00e9cent au plus ancien.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la derni\u00e8re page), \u00e0 renvoyer dans `?cursor=`. `per_page`\nest plafonn\u00e9 \u00e0 50.",
+                "summary": "Messages du fil",
+                "tags": [
+                    "Support"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/MessageResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "v1.support.messages.store",
+                "description": "Le message rejoint le fil du conducteur. S'il existe un ticket en cours,\nil s'y rattache ; sinon il attend d'\u00eatre tri\u00e9 par un agent \u2014 le\nconducteur, lui, ne voit qu'une conversation continue.\n\n`Idempotency-Key` (UUID) est obligatoire : un renvoi apr\u00e8s coupure\nr\u00e9seau ne doit pas poster deux fois.",
+                "summary": "\u00c9crire au support",
+                "tags": [
+                    "Support"
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "description": "UUID propre \u00e0 la requ\u00eate. Renvoyer deux fois le m\u00eame appel avec la m\u00eame cl\u00e9 ne cr\u00e9e qu'une ressource : la r\u00e9ponse enregistr\u00e9e est rendue telle quelle. La cl\u00e9 expire au bout de 24 h.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendSupportMessageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/MessageResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "409": {
+                        "description": "La cl\u00e9 a d\u00e9j\u00e0 servi pour une requ\u00eate au corps diff\u00e9rent ; rien n'est cr\u00e9\u00e9.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "Erreurs par champ ; ici la cl\u00e9 `Idempotency-Key`."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/support/conversation/read": {
+            "post": {
+                "operationId": "v1.support.read",
+                "description": "Remet \u00e0 z\u00e9ro le compteur de non-lus et horodate les messages re\u00e7us.\nSans effet si tout \u00e9tait d\u00e9j\u00e0 lu.",
+                "summary": "Marquer le fil comme lu",
+                "tags": [
+                    "Support"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ConversationResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/support/unread": {
+            "get": {
+                "operationId": "v1.support.unread",
+                "description": "R\u00e9ponse minimale, pour la pastille : l'application n'a pas \u00e0 charger le\nfil entier pour savoir s'il y a du nouveau.",
+                "summary": "Nombre de messages non lus",
+                "tags": [
+                    "Support"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "unread_count": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "unread_count"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/support/attachments/{attachment}": {
+            "get": {
+                "operationId": "v1.support.attachments.show",
+                "description": "Accessible par URL sign\u00e9e seulement : le fichier vit sur le disque\npriv\u00e9 et n'a pas d'URL publique. R\u00e9pond 403 pour la pi\u00e8ce jointe d'un\nautre conducteur \u2014 l'URL sign\u00e9e en atteste, la v\u00e9rification aussi.",
+                "summary": "T\u00e9l\u00e9charger une pi\u00e8ce jointe",
+                "tags": [
+                    "Support"
+                ],
+                "parameters": [
+                    {
+                        "name": "attachment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Transfer-Encoding": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chunked"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/support/attachments": {
+            "post": {
+                "operationId": "v1.support.attachments.store",
+                "description": "Renvoie l'identifiant \u00e0 passer dans `attachment_ids` \u00e0 l'envoi du\nmessage. En deux temps d\u00e9lib\u00e9r\u00e9ment : le d\u00e9p\u00f4t est lent et se r\u00e9essaie\nseul, et l'envoi du message reste en JSON \u2014 donc compatible avec\nl'empreinte de corps de l'idempotence.\n\nUne pi\u00e8ce jointe jamais rattach\u00e9e est purg\u00e9e au bout de 24 heures.",
+                "summary": "D\u00e9poser une pi\u00e8ce jointe",
+                "tags": [
+                    "Support"
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "description": "UUID propre \u00e0 la requ\u00eate. Renvoyer deux fois le m\u00eame appel avec la m\u00eame cl\u00e9 ne cr\u00e9e qu'une ressource : la r\u00e9ponse enregistr\u00e9e est rendue telle quelle. La cl\u00e9 expire au bout de 24 h.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreSupportAttachmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/MessageAttachmentResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "409": {
+                        "description": "La cl\u00e9 a d\u00e9j\u00e0 servi pour une requ\u00eate au corps diff\u00e9rent ; rien n'est cr\u00e9\u00e9.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "Erreurs par champ ; ici la cl\u00e9 `Idempotency-Key`."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1749,6 +2496,112 @@
                 ],
                 "title": "AnnouncementResource"
             },
+            "BroadcastResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string",
+                        "examples": [
+                            "Maintenance dimanche"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "deeplink": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Cible \u00e0 ouvrir dans l'application.",
+                        "examples": [
+                            "wigo://recharge"
+                        ]
+                    },
+                    "read_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Horodatage de lecture par ce conducteur. `null` s'il ne l'a pas\nencore ouverte. Vient de `broadcast_recipients`, ramen\u00e9 par jointure : la colonne\nn'appartient pas \u00e0 `broadcasts`, d'o\u00f9 la lecture par\n`getAttribute()` plut\u00f4t qu'en propri\u00e9t\u00e9."
+                    },
+                    "sent_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "body",
+                    "deeplink",
+                    "read_at",
+                    "sent_at"
+                ],
+                "title": "BroadcastResource"
+            },
+            "ConversationResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "unread_count": {
+                        "type": "integer",
+                        "description": "Messages non lus par le conducteur.",
+                        "examples": [
+                            2
+                        ]
+                    },
+                    "last_message_sender_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Auteur du dernier message. `null` s'il est syst\u00e8me.",
+                        "enum": [
+                            "user",
+                            "driver",
+                            null
+                        ]
+                    },
+                    "last_message_preview": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "examples": [
+                            "Nous avons bien re\u00e7u votre demande."
+                        ]
+                    },
+                    "last_message_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "driver_read_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "unread_count",
+                    "last_message_sender_type",
+                    "last_message_preview",
+                    "last_message_at",
+                    "driver_read_at"
+                ],
+                "title": "ConversationResource"
+            },
             "DriverResource": {
                 "type": "object",
                 "properties": {
@@ -1848,6 +2701,189 @@
                     "delivery"
                 ],
                 "title": "FulfilmentMode"
+            },
+            "MessageAttachmentResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "URL sign\u00e9e, valable une heure."
+                    },
+                    "original_name": {
+                        "type": "string",
+                        "examples": [
+                            "recu-wave.jpg"
+                        ]
+                    },
+                    "mime_type": {
+                        "type": "string",
+                        "examples": [
+                            "image/jpeg"
+                        ]
+                    },
+                    "size_bytes": {
+                        "type": "integer",
+                        "description": "Taille en octets.",
+                        "examples": [
+                            184320
+                        ]
+                    },
+                    "width": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "url",
+                    "original_name",
+                    "mime_type",
+                    "size_bytes",
+                    "width",
+                    "height"
+                ],
+                "title": "MessageAttachmentResource"
+            },
+            "MessageResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "sender_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Auteur du message. `null` pour un message syst\u00e8me.",
+                        "enum": [
+                            "user",
+                            "driver",
+                            null
+                        ]
+                    },
+                    "sender_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nom de l'agent, fig\u00e9 \u00e0 l'envoi.",
+                        "examples": [
+                            "Mariam KON\u00c9"
+                        ]
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "text",
+                            "attachment",
+                            "system"
+                        ]
+                    },
+                    "body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "system_event": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "\u00c9v\u00e8nement port\u00e9 par un message syst\u00e8me.",
+                        "enum": [
+                            "request_opened",
+                            "request_assigned",
+                            "request_resolved",
+                            "request_reopened",
+                            "driver_suspended",
+                            "driver_reactivated",
+                            "shop_order_ready",
+                            "recharge_credited",
+                            null
+                        ]
+                    },
+                    "system_payload": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "attachments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MessageAttachmentResource"
+                        }
+                    },
+                    "read_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "sender_type",
+                    "sender_name",
+                    "type",
+                    "body",
+                    "system_event",
+                    "system_payload",
+                    "read_at",
+                    "created_at"
+                ],
+                "title": "MessageResource"
+            },
+            "NotificationResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "read_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "": {
+                        "type": "array",
+                        "items": {}
+                    }
+                },
+                "required": [
+                    "id",
+                    "read_at",
+                    "created_at",
+                    null
+                ],
+                "title": "NotificationResource"
             },
             "OtpChannel": {
                 "type": "string",
@@ -2000,6 +3036,31 @@
                     "image_url"
                 ],
                 "title": "ProductResource"
+            },
+            "SendSupportMessageRequest": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Texte du message. Facultatif si des pi\u00e8ces jointes sont\ntransmises \u2014 une photo seule est un message valable.",
+                        "maxLength": 4000
+                    },
+                    "attachment_ids": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Identifiants renvoy\u00e9s par `POST /support/attachments`, \u00e0\nrattacher \u00e0 ce message. Cinq au plus.",
+                        "items": {
+                            "type": "string"
+                        },
+                        "maxItems": 5
+                    }
+                },
+                "title": "SendSupportMessageRequest"
             },
             "ShopOrderResource": {
                 "type": "object",
@@ -2231,6 +3292,21 @@
                     "fulfilment_mode"
                 ],
                 "title": "StoreShopOrderRequest"
+            },
+            "StoreSupportAttachmentRequest": {
+                "type": "object",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Image seule en v1 : aucun antivirus n'existe dans la cha\u00eene, et\nun agent ouvrant un document d\u00e9pos\u00e9 par un tiers sur un outil\ninterne est un risque qu'on ne sait pas encore couvrir. Le type\nest v\u00e9rifi\u00e9 sur le contenu, pas sur l'extension."
+                    }
+                },
+                "required": [
+                    "file"
+                ],
+                "title": "StoreSupportAttachmentRequest"
             },
             "TransactionResource": {
                 "type": "object",
