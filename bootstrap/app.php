@@ -30,6 +30,20 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    /*
+    | Canaux de diffusion. Déclarés ici et non par `withRouting(channels: ...)` :
+    | ce dernier appelle `withBroadcasting()` sans attributs, `/broadcasting/auth`
+    | ne porte alors que `web` — une requête anonyme atteindrait les règles
+    | d'accès, qui recevraient un utilisateur nul. Et comme les deux passent par
+    | un `require`, la seconde déclaration serait un coup dans l'eau : PHP
+    | n'exécute le fichier qu'une fois.
+    |
+    | Le pendant mobile est déclaré dans `routes/api.php`, avec sa propre garde.
+    */
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        attributes: ['middleware' => ['web', 'auth', 'user.active']],
+    )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             // API mobile
