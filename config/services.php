@@ -35,6 +35,19 @@ return [
         ],
     ],
 
+    /*
+    | Firebase Cloud Messaging — réveil de l'application mobile.
+    |
+    | Les messages sont « data-only » : la ligne écrite dans `notifications`
+    | fait foi, le push ne sert qu'à réveiller une application en arrière-plan.
+    */
+
+    'fcm' => [
+        'driver' => env('FCM_DRIVER', 'log'),
+        'project_id' => env('FCM_PROJECT_ID'),
+        'access_token' => env('FCM_ACCESS_TOKEN'),
+    ],
+
     'sms' => [
         'driver' => env('SMS_DRIVER', 'log'),
         'base_url' => env('SMS_BASE_URL'),
