@@ -10,16 +10,6 @@
             "url": "http://localhost:8000/api/v1"
         }
     ],
-    "tags": [
-        {
-            "name": "Temps r\u00e9el (WebSocket)",
-            "description": "Canaux, \u00e9v\u00e8nements, authentification : [voir la page d\u00e9di\u00e9e](/docs/api/realtime)."
-        },
-        {
-            "name": "Client Flutter",
-            "description": "Int\u00e9gration `pusher_channels_flutter` : [voir la page d\u00e9di\u00e9e](/docs/api/realtime/flutter)."
-        }
-    ],
     "security": [
         {
             "http": []
