@@ -3,10 +3,10 @@
 namespace App\Enums;
 
 /**
- * Cible d'une diffusion : tout le parc, un segment filtré, ou un conducteur
- * nommé (source : sous-titre du module « Diffusions »).
+ * Cible d'une campagne : tout le parc, un segment filtré, ou un conducteur
+ * nommé.
  */
-enum BroadcastAudience: string
+enum CampaignAudience: string
 {
     case All = 'all';
     case Segment = 'segment';

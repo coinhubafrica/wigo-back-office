@@ -40,6 +40,11 @@ return new class extends Migration
             $table->json('system_payload')->nullable();
             $table->foreignUlid('template_id')->nullable()->constrained('message_templates')->nullOnDelete();
 
+            // Envoi groupé dont ce message est issu. C'est lui qui tient lieu
+            // de table de destinataires : il dit qui a reçu, et `read_at` dit
+            // qui a lu.
+            $table->foreignUlid('campaign_id')->nullable()->constrained()->nullOnDelete();
+
             $table->timestamp('read_at')->nullable();
             $table->timestamp('triaged_at')->nullable();
             $table->foreignUlid('triaged_by_user_id')->nullable()->constrained('users')->nullOnDelete();
@@ -52,6 +57,9 @@ return new class extends Migration
 
             // La file « À trier ».
             $table->index(['conversation_id', 'support_request_id', 'triaged_at']);
+
+            // Destinataires et taux de lecture d'un envoi groupé.
+            $table->index(['campaign_id', 'read_at']);
         });
     }
 

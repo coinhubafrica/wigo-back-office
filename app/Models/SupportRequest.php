@@ -46,7 +46,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $sla_resolution_due
  * @property CarbonImmutable|null $sla_breached_at
  * @property CarbonImmutable|null $recategorised_at
- * @property string|null $opened_from_broadcast_id
+ * @property string|null $opened_from_campaign_id
  * @property string|null $triaged_by_user_id
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
@@ -54,7 +54,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Driver $driver
  * @property-read User|null $assignedUser
  * @property-read User|null $triagedByUser
- * @property-read Broadcast|null $openedFromBroadcast
+ * @property-read Campaign|null $openedFromCampaign
  * @property-read Collection<int, Message> $messages
  */
 class SupportRequest extends Model
@@ -121,13 +121,13 @@ class SupportRequest extends Model
     }
 
     /**
-     * Diffusion à laquelle le conducteur a répondu, quand le ticket en découle.
+     * Campagne à laquelle le conducteur a répondu, quand le ticket en découle.
      *
-     * @return BelongsTo<Broadcast, $this>
+     * @return BelongsTo<Campaign, $this>
      */
-    public function openedFromBroadcast(): BelongsTo
+    public function openedFromCampaign(): BelongsTo
     {
-        return $this->belongsTo(Broadcast::class, 'opened_from_broadcast_id');
+        return $this->belongsTo(Campaign::class, 'opened_from_campaign_id');
     }
 
     /**

@@ -51,7 +51,7 @@ return new class extends Migration
             $table->timestamp('sla_breached_at')->nullable()->index();
             $table->timestamp('recategorised_at')->nullable();
 
-            $table->foreignUlid('opened_from_broadcast_id')->nullable()->constrained('broadcasts')->nullOnDelete();
+            $table->foreignUlid('opened_from_campaign_id')->nullable()->constrained('campaigns')->nullOnDelete();
             $table->foreignUlid('triaged_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 

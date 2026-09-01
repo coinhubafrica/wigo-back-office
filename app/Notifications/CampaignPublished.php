@@ -2,23 +2,23 @@
 
 namespace App\Notifications;
 
-use App\Models\Broadcast;
+use App\Models\Campaign;
 use App\Notifications\Channels\PushChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
 /**
- * Une diffusion vient de partir.
+ * Une campagne vient de partir.
  *
  * Écrite en base d'abord, comme les autres : l'écran « Notifications » lit
  * cette table, le push n'est qu'un réveil.
  */
-class BroadcastPublished extends Notification implements ShouldQueue
+class CampaignPublished extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(private Broadcast $broadcast) {}
+    public function __construct(private Campaign $campaign) {}
 
     /**
      * @return list<string>
@@ -34,12 +34,12 @@ class BroadcastPublished extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-            'type' => 'broadcast',
-            'category' => 'broadcast',
-            'title' => $this->broadcast->title,
-            'body' => $this->broadcast->body,
-            'broadcast_id' => $this->broadcast->getKey(),
-            'deeplink' => $this->broadcast->deeplink ?? 'wigo://broadcasts/'.$this->broadcast->getKey(),
+            'type' => 'campaign',
+            'category' => 'campaign',
+            'title' => $this->campaign->title,
+            'body' => $this->campaign->body,
+            'campaign_id' => $this->campaign->getKey(),
+            'deeplink' => $this->campaign->deeplink ?? 'wigo://campaigns/'.$this->campaign->getKey(),
         ];
     }
 }

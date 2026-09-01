@@ -3,10 +3,10 @@
 namespace App\Enums;
 
 /**
- * Cycle de vie d'une diffusion. `Sending` est l'état pendant lequel le job
+ * Cycle de vie d'une campagne. `Sending` est l'état pendant lequel le job
  * matérialise les destinataires — il borne la reprise en cas d'échec.
  */
-enum BroadcastStatus: string
+enum CampaignStatus: string
 {
     case Draft = 'draft';
     case Scheduled = 'scheduled';

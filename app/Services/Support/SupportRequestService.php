@@ -5,7 +5,7 @@ namespace App\Services\Support;
 use App\Enums\SupportRequestCategory;
 use App\Enums\SupportRequestStatus;
 use App\Enums\SystemMessageEvent;
-use App\Models\Broadcast;
+use App\Models\Campaign;
 use App\Models\Conversation;
 use App\Models\SupportRequest;
 use App\Models\User;
@@ -37,9 +37,9 @@ class SupportRequestService
         SupportRequestCategory $category,
         User $agent,
         ?string $subject = null,
-        ?Broadcast $fromBroadcast = null,
+        ?Campaign $fromCampaign = null,
     ): SupportRequest {
-        return DB::transaction(function () use ($conversation, $category, $agent, $subject, $fromBroadcast): SupportRequest {
+        return DB::transaction(function () use ($conversation, $category, $agent, $subject, $fromCampaign): SupportRequest {
             $request = new SupportRequest([
                 'number' => $this->nextNumber(),
                 'conversation_id' => $conversation->getKey(),
@@ -47,7 +47,7 @@ class SupportRequestService
                 'status' => SupportRequestStatus::Open,
                 'category' => $category,
                 'subject' => $subject ?? $this->subjectFromFirstUntriaged($conversation),
-                'opened_from_broadcast_id' => $fromBroadcast?->getKey(),
+                'opened_from_campaign_id' => $fromCampaign?->getKey(),
                 'triaged_by_user_id' => $agent->getKey(),
             ]);
 

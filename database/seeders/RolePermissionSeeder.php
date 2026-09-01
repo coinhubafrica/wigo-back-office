@@ -63,7 +63,7 @@ class RolePermissionSeeder extends Seeder
             BackOfficeModule::SupportRequests,
             BackOfficeModule::Cnps,
             BackOfficeModule::Shop,
-            BackOfficeModule::Broadcasts,
+            BackOfficeModule::Campaigns,
         ];
 
         return [

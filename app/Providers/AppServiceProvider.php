@@ -4,8 +4,7 @@ namespace App\Providers;
 
 use App\Models\Announcement;
 use App\Models\AuditLog;
-use App\Models\Broadcast;
-use App\Models\BroadcastRecipient;
+use App\Models\Campaign;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
@@ -117,8 +116,7 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'announcement' => Announcement::class,
             'audit_log' => AuditLog::class,
-            'broadcast' => Broadcast::class,
-            'broadcast_recipient' => BroadcastRecipient::class,
+            'campaign' => Campaign::class,
             'challenge' => Challenge::class,
             'challenge_ticket' => ChallengeTicket::class,
             'challenge_winner' => ChallengeWinner::class,

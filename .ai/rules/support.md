@@ -2,6 +2,7 @@
 paths:
   - 'app/Services/Support/**'
   - app/Services/Support/BroadcastDispatcher.php
+  - app/Services/Support/CampaignDispatcher.php
 ---
 
 # Support
@@ -27,3 +28,14 @@ Rejouable de bout en bout : l'unicité `(broadcast_id, driver_id)` absorbe une r
 Le nombre de destinataires affiché avant l'envoi sort du **même** `BroadcastAudienceResolver` que la matérialisation : un agent ne doit pas voir un nombre puis en toucher un autre. Attention au piège corrigé une fois déjà — la confirmation d'un brouillon déjà enregistré doit compter sur *sa* propre audience (`confirmingCount`), jamais sur l'état courant du composeur, qui vaut « tous » après un rechargement de page.
 
 Une diffusion ne se répond pas : l'API mobile n'expose que la liste et le marquage en lu. Le bouton « Répondre » de l'application ouvre le fil du support, et `support_requests.opened_from_broadcast_id` garde le lien.
+
+## Envois groupés : « campaign », pas « broadcast »
+Un envoi groupé dépose **le même message dans la conversation de chaque conducteur visé** — un message système, que le conducteur lit là où il lit déjà le support et auquel il peut répondre sur place. Sa réponse repart en tri comme n'importe quel sujet nouveau.
+
+Le nom compte : `Campaign` et non `Broadcast`. Le mot « broadcast » est déjà pris par Laravel (`ShouldBroadcast`, `Broadcast::channel()`, Reverb), et ce dépôt fait les deux. Deux sens pour un même terme est un piège — **ne pas renommer en sens inverse**, et se méfier d'un rechercher-remplacer global : il casse `broadcastOn()`, `ShouldBroadcast`, `/broadcasting/auth` et `config('broadcasting.default')`.
+
+**Pas de table de destinataires.** Les messages déposés font foi : ils disent qui a reçu, et leur `read_at` dit qui a lu. `Campaign::readRate()` compte dessus plutôt que sur un compteur — un `read_at` ne dérive pas, et il atteste d'un fil réellement ouvert, pas d'une notification balayée.
+
+Rejouable : un conducteur qui a déjà reçu l'envoi est ignoré, donc reprendre un envoi à moitié fait ne dépose ni ne notifie deux fois. Écriture par lots de 500.
+
+Aucun endpoint mobile : la composition est réservée au back-office, et la réception passe par le fil de conversation, la table `notifications` et le push FCM — les mêmes chemins que n'importe quel message.

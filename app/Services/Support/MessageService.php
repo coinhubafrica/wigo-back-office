@@ -6,6 +6,7 @@ use App\Enums\MessageType;
 use App\Enums\SystemMessageEvent;
 use App\Events\Support\MessageRead;
 use App\Events\Support\MessageSent;
+use App\Models\Campaign;
 use App\Models\Conversation;
 use App\Models\Driver;
 use App\Models\Message;
@@ -138,10 +139,12 @@ class MessageService
         SystemMessageEvent $event,
         array $payload = [],
         ?SupportRequest $request = null,
+        ?Campaign $campaign = null,
     ): Message {
-        $message = DB::transaction(function () use ($conversation, $event, $payload, $request): Message {
+        $message = DB::transaction(function () use ($conversation, $event, $payload, $request, $campaign): Message {
             $message = $this->write($conversation, [
                 'support_request_id' => $request?->getKey(),
+                'campaign_id' => $campaign?->getKey(),
                 'type' => MessageType::System,
                 'system_event' => $event,
                 'system_payload' => $payload === [] ? null : $payload,

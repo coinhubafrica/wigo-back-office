@@ -1,21 +1,23 @@
 <?php
 
-namespace App\Livewire\Broadcasts;
+namespace App\Livewire\Campaigns;
 
 use App\Enums\BackOfficeModule;
-use App\Enums\BroadcastAudience;
-use App\Enums\BroadcastStatus;
+use App\Enums\CampaignAudience;
+use App\Enums\CampaignStatus;
 use App\Enums\DriverStatus;
-use App\Jobs\DispatchBroadcastJob;
-use App\Models\Broadcast;
+use App\Jobs\DispatchCampaignJob;
+use App\Models\Campaign;
 use App\Models\Driver;
-use App\Services\Support\BroadcastAudienceResolver;
+use App\Models\Message;
+use App\Services\Support\CampaignAudienceResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -29,7 +31,7 @@ use Livewire\WithPagination;
  * L'envoi passe par un job — cinq mille insertions et autant de notifications
  * n'ont rien à faire dans le cycle d'une requête.
  */
-#[Layout('layouts.app', ['module' => BackOfficeModule::Broadcasts])]
+#[Layout('layouts.app', ['module' => BackOfficeModule::Campaigns])]
 class Index extends Component
 {
     use WithPagination;
@@ -56,6 +58,9 @@ class Index extends Component
     public string $driverSearch = '';
 
     public ?string $confirmingSendId = null;
+
+    #[Url]
+    public ?string $status = null;
 
     public function compose(): void
     {
@@ -84,26 +89,26 @@ class Index extends Component
     }
 
     /**
-     * Enregistre la diffusion en brouillon, sans rien envoyer.
+     * Enregistre la campagne en brouillon, sans rien envoyer.
      */
     public function saveDraft(): void
     {
-        $broadcast = $this->persist();
+        $campaign = $this->persist();
 
         $this->composerOpen = false;
-        $this->dispatch('toast', message: __('backoffice.broadcasts.draft_saved', ['title' => $broadcast->title]));
+        $this->dispatch('toast', message: __('backoffice.campaigns.draft_saved', ['title' => $campaign->title]));
     }
 
-    public function confirmSend(?string $broadcastId = null): void
+    public function confirmSend(?string $campaignId = null): void
     {
-        // Depuis le composeur la diffusion n'existe pas encore : on valide
+        // Depuis le composeur la campagne n'existe pas encore : on valide
         // maintenant, pour ne pas ouvrir une confirmation sur un formulaire
         // incomplet.
-        if ($broadcastId === null) {
+        if ($campaignId === null) {
             $this->validateForm();
         }
 
-        $this->confirmingSendId = $broadcastId ?? 'new';
+        $this->confirmingSendId = $campaignId ?? 'new';
     }
 
     public function cancelSend(): void
@@ -117,42 +122,51 @@ class Index extends Component
             return;
         }
 
-        $broadcast = $this->confirmingSendId === 'new'
+        $campaign = $this->confirmingSendId === 'new'
             ? $this->persist()
-            : Broadcast::query()->findOrFail($this->confirmingSendId);
+            : Campaign::query()->findOrFail($this->confirmingSendId);
 
-        DispatchBroadcastJob::dispatch($broadcast->getKey());
+        DispatchCampaignJob::dispatch($campaign->getKey());
 
         $this->confirmingSendId = null;
         $this->composerOpen = false;
-        $this->dispatch('toast', message: __('backoffice.broadcasts.sending'));
+        $this->dispatch('toast', message: __('backoffice.campaigns.sending'));
     }
 
-    public function render(BroadcastAudienceResolver $audience): View
+    public function render(CampaignAudienceResolver $audience): View
     {
-        /** @var LengthAwarePaginator<int, Broadcast> $broadcasts */
-        $broadcasts = Broadcast::query()
+        /** @var LengthAwarePaginator<int, Campaign> $campaigns */
+        $campaigns = Campaign::query()
             ->with('createdByUser')
+            ->when($this->status !== null, fn (Builder $query) => $query->where('status', $this->status))
+            // Les compteurs sortent des messages déposés : chargés en une
+            // passe, sinon la liste ferait deux requêtes par ligne.
+            ->withCount([
+                'messages as delivered_count',
+                'messages as read_count' => fn (Builder $query) => $query->whereNotNull('read_at'),
+            ])
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        return view('livewire.broadcasts.index', [
-            'broadcasts' => $broadcasts,
+        return view('livewire.campaigns.index', [
+            'campaigns' => $campaigns,
             'recipientCount' => $audience->count($this->audienceEnum(), $this->segment()),
-            // Le nombre confirmé se calcule sur la diffusion réellement
+            // Le nombre confirmé se calcule sur la campagne réellement
             // envoyée, jamais sur l'état du composeur : renvoyer un brouillon
             // depuis la liste afficherait sinon le compte de « tous », soit un
             // ordre de grandeur d'écart avec ce qui partira.
             'confirmingCount' => $this->confirmingCount($audience),
             'driverMatches' => $this->driverMatches(),
             'statuses' => DriverStatus::cases(),
+            'totals' => $this->totals(),
+            'campaignStatuses' => CampaignStatus::cases(),
         ]);
     }
 
     /**
      * Destinataires de ce que la confirmation s'apprête à envoyer.
      */
-    private function confirmingCount(BroadcastAudienceResolver $audience): ?int
+    private function confirmingCount(CampaignAudienceResolver $audience): ?int
     {
         if ($this->confirmingSendId === null) {
             return null;
@@ -162,9 +176,34 @@ class Index extends Component
             return $audience->count($this->audienceEnum(), $this->segment());
         }
 
-        $broadcast = Broadcast::query()->find($this->confirmingSendId);
+        $campaign = Campaign::query()->find($this->confirmingSendId);
 
-        return $broadcast === null ? null : $audience->query($broadcast)->count();
+        return $campaign === null ? null : $audience->query($campaign)->count();
+    }
+
+    public function filterByStatus(?string $status): void
+    {
+        $this->status = $status;
+        $this->resetPage();
+    }
+
+    /**
+     * Chiffres du bandeau. Comptés sur les messages déposés : ce sont eux qui
+     * disent ce qui est réellement parti.
+     *
+     * @return array{sent: int, drafts: int, delivered: int, read_rate: float|null}
+     */
+    private function totals(): array
+    {
+        $delivered = Message::query()->whereNotNull('campaign_id')->count();
+        $read = Message::query()->whereNotNull('campaign_id')->whereNotNull('read_at')->count();
+
+        return [
+            'sent' => Campaign::query()->where('status', CampaignStatus::Sent)->count(),
+            'drafts' => Campaign::query()->where('status', CampaignStatus::Draft)->count(),
+            'delivered' => $delivered,
+            'read_rate' => $delivered > 0 ? round($read / $delivered * 100, 1) : null,
+        ];
     }
 
     /**
@@ -174,7 +213,7 @@ class Index extends Component
      */
     private function driverMatches(): Collection
     {
-        if ($this->audience !== BroadcastAudience::Individual->value || $this->driverSearch === '') {
+        if ($this->audience !== CampaignAudience::Individual->value || $this->driverSearch === '') {
             return Driver::query()->whereRaw('1 = 0')->get();
         }
 
@@ -189,18 +228,18 @@ class Index extends Component
             ->get();
     }
 
-    private function persist(): Broadcast
+    private function persist(): Campaign
     {
         $this->validateForm();
 
         $segment = $this->segment();
 
-        return Broadcast::query()->create([
+        return Campaign::query()->create([
             'title' => $this->title,
             'body' => $this->body,
             'audience' => $this->audienceEnum(),
             'segment' => $segment === [] ? null : $segment,
-            'status' => BroadcastStatus::Draft,
+            'status' => CampaignStatus::Draft,
             'deeplink' => $this->deeplink === '' ? null : $this->deeplink,
             'created_by_user_id' => Auth::id(),
         ]);
@@ -211,12 +250,12 @@ class Index extends Component
         $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:2000'],
-            'audience' => ['required', 'in:'.implode(',', array_column(BroadcastAudience::cases(), 'value'))],
+            'audience' => ['required', 'in:'.implode(',', array_column(CampaignAudience::cases(), 'value'))],
             'deeplink' => ['nullable', 'string', 'max:40', 'starts_with:wigo://'],
             // Un envoi individuel sans destinataire ne partirait à personne :
             // mieux vaut le refuser que le laisser passer sans bruit.
             'driverIds' => [
-                $this->audience === BroadcastAudience::Individual->value ? 'required' : 'nullable',
+                $this->audience === CampaignAudience::Individual->value ? 'required' : 'nullable',
                 'array',
             ],
         ]);
@@ -227,9 +266,9 @@ class Index extends Component
      * `from()` ne peut donc pas échouer, et un repli masquerait une valeur
      * inattendue au lieu de la signaler.
      */
-    private function audienceEnum(): BroadcastAudience
+    private function audienceEnum(): CampaignAudience
     {
-        return BroadcastAudience::from($this->audience);
+        return CampaignAudience::from($this->audience);
     }
 
     /**
@@ -238,12 +277,12 @@ class Index extends Component
     private function segment(): array
     {
         return match ($this->audienceEnum()) {
-            BroadcastAudience::Individual => ['driver_ids' => $this->driverIds],
-            BroadcastAudience::Segment => array_filter([
+            CampaignAudience::Individual => ['driver_ids' => $this->driverIds],
+            CampaignAudience::Segment => array_filter([
                 'status' => $this->segmentStatuses === [] ? null : $this->segmentStatuses,
                 'has_vehicle' => $this->segmentHasVehicle,
             ], fn (mixed $value): bool => $value !== null),
-            BroadcastAudience::All => [],
+            CampaignAudience::All => [],
         };
     }
 

@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AuthController;
-use App\Http\Controllers\Api\V1\BroadcastController;
 use App\Http\Controllers\Api\V1\ChallengeController;
 use App\Http\Controllers\Api\V1\CnpsController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -123,12 +122,6 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
                     ->name('attachments.store');
             });
         });
-
-        // Diffusions reçues. En lecture seule : une diffusion ne se répond
-        // pas, l'application ouvre le fil du support si besoin.
-        Route::get('broadcasts', [BroadcastController::class, 'index'])->name('broadcasts.index');
-        Route::post('broadcasts/{broadcast}/read', [BroadcastController::class, 'markRead'])
-            ->name('broadcasts.read');
 
         // Écran « Notifications » : la table est écrite d'abord, le push n'est
         // qu'un réveil. Lisible même suspendu, comme le profil.

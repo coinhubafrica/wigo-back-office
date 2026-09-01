@@ -19,6 +19,7 @@ enum SystemMessageEvent: string
     case DriverReactivated = 'driver_reactivated';
     case ShopOrderReady = 'shop_order_ready';
     case RechargeCredited = 'recharge_credited';
+    case CampaignMessage = 'campaign_message';
 
     /**
      * Phrase rendue côté serveur, destinée au conducteur.
@@ -37,6 +38,9 @@ enum SystemMessageEvent: string
             self::ShopOrderReady => isset($payload['reference'])
                 ? "Votre commande {$payload['reference']} est prête."
                 : 'Votre commande est prête.',
+            // Le corps de l'envoi groupé est rédigé par l'agent : il est
+            // repris tel quel, sans phrase d'habillage.
+            self::CampaignMessage => (string) ($payload['body'] ?? ''),
             self::RechargeCredited => isset($payload['amount'])
                 ? 'Votre solde a été crédité de '.number_format((float) $payload['amount'], 0, ',', ' ').' FCFA.'
                 : 'Votre solde a été crédité.',

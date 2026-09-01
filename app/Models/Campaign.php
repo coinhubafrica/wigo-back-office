@@ -2,50 +2,49 @@
 
 namespace App\Models;
 
-use App\Enums\BroadcastAudience;
-use App\Enums\BroadcastStatus;
+use App\Enums\CampaignAudience;
+use App\Enums\CampaignStatus;
 use Carbon\CarbonImmutable;
-use Database\Factories\BroadcastFactory;
+use Database\Factories\CampaignFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Envoi sortant vers tout le parc, un segment ou un conducteur nommé.
  *
- * Les destinataires sont matérialisés dans `broadcast_recipients` plutôt que
- * recalculés à la lecture : sans cela l'audience changerait sous les pieds du
- * destinataire au gré de son statut, et le taux d'ouverture n'aurait pas de
- * dénominateur. `recipients_count` et `read_count` sont les compteurs figés
- * qu'affiche la liste, tenus par le job d'envoi.
+ * Ce n'est pas de la diffusion au sens de Laravel : aucun websocket n'est en
+ * jeu. Un envoi groupé dépose simplement le même message dans la conversation
+ * de chaque conducteur visé, qui le lit là où il lit déjà le support et peut y
+ * répondre sur place.
+ *
+ * Pas de table de destinataires : les messages déposés font foi. Ils disent
+ * qui a reçu, et leur `read_at` dit qui a lu.
  *
  * @property string $id
  * @property string $title
  * @property string $body
- * @property BroadcastAudience $audience
+ * @property CampaignAudience $audience
  * @property array<string, mixed>|null $segment
- * @property BroadcastStatus $status
+ * @property CampaignStatus $status
  * @property string|null $deeplink
  * @property string|null $created_by_user_id
  * @property CarbonImmutable|null $scheduled_for
  * @property CarbonImmutable|null $sent_at
  * @property int $recipients_count
- * @property int $read_count
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read User|null $createdByUser
- * @property-read Collection<int, BroadcastRecipient> $recipients
- * @property-read Collection<int, Driver> $drivers
+ * @property-read Collection<int, Message> $messages
  * @property-read Collection<int, SupportRequest> $supportRequests
  */
-class Broadcast extends Model
+class Campaign extends Model
 {
-    /** @use HasFactory<BroadcastFactory> */
+    /** @use HasFactory<CampaignFactory> */
     use HasFactory, HasUlids;
 
     protected $guarded = ['id'];
@@ -56,13 +55,12 @@ class Broadcast extends Model
     protected function casts(): array
     {
         return [
-            'audience' => BroadcastAudience::class,
+            'audience' => CampaignAudience::class,
             'segment' => 'array',
-            'status' => BroadcastStatus::class,
+            'status' => CampaignStatus::class,
             'scheduled_for' => 'datetime',
             'sent_at' => 'datetime',
             'recipients_count' => 'integer',
-            'read_count' => 'integer',
         ];
     }
 
@@ -75,33 +73,24 @@ class Broadcast extends Model
     }
 
     /**
-     * @return HasMany<BroadcastRecipient, $this>
-     */
-    public function recipients(): HasMany
-    {
-        return $this->hasMany(BroadcastRecipient::class);
-    }
-
-    /**
-     * Conducteurs effectivement touchés, tels que matérialisés à l'envoi.
+     * Messages déposés par cet envoi, un par conducteur touché. Tient lieu de
+     * table de destinataires.
      *
-     * @return BelongsToMany<Driver, $this>
+     * @return HasMany<Message, $this>
      */
-    public function drivers(): BelongsToMany
+    public function messages(): HasMany
     {
-        return $this->belongsToMany(Driver::class, 'broadcast_recipients')
-            ->withPivot(['id', 'read_at'])
-            ->withTimestamps();
+        return $this->hasMany(Message::class);
     }
 
     /**
-     * Tickets nés d'une réponse à cette diffusion.
+     * Tickets nés d'une réponse à cette campagne.
      *
      * @return HasMany<SupportRequest, $this>
      */
     public function supportRequests(): HasMany
     {
-        return $this->hasMany(SupportRequest::class, 'opened_from_broadcast_id');
+        return $this->hasMany(SupportRequest::class, 'opened_from_campaign_id');
     }
 
     /**
@@ -109,16 +98,33 @@ class Broadcast extends Model
      */
     public function scopeSent(Builder $query): void
     {
-        $query->where('status', BroadcastStatus::Sent);
+        $query->where('status', CampaignStatus::Sent);
     }
 
     /**
      * Taux d'ouverture en pourcentage, sur les destinataires matérialisés.
      */
+    /**
+     * Nombre de destinataires ayant ouvert leur fil depuis l'envoi.
+     */
+    public function readCount(): int
+    {
+        return $this->messages()->whereNotNull('read_at')->count();
+    }
+
+    /**
+     * Part des destinataires ayant ouvert leur fil depuis l'envoi.
+     *
+     * Comptée sur les messages déposés plutôt que sur un compteur : un
+     * `read_at` ne peut pas dériver, et il atteste d'une conversation
+     * réellement ouverte — pas d'une simple notification balayée.
+     */
     public function readRate(): float
     {
-        return $this->recipients_count > 0
-            ? round($this->read_count / $this->recipients_count * 100, 1)
+        $delivered = $this->messages()->count();
+
+        return $delivered > 0
+            ? round($this->readCount() / $delivered * 100, 1)
             : 0.0;
     }
 }

@@ -9,7 +9,7 @@ use App\Enums\SupportRequestCategory;
 use App\Enums\SupportRequestPriority;
 use App\Enums\SupportRequestStatus;
 use App\Enums\SystemMessageEvent;
-use App\Models\Broadcast;
+use App\Models\Campaign;
 use App\Models\Conversation;
 use App\Models\Driver;
 use App\Models\SupportRequest;
@@ -154,20 +154,20 @@ it('does not end the drivers thread when a request is resolved', function (): vo
         ->and($later->isAwaitingTriage())->toBeTrue();
 });
 
-it('records the broadcast a request was opened from', function (): void {
+it('records the campaign a request was opened from', function (): void {
     $driver = Driver::factory()->create();
     app(MessageService::class)->sendFromDriver($driver, 'Je réponds à votre message');
     $conversation = conversationOf($driver);
-    $broadcast = Broadcast::factory()->create();
+    $campaign = Campaign::factory()->create();
 
     $request = app(SupportRequestService::class)->createFromTriage(
         $conversation,
         SupportRequestCategory::Other,
         User::factory()->create(),
-        fromBroadcast: $broadcast,
+        fromCampaign: $campaign,
     );
 
-    expect($request->opened_from_broadcast_id)->toBe($broadcast->id);
+    expect($request->opened_from_campaign_id)->toBe($campaign->id);
 });
 
 it('assigns a request and tells the driver', function (): void {

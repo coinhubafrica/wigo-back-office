@@ -17,7 +17,7 @@ use App\Services\Support\SupportRequestService;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Support\Facades\Event;
 
-it('broadcasts a driver message', function (): void {
+it('campaigns a driver message', function (): void {
     Event::fake([MessageSent::class]);
     $driver = Driver::factory()->create();
 
@@ -26,7 +26,7 @@ it('broadcasts a driver message', function (): void {
     Event::assertDispatched(MessageSent::class, fn (MessageSent $e): bool => $e->message->body === 'Mon solde est faux');
 });
 
-it('broadcasts an agent reply', function (): void {
+it('campaigns an agent reply', function (): void {
     $driver = Driver::factory()->create();
     app(MessageService::class)->sendFromDriver($driver, 'Une question');
     $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
@@ -41,7 +41,7 @@ it('broadcasts an agent reply', function (): void {
     Event::assertDispatched(MessageSent::class);
 });
 
-it('broadcasts a read receipt for each side', function (): void {
+it('campaigns a read receipt for each side', function (): void {
     $driver = Driver::factory()->create();
     app(MessageService::class)->sendFromDriver($driver, 'Une question');
     $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
@@ -94,7 +94,7 @@ it('publishes a short stable event name', function (): void {
         ->and((new MessageRead(Conversation::factory()->create(), 'driver'))->broadcastAs())->toBe('message.read');
 });
 
-it('queues the broadcast rather than sending it inline', function (): void {
+it('queues the campaign rather than sending it inline', function (): void {
     // Redis rend la mise en file assez rapide, et l'appel HTTP vers Reverb
     // sort du cycle de la requête. Diffuser en ligne l'y remettrait.
     $message = Message::factory()->fromDriver()->create();

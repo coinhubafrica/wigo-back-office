@@ -157,12 +157,18 @@ return [
         'select_order' => 'Sélectionnez une commande pour en voir le détail.',
     ],
 
-    'broadcasts' => [
-        'title' => 'Diffusions',
-        'hint' => "Envois ciblés vers l'application conducteur : tout le parc, un segment ou un conducteur nommé.",
-        'new' => 'Nouvelle diffusion',
+    'campaigns' => [
+        'title' => 'Campagnes',
+        'kpi_sent' => 'Campagnes envoyées',
+        'kpi_drafts' => 'Brouillons',
+        'kpi_delivered' => 'Messages déposés',
+        'kpi_read_rate' => 'Taux de lecture',
+        'filter_all' => 'Toutes',
+        'preview' => 'Aperçu côté conducteur',
+        'hint' => 'Un message déposé dans le fil des conducteurs visés : tout le parc, un segment ou un conducteur nommé. Ils peuvent y répondre.',
+        'new' => 'Nouvelle campagne',
 
-        'column_broadcast' => 'Diffusion',
+        'column_campaign' => 'Campagne',
         'column_audience' => 'Cible',
         'column_status' => 'Statut',
         'column_recipients' => 'Destinataires',
@@ -170,12 +176,12 @@ return [
         'column_author' => 'Auteur',
         'column_date' => 'Date',
 
-        'none' => 'Aucune diffusion',
-        'none_hint' => 'Composez une diffusion pour prévenir les conducteurs.',
+        'none' => 'Aucune campagne',
+        'none_hint' => 'Composez une campagne pour écrire aux conducteurs.',
         'unknown_author' => '—',
         'send' => 'Envoyer',
 
-        'compose_title' => 'Nouvelle diffusion',
+        'compose_title' => 'Nouvelle campagne',
         'field_title' => 'Titre',
         'field_body' => 'Message',
         'field_deeplink' => 'Lien interne (facultatif)',
@@ -200,11 +206,49 @@ return [
         'save_draft' => 'Enregistrer le brouillon',
         'cancel' => 'Annuler',
 
-        'confirm_send_title' => 'Envoyer cette diffusion ?',
-        'confirm_send_body' => 'La notification partira immédiatement. Cette action est définitive : une diffusion envoyée ne se rappelle pas.',
+        'confirm_send_title' => 'Envoyer cette campagne ?',
+        'confirm_send_body' => 'Le message sera déposé dans le fil de chaque conducteur visé, et une notification partira. Cette action est définitive : un message envoyé ne se rappelle pas.',
 
-        'draft_saved' => 'Diffusion « :title » enregistrée en brouillon.',
+        'draft_saved' => 'Campagne « :title » enregistrée en brouillon.',
         'sending' => "Envoi en cours — les destinataires sont en train d'être notifiés.",
+
+        'with_vehicle' => 'Avec véhicule',
+        'without_vehicle' => 'Sans véhicule',
+
+        'back_to_list' => 'Retour aux campagnes',
+        'message_section' => 'Le message',
+        'message_hint' => 'Tel que le conducteur le lit dans son fil.',
+        'deeplink_label' => 'Lien interne',
+
+        'stat_recipients' => 'Destinataires',
+        'stat_recipients_estimate' => 'Destinataires estimés',
+        'stat_recipients_estimate_hint' => "Brouillon : nombre calculé aujourd'hui, rien n'est encore parti.",
+        'stat_read' => 'Lectures',
+        'stat_rate' => 'Taux de lecture',
+        'not_applicable' => 'Sans objet',
+
+        'details_section' => 'Détails',
+        'detail_status' => 'Statut',
+        'detail_audience' => 'Cible',
+        'detail_author' => 'Auteur',
+        'detail_created_at' => 'Créée le',
+        'detail_sent_at' => 'Envoyée le',
+
+        'recipients_section' => 'Destinataires',
+        'filter_all' => 'Tous',
+        'filter_read' => 'Lus',
+        'filter_unread' => 'Non lus',
+        'column_driver' => 'Conducteur',
+        'column_phone' => 'Téléphone',
+        'column_read_state' => 'Lecture',
+        'read_badge' => 'Lu',
+        'unread_badge' => 'Non lu',
+        'recipients_none' => 'Aucun destinataire',
+        'recipients_none_hint' => 'Aucun message ne correspond à ce filtre.',
+        'recipients_draft' => "Ce brouillon n'a pas encore de destinataires : ils seront matérialisés à l'envoi.",
+
+        'send_section' => 'Envoyer la campagne',
+        'send_section_hint' => 'Le message partira dans le fil de chaque conducteur visé. Cette action est définitive.',
     ],
 
     'announcements' => [

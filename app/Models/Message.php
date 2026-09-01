@@ -39,6 +39,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property SystemMessageEvent|null $system_event
  * @property array<string, mixed>|null $system_payload
  * @property string|null $template_id
+ * @property string|null $campaign_id
  * @property CarbonImmutable|null $read_at
  * @property CarbonImmutable|null $triaged_at
  * @property string|null $triaged_by_user_id
@@ -49,6 +50,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property-read Driver|User|null $sender
  * @property-read Collection<int, MessageAttachment> $attachments
  * @property-read MessageTemplate|null $template
+ * @property-read Campaign|null $campaign
  * @property-read User|null $triagedByUser
  */
 class Message extends Model
@@ -115,6 +117,16 @@ class Message extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(MessageTemplate::class, 'template_id');
+    }
+
+    /**
+     * Envoi groupé dont ce message est issu, le cas échéant.
+     *
+     * @return BelongsTo<Campaign, $this>
+     */
+    public function campaign(): BelongsTo
+    {
+        return $this->belongsTo(Campaign::class);
     }
 
     /**

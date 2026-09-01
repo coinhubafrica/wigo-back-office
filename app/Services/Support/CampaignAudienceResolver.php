@@ -2,54 +2,54 @@
 
 namespace App\Services\Support;
 
-use App\Enums\BroadcastAudience;
+use App\Enums\CampaignAudience;
 use App\Enums\DriverStatus;
-use App\Models\Broadcast;
+use App\Models\Campaign;
 use App\Models\Driver;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Traduit l'audience d'une diffusion en requête sur `drivers`.
+ * Traduit l'audience d'une campagne en requête sur `drivers`.
  *
  * Seul endroit qui sache lire le JSON de `segment` : la composition, le
  * comptage affiché avant l'envoi et la matérialisation des destinataires
  * passent tous par ici, pour qu'un agent ne puisse pas voir un nombre puis en
  * toucher un autre.
  */
-class BroadcastAudienceResolver
+class CampaignAudienceResolver
 {
     /**
      * @return Builder<Driver>
      */
-    public function query(Broadcast $broadcast): Builder
+    public function query(Campaign $campaign): Builder
     {
-        return $this->for($broadcast->audience, (array) ($broadcast->segment ?? []));
+        return $this->for($campaign->audience, (array) ($campaign->segment ?? []));
     }
 
     /**
      * @param  array<string, mixed>  $segment
      * @return Builder<Driver>
      */
-    public function for(BroadcastAudience $audience, array $segment = []): Builder
+    public function for(CampaignAudience $audience, array $segment = []): Builder
     {
         $query = Driver::query();
 
         return match ($audience) {
             // Un conducteur supprimé n'est pas un destinataire ; `Driver`
             // porte `SoftDeletes`, le filtre est donc déjà implicite.
-            BroadcastAudience::All => $query,
-            BroadcastAudience::Individual => $query->whereIn(
+            CampaignAudience::All => $query,
+            CampaignAudience::Individual => $query->whereIn(
                 'id',
                 array_values(array_filter((array) ($segment['driver_ids'] ?? []))),
             ),
-            BroadcastAudience::Segment => $this->applySegment($query, $segment),
+            CampaignAudience::Segment => $this->applySegment($query, $segment),
         };
     }
 
     /**
      * @param  array<string, mixed>  $segment
      */
-    public function count(BroadcastAudience $audience, array $segment = []): int
+    public function count(CampaignAudience $audience, array $segment = []): int
     {
         return $this->for($audience, $segment)->count();
     }

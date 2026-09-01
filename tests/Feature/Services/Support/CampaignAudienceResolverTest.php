@@ -6,24 +6,24 @@
  * autre.
  */
 
-use App\Enums\BroadcastAudience;
+use App\Enums\CampaignAudience;
 use App\Enums\DriverStatus;
 use App\Models\Driver;
-use App\Services\Support\BroadcastAudienceResolver;
+use App\Services\Support\CampaignAudienceResolver;
 
 it('counts every driver for the whole fleet', function (): void {
     Driver::factory()->count(3)->create(['status' => DriverStatus::Active]);
     Driver::factory()->count(2)->create(['status' => DriverStatus::Suspended]);
 
-    expect(app(BroadcastAudienceResolver::class)->count(BroadcastAudience::All))->toBe(5);
+    expect(app(CampaignAudienceResolver::class)->count(CampaignAudience::All))->toBe(5);
 });
 
 it('filters a segment by status', function (): void {
     Driver::factory()->count(3)->create(['status' => DriverStatus::Active]);
     Driver::factory()->count(2)->create(['status' => DriverStatus::Suspended]);
 
-    $count = app(BroadcastAudienceResolver::class)
-        ->count(BroadcastAudience::Segment, ['status' => [DriverStatus::Active->value]]);
+    $count = app(CampaignAudienceResolver::class)
+        ->count(CampaignAudience::Segment, ['status' => [DriverStatus::Active->value]]);
 
     expect($count)->toBe(3);
 });
@@ -31,8 +31,8 @@ it('filters a segment by status', function (): void {
 it('ignores an unknown status rather than returning nothing', function (): void {
     Driver::factory()->count(3)->create(['status' => DriverStatus::Active]);
 
-    $count = app(BroadcastAudienceResolver::class)
-        ->count(BroadcastAudience::Segment, ['status' => ['inexistant']]);
+    $count = app(CampaignAudienceResolver::class)
+        ->count(CampaignAudience::Segment, ['status' => ['inexistant']]);
 
     expect($count)->toBe(3);
 });
@@ -41,15 +41,15 @@ it('excludes a soft deleted driver', function (): void {
     Driver::factory()->count(2)->create();
     Driver::factory()->create()->delete();
 
-    expect(app(BroadcastAudienceResolver::class)->count(BroadcastAudience::All))->toBe(2);
+    expect(app(CampaignAudienceResolver::class)->count(CampaignAudience::All))->toBe(2);
 });
 
 it('targets only the named drivers', function (): void {
     $wanted = Driver::factory()->count(2)->create();
     Driver::factory()->count(3)->create();
 
-    $count = app(BroadcastAudienceResolver::class)
-        ->count(BroadcastAudience::Individual, ['driver_ids' => $wanted->pluck('id')->all()]);
+    $count = app(CampaignAudienceResolver::class)
+        ->count(CampaignAudience::Individual, ['driver_ids' => $wanted->pluck('id')->all()]);
 
     expect($count)->toBe(2);
 });
@@ -57,5 +57,5 @@ it('targets only the named drivers', function (): void {
 it('returns nobody for an individual send with no driver named', function (): void {
     Driver::factory()->count(3)->create();
 
-    expect(app(BroadcastAudienceResolver::class)->count(BroadcastAudience::Individual))->toBe(0);
+    expect(app(CampaignAudienceResolver::class)->count(CampaignAudience::Individual))->toBe(0);
 });
