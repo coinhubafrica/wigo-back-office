@@ -2,21 +2,20 @@
 
 namespace Database\Seeders;
 
-use App\Enums\BroadcastAudience;
-use App\Enums\BroadcastStatus;
+use App\Enums\CampaignAudience;
+use App\Enums\CampaignStatus;
 use App\Enums\DriverStatus;
 use App\Enums\MessageType;
 use App\Enums\SupportRequestCategory;
 use App\Enums\SupportRequestStatus;
-use App\Models\Broadcast;
-use App\Models\BroadcastRecipient;
+use App\Models\Campaign;
 use App\Models\Conversation;
 use App\Models\Driver;
 use App\Models\Message;
 use App\Models\MessageTemplate;
 use App\Models\SupportRequest;
 use App\Models\User;
-use App\Services\Support\BroadcastDispatcher;
+use App\Services\Support\CampaignDispatcher;
 use App\Services\Support\MessageService;
 use App\Services\Support\SlaCalculator;
 use App\Services\Support\SupportRequestService;
@@ -61,7 +60,7 @@ class SupportSeeder extends Seeder
             return;
         }
 
-        $this->broadcasts($agent);
+        $this->campaigns($agent);
         $this->awaitingTriage();
         $this->awaitingFirstResponse($agent);
         $this->breached($agent);
@@ -93,38 +92,43 @@ class SupportSeeder extends Seeder
     }
 
     /**
-     * Deux diffusions : une envoyée avec ses destinataires et quelques
+     * Deux campagnes : une envoyée avec ses messages déposés et quelques
      * lectures, un brouillon prêt à partir.
      */
-    private function broadcasts(User $agent): void
+    private function campaigns(User $agent): void
     {
-        if (Broadcast::query()->exists()) {
+        if (Campaign::query()->exists()) {
             return;
         }
 
-        $sent = Broadcast::query()->create([
+        $sent = Campaign::query()->create([
             'title' => 'Maintenance dimanche',
             'body' => "L'application sera indisponible dimanche de 2 h à 4 h.",
-            'audience' => BroadcastAudience::All,
-            'status' => BroadcastStatus::Draft,
+            'audience' => CampaignAudience::All,
+            'status' => CampaignStatus::Draft,
             'created_by_user_id' => $agent->getKey(),
         ]);
 
-        app(BroadcastDispatcher::class)->dispatch($sent);
+        app(CampaignDispatcher::class)->dispatch($sent);
 
-        // Deux destinataires ont ouvert : le taux de lecture a de quoi
+        // Deux conducteurs ont ouvert leur fil : le taux de lecture a de quoi
         // s'afficher.
-        $sent->recipients()->limit(2)->get()->each(
-            fn (BroadcastRecipient $recipient) => $recipient->forceFill(['read_at' => now()])->save(),
+        $sent->messages()->limit(2)->get()->each(
+            fn (Message $message) => $message->forceFill(['read_at' => now()])->save(),
         );
-        $sent->forceFill(['read_count' => 2, 'sent_at' => now()->subHours(6)])->save();
+        // Créée avant d'être envoyée : un `sent_at` antidaté sans toucher à
+        // `created_at` afficherait un envoi antérieur à sa création.
+        $sent->forceFill([
+            'created_at' => now()->subHours(7),
+            'sent_at' => now()->subHours(6),
+        ])->save();
 
-        Broadcast::query()->create([
+        Campaign::query()->create([
             'title' => 'Nouveaux casques en boutique',
             'body' => 'Les casques homologués sont disponibles au retrait.',
-            'audience' => BroadcastAudience::Segment,
+            'audience' => CampaignAudience::Segment,
             'segment' => ['status' => [DriverStatus::Active->value]],
-            'status' => BroadcastStatus::Draft,
+            'status' => CampaignStatus::Draft,
             'created_by_user_id' => $agent->getKey(),
         ]);
     }

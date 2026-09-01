@@ -4,7 +4,8 @@ use App\Enums\BackOfficeModule;
 use App\Http\Controllers\BackOffice\DriverPhotoController;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Auth\Login;
-use App\Livewire\Broadcasts\Index as BroadcastsIndex;
+use App\Livewire\Campaigns\Index as CampaignsIndex;
+use App\Livewire\Campaigns\Show as CampaignsShow;
 use App\Livewire\Challenges\Index as ChallengesIndex;
 use App\Livewire\Challenges\Prizes as ChallengesPrizes;
 use App\Livewire\Challenges\Show as ChallengesShow;
@@ -104,9 +105,13 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
         ->middleware('permission:'.BackOfficeModule::Shop->permission())
         ->name('bo.shop.orders');
 
-    Route::livewire('broadcasts', BroadcastsIndex::class)
-        ->middleware('permission:'.BackOfficeModule::Broadcasts->permission())
-        ->name(BackOfficeModule::Broadcasts->route());
+    Route::livewire('campaigns', CampaignsIndex::class)
+        ->middleware('permission:'.BackOfficeModule::Campaigns->permission())
+        ->name(BackOfficeModule::Campaigns->route());
+
+    Route::livewire('campaigns/{campaign}', CampaignsShow::class)
+        ->middleware('permission:'.BackOfficeModule::Campaigns->permission())
+        ->name('bo.campaigns.show');
 
     Route::livewire('support-requests', SupportRequestsIndex::class)
         ->middleware('permission:'.BackOfficeModule::SupportRequests->permission())

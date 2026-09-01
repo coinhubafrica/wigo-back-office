@@ -40,7 +40,7 @@ it('a user is refused when none of their modules is built yet', function (): voi
     // proprement plutôt que rediriger vers une route absente. Les rôles
     // seedés ont tous au moins un module construit : on fabrique donc un
     // rôle ne portant qu'une permission encore sans écran.
-    $role = Role::findOrCreate('diffusions-seules', 'web');
+    $role = Role::findOrCreate('campagnes-seules', 'web');
     $role->givePermissionTo(BackOfficeModule::Audit->permission());
 
     $user = User::factory()->create(['is_active' => true, 'password' => Hash::make('motdepasse')]);
