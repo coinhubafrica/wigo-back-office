@@ -35,6 +35,8 @@ use App\Models\VehicleModel;
 use App\Models\YangoOrder;
 use App\Settings\OtpSettings;
 use Carbon\CarbonImmutable;
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -197,6 +199,66 @@ class AppServiceProvider extends ServiceProvider
 
             return hash_equals($expected, (string) request()->query('token'));
         });
+
+        $this->registerRealtimeDocs();
+    }
+
+    /**
+     * Scramble ne peut documenter que des routes HTTP : les canaux et
+     * évènements Reverb (WebSocket), et leur intégration côté client, lui
+     * sont invisibles. On déclare deux « API » sans route réelle (`routes()`
+     * ne retient jamais rien), uniquement pour obtenir leurs propres pages
+     * `/docs/api/realtime` et `/docs/api/realtime/flutter` — même gabarit,
+     * même verrou d'accès que le contrat REST, mais séparées plutôt que
+     * noyées dans sa description. Le contenu vient de `docs/REALTIME.md` et
+     * `docs/REALTIME_FLUTTER.md`, seules sources tenues à jour ; ces pages ne
+     * font que les republier.
+     */
+    protected function registerRealtimeDocs(): void
+    {
+        $this->registerMarkdownDocsPage(
+            api: 'realtime',
+            title: 'WiGO PRO — Temps réel (WebSocket)',
+            path: 'docs/api/realtime',
+            markdownFile: 'docs/REALTIME.md',
+        );
+
+        $this->registerMarkdownDocsPage(
+            api: 'realtime-flutter',
+            title: 'WiGO PRO — Temps réel (Flutter)',
+            path: 'docs/api/realtime/flutter',
+            markdownFile: 'docs/REALTIME_FLUTTER.md',
+        );
+    }
+
+    /**
+     * Publie un fichier Markdown du dépôt comme une page `/docs/api/*` à
+     * part entière, dans le même gabarit Stoplight Elements que le contrat
+     * REST — voir `registerRealtimeDocs()`.
+     */
+    protected function registerMarkdownDocsPage(string $api, string $title, string $path, string $markdownFile): void
+    {
+        Scramble::registerApi($api, [
+            'info' => [
+                'version' => config('scramble.info.version'),
+                'description' => 'Voir `/docs/api` pour le contrat REST complet.',
+            ],
+            'ui' => [
+                'title' => $title,
+            ],
+            'middleware' => config('scramble.middleware'),
+        ])
+            ->routes(fn (): bool => false)
+            ->expose($path)
+            ->afterOpenApiGenerated(function (OpenApi $openApi) use ($markdownFile): void {
+                $file = base_path($markdownFile);
+
+                if (! is_file($file)) {
+                    return;
+                }
+
+                $openApi->info->description = file_get_contents($file);
+            });
     }
 
     /**

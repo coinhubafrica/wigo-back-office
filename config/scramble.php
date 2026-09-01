@@ -72,6 +72,8 @@ return [
           `per_page` ≤ 50.
         - Authentification par **jeton Sanctum** (habilitation `mobile:*`) obtenu
           via `POST /auth/otp/verify`.
+
+        Messagerie en direct (WebSocket) : voir [`/docs/api/realtime`](/docs/api/realtime).
         MARKDOWN,
     ],
 

@@ -3,11 +3,21 @@
     "info": {
         "title": "WiGO PRO \u2014 API mobile",
         "version": "1.0.0",
-        "description": "Contrat entre le back-office Laravel et l'application mobile **WiGO PRO**\n(chauffeurs Yango en C\u00f4te d'Ivoire, op\u00e9r\u00e9 par At Confort Plus).\n\n- Montants en **entiers FCFA** (XOF).\n- Dates au format **ISO 8601 UTC**.\n- Identifiants **ULID**.\n- Messages d'erreur **en fran\u00e7ais**, pr\u00eats \u00e0 afficher.\n- Enveloppe unique : succ\u00e8s `{ message, data }`, erreur\n  `{ message, errors }`. Le code HTTP porte le statut, jamais le corps.\n- Pagination **curseur** : `meta.next_cursor` et `links.next`,\n  `per_page` \u2264 50.\n- Authentification par **jeton Sanctum** (habilitation `mobile:*`) obtenu\n  via `POST /auth/otp/verify`."
+        "description": "Contrat entre le back-office Laravel et l'application mobile **WiGO PRO**\n(chauffeurs Yango en C\u00f4te d'Ivoire, op\u00e9r\u00e9 par At Confort Plus).\n\n- Montants en **entiers FCFA** (XOF).\n- Dates au format **ISO 8601 UTC**.\n- Identifiants **ULID**.\n- Messages d'erreur **en fran\u00e7ais**, pr\u00eats \u00e0 afficher.\n- Enveloppe unique : succ\u00e8s `{ message, data }`, erreur\n  `{ message, errors }`. Le code HTTP porte le statut, jamais le corps.\n- Pagination **curseur** : `meta.next_cursor` et `links.next`,\n  `per_page` \u2264 50.\n- Authentification par **jeton Sanctum** (habilitation `mobile:*`) obtenu\n  via `POST /auth/otp/verify`.\n\nMessagerie en direct (WebSocket) : voir [`/docs/api/realtime`](/docs/api/realtime)."
     },
     "servers": [
         {
             "url": "http://localhost:8000/api/v1"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Temps r\u00e9el (WebSocket)",
+            "description": "Canaux, \u00e9v\u00e8nements, authentification : [voir la page d\u00e9di\u00e9e](/docs/api/realtime)."
+        },
+        {
+            "name": "Client Flutter",
+            "description": "Int\u00e9gration `pusher_channels_flutter` : [voir la page d\u00e9di\u00e9e](/docs/api/realtime/flutter)."
         }
     ],
     "security": [
