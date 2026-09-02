@@ -49,6 +49,9 @@ class SupportRequestService
                 'subject' => $subject ?? $this->subjectFromFirstUntriaged($conversation),
                 'opened_from_campaign_id' => $fromCampaign?->getKey(),
                 'triaged_by_user_id' => $agent->getKey(),
+                // Qui trie devient propriétaire : un ticket sans agent n'est
+                // réclamé par personne. La direction redistribue ensuite.
+                'assigned_user_id' => $agent->getKey(),
             ]);
 
             $request->created_at = now();

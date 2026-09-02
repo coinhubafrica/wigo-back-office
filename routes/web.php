@@ -2,6 +2,7 @@
 
 use App\Enums\BackOfficeModule;
 use App\Http\Controllers\BackOffice\DriverPhotoController;
+use App\Http\Controllers\BackOffice\MessageAttachmentController;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Auth\Login;
 use App\Livewire\Campaigns\Index as CampaignsIndex;
@@ -120,6 +121,12 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('support-requests/reponses-types', SupportRequestsTemplates::class)
         ->middleware('permission:'.BackOfficeModule::SupportRequests->permission())
         ->name('bo.support-requests.templates');
+
+    // Les pièces jointes vivent sur un disque privé : le fil ne peut pas les
+    // pointer directement, elles passent par cette route protégée.
+    Route::get('support-requests/attachments/{attachment}', MessageAttachmentController::class)
+        ->middleware('permission:'.BackOfficeModule::SupportRequests->permission())
+        ->name('bo.support-requests.attachment');
 
     Route::livewire('settings', SettingsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Settings->permission())

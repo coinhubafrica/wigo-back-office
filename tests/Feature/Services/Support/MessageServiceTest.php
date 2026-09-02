@@ -5,6 +5,7 @@
  */
 
 use App\Enums\MessageType;
+use App\Enums\SupportRequestCategory;
 use App\Enums\SupportRequestStatus;
 use App\Enums\SystemMessageEvent;
 use App\Models\Conversation;
@@ -12,6 +13,7 @@ use App\Models\Driver;
 use App\Models\SupportRequest;
 use App\Models\User;
 use App\Services\Support\MessageService;
+use App\Services\Support\SupportRequestService;
 
 it('opens the conversation on a driver first message', function (): void {
     $driver = Driver::factory()->create();
@@ -182,4 +184,81 @@ it('marks only the driver messages as read for staff', function (): void {
     expect($request->fresh()->staff_unread_count)->toBe(0)
         ->and($staffMessage->fresh()->read_at)->toBeNull()
         ->and($request->messages()->where('sender_type', 'driver')->whereNull('read_at')->count())->toBe(0);
+});
+
+it('replies without a ticket and leaves every clock alone', function (): void {
+    // Le tri se règle parfois d'une phrase. `sendFromStaff()` ne convient pas :
+    // elle arrête le chronomètre d'un ticket, et ici il n'y en a aucun.
+    $driver = Driver::factory()->create();
+    $agent = User::factory()->create();
+    $service = app(MessageService::class);
+
+    $service->sendFromDriver($driver, 'À quelle heure ouvre le magasin ?');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    $reply = $service->sendUntriagedReply($conversation->fresh(), $agent, 'De 8h à 18h.');
+
+    expect($reply->support_request_id)->toBeNull()
+        ->and($reply->sender_type)->toBe('user')
+        ->and($reply->sender_id)->toBe($agent->id)
+        ->and($reply->type)->toBe(MessageType::Text)
+        ->and(SupportRequest::query()->count())->toBe(0);
+});
+
+it('leaves the answered messages in the triage queue', function (): void {
+    // Répondre n'est pas trier : l'agent garde la conversation sous les yeux
+    // et tranche plus tard, quand la situation est claire.
+    $driver = Driver::factory()->create();
+    $agent = User::factory()->create();
+    $service = app(MessageService::class);
+
+    $service->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    $reply = $service->sendUntriagedReply($conversation->fresh(), $agent, 'La réponse.');
+
+    $driverMessage = $conversation->messages()->where('sender_type', 'driver')->sole();
+
+    expect($driverMessage->triaged_at)->toBeNull()
+        ->and($driverMessage->isAwaitingTriage())->toBeTrue()
+        // Ni rattaché à un ticket : rien n'a été ouvert au passage.
+        ->and($driverMessage->support_request_id)->toBeNull()
+        // « À trier » décrit ce que le conducteur attend : la réponse de
+        // l'agent n'en fait pas partie, sinon elle se compterait elle-même.
+        ->and($reply->isAwaitingTriage())->toBeFalse()
+        ->and($reply->triaged_by_user_id)->toBe($agent->id);
+});
+
+it('leaves the reply out of a ticket opened afterwards', function (): void {
+    // Le ticket reprend la question du conducteur, pas la réponse déjà donnée.
+    $driver = Driver::factory()->create();
+    $agent = User::factory()->create();
+    $service = app(MessageService::class);
+
+    $service->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+    $reply = $service->sendUntriagedReply($conversation->fresh(), $agent, 'Une première réponse.');
+
+    $request = app(SupportRequestService::class)->createFromTriage(
+        $conversation->fresh(),
+        SupportRequestCategory::Other,
+        $agent,
+    );
+
+    expect($reply->fresh()->support_request_id)->toBeNull()
+        ->and($request->messages()->pluck('sender_type')->all())->not->toContain('user');
+});
+
+it('shows the ticketless reply to the driver as unread', function (): void {
+    $driver = Driver::factory()->create();
+    $agent = User::factory()->create();
+    $service = app(MessageService::class);
+
+    $service->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    $service->sendUntriagedReply($conversation->fresh(), $agent, 'La réponse.');
+
+    expect($conversation->fresh()->driver_unread_count)->toBe(1)
+        ->and($conversation->fresh()->last_message_preview)->toBe('La réponse.');
 });

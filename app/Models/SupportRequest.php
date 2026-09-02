@@ -148,9 +148,64 @@ class SupportRequest extends Model
         $query->whereIn('status', SupportRequestStatus::live());
     }
 
+    /**
+     * Tickets encore en souffrance : une échéance dépassée et pas honorée.
+     *
+     * Traduction SQL de `SlaCalculator::isBreached()` — les deux doivent
+     * s'accorder, un test le vérifie. À ne pas confondre avec
+     * `hasBreachedSla()` juste dessous, qui lit la colonne `sla_breached_at` :
+     * celle-ci garde la trace d'un dépassement passé, même rattrapé depuis.
+     *
+     * @param  Builder<$this>  $query
+     */
+    public function scopeBreached(Builder $query): void
+    {
+        $query->where(fn (Builder $inner): Builder => $inner
+            ->where(fn (Builder $firstResponse): Builder => $firstResponse
+                ->whereNull('first_response_at')
+                ->where('sla_first_response_due', '<', now()))
+            ->orWhere(fn (Builder $resolution): Builder => $resolution
+                ->whereNull('resolved_at')
+                ->where('sla_resolution_due', '<', now())));
+    }
+
     public function isLive(): bool
     {
         return $this->status->isLive();
+    }
+
+    /**
+     * Où en est le chronomètre en cours, pour la jauge de la file.
+     *
+     * Tant que la première réponse n'est pas donnée c'est elle qui compte ;
+     * ensuite la résolution. Les deux échéances sont ancrées à la création
+     * (`SlaCalculator::apply`), d'où `created_at` comme origine. `null` quand
+     * plus rien ne court : ticket résolu, ou sans échéance.
+     *
+     * @return array{ratio: float, due: CarbonImmutable, overdue: bool, phase: 'first_response'|'resolution'}|null
+     */
+    public function slaProgress(?CarbonImmutable $at = null): ?array
+    {
+        $at ??= CarbonImmutable::now();
+
+        if ($this->first_response_at === null && $this->sla_first_response_due !== null) {
+            [$due, $phase] = [$this->sla_first_response_due, 'first_response'];
+        } elseif ($this->resolved_at === null && $this->sla_resolution_due !== null) {
+            [$due, $phase] = [$this->sla_resolution_due, 'resolution'];
+        } else {
+            return null;
+        }
+
+        $start = $this->created_at ?? $at;
+        $total = max(1.0, (float) $start->diffInSeconds($due));
+        $elapsed = max(0.0, (float) $start->diffInSeconds($at));
+
+        return [
+            'ratio' => min(1.0, $elapsed / $total),
+            'due' => $due,
+            'overdue' => $due->isBefore($at),
+            'phase' => $phase,
+        ];
     }
 
     public function hasBreachedSla(): bool

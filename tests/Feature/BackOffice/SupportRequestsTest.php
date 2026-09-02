@@ -144,6 +144,250 @@ it('dismisses untriaged messages without creating a ticket', function (): void {
         ->and($conversation->messages()->count())->toBe(1);
 });
 
+it('replies without a ticket and keeps the answer in the thread', function (): void {
+    // Le geste que l'écran promettait sans le rendre : répondre sans ouvrir de
+    // dossier. La réponse part, et rien ne disparaît sans laisser de trace.
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'À quelle heure ouvre le magasin ?');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+    $agent = supportUser('gestionnaire');
+
+    $component = Livewire::actingAs($agent)
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->set('triageDraft', 'De 8h à 18h.')
+        ->call('sendTriageReply')
+        ->assertHasNoErrors()
+        ->assertSet('triageDraft', '');
+
+    $reply = $conversation->messages()->where('sender_type', 'user')->sole();
+
+    expect(SupportRequest::query()->count())->toBe(0)
+        ->and($reply->support_request_id)->toBeNull()
+        ->and($reply->body)->toBe('De 8h à 18h.')
+        // La réponse est lisible là où l'agent vient de l'écrire.
+        ->and($component->viewData('thread')->pluck('body'))->toContain('De 8h à 18h.');
+});
+
+it('keeps the answered conversation in triage until an agent clears it', function (): void {
+    // Répondre ne tranche pas : l'agent attend le retour du conducteur, puis
+    // écarte ou ouvre un ticket. Trier à l'envoi faisait disparaître de
+    // l'écran ce qu'on venait d'écrire.
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question simple');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    $component = Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->assertViewHas('triageCount', 1)
+        ->set('triageDraft', 'Voici la réponse.')
+        ->call('sendTriageReply');
+
+    // La question du conducteur attend toujours ; la réponse de l'agent ne se
+    // compte pas elle-même dans la bannière.
+    expect($component->viewData('triageCount'))->toBe(1)
+        ->and($component->viewData('untriagedCount'))->toBe(1)
+        ->and($conversation->messages()->whereNull('triaged_at')->pluck('sender_type')->all())->toBe(['driver']);
+
+    // C'est « Retirer de la file » qui tranche, pas l'envoi.
+    $component->call('confirmDismiss', $conversation->id)->call('dismiss');
+
+    expect($component->viewData('triageCount'))->toBe(0)
+        ->and(SupportRequest::query()->count())->toBe(0);
+});
+
+it('refuses an empty reply without a ticket', function (): void {
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->set('triageDraft', '')
+        ->call('sendTriageReply')
+        ->assertHasErrors('triageDraft');
+
+    expect(Conversation::query()->sole()->messages()->where('sender_type', 'user')->count())->toBe(0);
+});
+
+it('offers a composer on a conversation that has no ticket', function (): void {
+    // Le symptôme d'origine : rien pour écrire, et le message hors de vue.
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->assertSee(__('backoffice.support_requests.reply_without_ticket'))
+        ->assertSee(__('backoffice.support_requests.dismiss'));
+});
+
+it('assigns the ticket to the agent who triaged it', function (): void {
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Mon solde est faux');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+    $agent = supportUser('gestionnaire');
+
+    Livewire::actingAs($agent)
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->call('openTicketForm')
+        ->set('ticketCategory', SupportRequestCategory::Payment->value)
+        ->call('createTicket');
+
+    // Un ticket sans propriétaire n'est réclamé par personne.
+    expect(SupportRequest::query()->sole()->assigned_user_id)->toBe($agent->id);
+});
+
+it('lets the direction hand a ticket to another agent', function (): void {
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+    $head = supportUser('direction');
+    $other = supportUser('gestionnaire');
+    $request = app(SupportRequestService::class)->createFromTriage($conversation, SupportRequestCategory::Other, $head);
+
+    Livewire::actingAs($head)
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->call('reassign', $other->id);
+
+    expect($request->fresh()->assigned_user_id)->toBe($other->id);
+});
+
+it('refuses a reassignment from an agent who is not the direction', function (): void {
+    // Répartir la charge de l'équipe est un acte d'encadrement : masquer le
+    // sélecteur ne suffit pas, l'appel direct doit être refusé.
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+    $agent = supportUser('gestionnaire');
+    $other = supportUser('gestionnaire');
+    $request = app(SupportRequestService::class)->createFromTriage($conversation, SupportRequestCategory::Other, $agent);
+
+    Livewire::actingAs($agent)
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->call('reassign', $other->id)
+        ->assertForbidden();
+
+    expect($request->fresh()->assigned_user_id)->toBe($agent->id);
+});
+
+it('refuses to assign a ticket to someone outside the module', function (): void {
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+    $head = supportUser('direction');
+    // `admin` n'a pas `module.support-requests` : il ne peut rien traiter.
+    $outsider = supportUser('admin');
+    $request = app(SupportRequestService::class)->createFromTriage($conversation, SupportRequestCategory::Other, $head);
+
+    Livewire::actingAs($head)
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->call('reassign', $outsider->id);
+
+    expect($request->fresh()->assigned_user_id)->toBe($head->id);
+});
+
+it('hides the reassignment control from an ordinary agent', function (): void {
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+    $agent = supportUser('gestionnaire');
+    app(SupportRequestService::class)->createFromTriage($conversation, SupportRequestCategory::Other, $agent);
+
+    Livewire::actingAs($agent)
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->assertDontSee(__('backoffice.support_requests.reassign'))
+        // Reprendre un ticket à son compte reste ouvert à tous.
+        ->assertSee(__('backoffice.support_requests.assign_to_me'));
+});
+
+it('opens on the state of the queue', function (): void {
+    // Les quatre libellés doivent être rendus : ils sont restés clés mortes
+    // dans le fichier de langue le temps d'une version.
+    $agent = supportUser('gestionnaire');
+    $mine = SupportRequest::factory()->create([
+        'assigned_user_id' => $agent->id,
+        'status' => SupportRequestStatus::Open,
+        'first_response_at' => null,
+        'sla_first_response_due' => now()->subHour(),
+        'sla_resolution_due' => now()->addDay(),
+    ]);
+    SupportRequest::factory()->create([
+        'assigned_user_id' => null,
+        'status' => SupportRequestStatus::Open,
+        'first_response_at' => now(),
+        'sla_first_response_due' => now()->addHour(),
+        'sla_resolution_due' => now()->addDay(),
+    ]);
+
+    Livewire::actingAs($agent)
+        ->test(Index::class)
+        ->assertViewHas('ticketCount', 2)
+        ->assertViewHas('breachedCount', 1)
+        ->assertViewHas('mineCount', 1)
+        ->assertSee(__('backoffice.support_requests.kpi_triage'))
+        ->assertSee(__('backoffice.support_requests.kpi_tickets'))
+        ->assertSee(__('backoffice.support_requests.kpi_breached'))
+        ->assertSee(__('backoffice.support_requests.kpi_mine'));
+
+    expect($mine->fresh()->assigned_user_id)->toBe($agent->id);
+});
+
+it('counts only live tickets in the queue health', function (): void {
+    // Un ticket résolu hors délai n'est plus en souffrance, et n'incombe plus.
+    $agent = supportUser('gestionnaire');
+    SupportRequest::factory()->create([
+        'assigned_user_id' => $agent->id,
+        'status' => SupportRequestStatus::Resolved,
+        'resolved_at' => now(),
+        'first_response_at' => now(),
+        'sla_first_response_due' => now()->subDay(),
+        'sla_resolution_due' => now()->subHour(),
+    ]);
+
+    Livewire::actingAs($agent)
+        ->test(Index::class)
+        ->assertViewHas('ticketCount', 0)
+        ->assertViewHas('breachedCount', 0)
+        ->assertViewHas('mineCount', 0);
+});
+
+it('marks the open conversation for a screen reader', function (): void {
+    // La teinte de la ligne sélectionnée ne suffit pas : c'est la seule
+    // information qui dise quel fil est ouvert à droite.
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    $component = Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class);
+
+    $component->assertDontSee('aria-current', escape: false);
+
+    $component->call('select', $conversation->id)
+        ->assertSee('aria-current="true"', escape: false);
+});
+
+it('spells out what each ticket status means', function (): void {
+    // « Ouverte »/« En attente » et « Résolue »/« Fermée » se lisent sinon
+    // comme deux paires de synonymes.
+    $component = Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class)
+        ->set('tab', 'tickets');
+
+    foreach (SupportRequestStatus::cases() as $case) {
+        $component->assertSee($case->label())->assertSee($case->hint());
+    }
+});
+
 it('shows the whole conversation history not just the current ticket', function (): void {
     // L'agent ne doit pas faire répéter le conducteur.
     $driver = Driver::factory()->create();

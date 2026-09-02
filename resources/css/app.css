@@ -48,6 +48,22 @@
 
     --radius-DEFAULT: 8px;
     --radius-sm: 6px;
+
+    /* Mouvement : court, et seulement là où il informe — une ligne qui
+     * arrive dans la file, un dépassement qui bat. `prefers-reduced-motion`
+     * les neutralise plus bas. */
+    --animate-fade-up: fade-up 0.22s ease-out both;
+    --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
+
+    @keyframes fade-up {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse-soft {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.55; transform: scale(0.85); }
+    }
 }
 
 @layer base {

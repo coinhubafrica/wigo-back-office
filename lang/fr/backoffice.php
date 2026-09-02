@@ -329,6 +329,23 @@ return [
         'tab_tickets' => 'Tickets',
         'kpi_triage' => 'Messages à trier',
         'kpi_tickets' => 'Tickets en cours',
+        // Formulés en indicateur, pas en filtre : « En retard seulement »
+        // n'a pas de sens sur une carte de compteur.
+        'kpi_breached' => 'Tickets en retard',
+        'kpi_mine' => 'Tickets qui me sont assignés',
+        'kpi_opened_7d' => 'ouverts sur 7 jours',
+        'kpi_breached_hint' => 'échéance dépassée, encore en souffrance',
+        'kpi_all_good' => 'aucun dépassement',
+
+        // Jauge SLA sur les lignes de la file.
+        'sla_first_response' => '1re réponse',
+        'sla_resolution' => 'résolution',
+        'sla_remaining' => ':time restantes',
+        'sla_overdue' => 'dépassé de :time',
+        'awaiting_reply' => 'Attend une réponse',
+        'today' => "Aujourd'hui",
+        'yesterday' => 'Hier',
+        'shortcut_send' => '⌘↵ pour envoyer',
 
         // File de gauche.
         'search_placeholder' => 'Rechercher un conducteur ou un téléphone…',
@@ -351,23 +368,32 @@ return [
         'untriaged_banner' => '{1} 1 message en attente de tri|[2,*] :count messages en attente de tri',
         'create_ticket' => 'Créer un ticket',
         'reply_without_ticket' => 'Répondre sans ticket',
+        'dismiss' => 'Retirer de la file',
+        'triage_compose_hint' => "Répondez directement si la question se règle en une phrase : aucun ticket ne sera créé. La conversation reste à trier — écartez-la ou ouvrez un ticket quand c'est clair.",
+        'triage_compose_placeholder' => 'Écrire une réponse sans ouvrir de ticket…',
         'history_title' => 'Tickets du conducteur',
         'history_empty' => 'Aucun ticket sur cette conversation.',
         'load_older' => 'Charger les messages précédents',
         'system_sender' => 'Système',
         'driver_sender' => 'Conducteur',
         'attachment' => 'Pièce jointe',
+        'open_attachment' => 'Ouvrir :name (:size)',
         'thread_empty' => 'Aucun message dans ce fil.',
 
         // Barre d'actions et zone de saisie.
         'assign_to_me' => "M'assigner",
         'assigned_to' => 'Assigné à :name',
+        'reassign' => 'Confier à',
+        'status_legend_title' => 'Ce que veulent dire les statuts',
         'category' => 'Catégorie',
         'resolve' => 'Résoudre',
         'compose_placeholder' => 'Écrire une réponse au conducteur…',
         'send' => 'Envoyer',
+        // Libellé d'attente : un bouton grisé muet ne dit pas qu'il travaille.
+        'sending' => 'Envoi…',
+        'working' => 'Un instant…',
         'templates' => 'Réponses types',
-        'no_live_request' => 'Créez un ticket avant de répondre : sans ticket, la réponse ne serait rattachée à rien.',
+        'no_live_request' => 'Aucun message à trier et aucun ticket ouvert : le prochain message du conducteur rouvrira un tri.',
 
         // Modales.
         'ticket_form_title' => 'Créer un ticket',
@@ -377,8 +403,8 @@ return [
         'subject_placeholder' => 'Résumé en une ligne',
         'resolve_title' => 'Résoudre ce ticket ?',
         'resolve_body' => 'Le ticket sort de la file. La conversation du conducteur reste ouverte : son prochain message rouvrira un tri.',
-        'dismiss_title' => 'Répondre sans ticket ?',
-        'dismiss_body' => 'Aucun ticket ne sera créé. Les messages sortent de la file de tri mais restent visibles dans le fil du conducteur.',
+        'dismiss_title' => 'Retirer cette conversation de la file ?',
+        'dismiss_body' => 'Aucun ticket ne sera créé. La conversation sort de la file de tri ; son fil, vos réponses comprises, reste visible sur la fiche du conducteur. Le prochain message du conducteur la ramènera à trier.',
         'templates_title' => 'Réponses types',
         'templates_empty' => 'Aucune réponse type active.',
 
@@ -388,9 +414,11 @@ return [
         'create' => 'Créer',
 
         // Messages de confirmation (dispatchés par le composant).
-        'ticket_created' => 'Ticket créé.',
-        'dismissed' => 'Messages écartés sans ticket.',
+        'ticket_created' => 'Ticket créé et assigné.',
+        'dismissed' => 'Conversation retirée de la file, sans ticket.',
+        'replied_without_ticket' => 'Réponse envoyée. La conversation reste à trier.',
         'assigned' => 'Ticket assigné.',
+        'reassigned' => 'Ticket confié à :name.',
         'recategorised' => 'Catégorie mise à jour.',
         'resolved' => 'Ticket résolu.',
     ],

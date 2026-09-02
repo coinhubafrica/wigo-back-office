@@ -130,6 +130,51 @@ class MessageService
     }
 
     /**
+     * Réponse d'un agent hors ticket : le tri se règle d'une phrase, sans
+     * ouvrir de dossier. Aucun chronomètre, aucune statistique de ticket —
+     * `sendFromStaff()` ne convient pas, elle arrête le SLA d'un ticket.
+     *
+     * Répondre ne trie pas. La conversation reste dans la file, avec la réponse
+     * visible dans le fil : l'agent voit ce qu'il a écrit, et attend le retour
+     * du conducteur avant de décider. Il l'écarte ensuite (`dismissUntriaged`)
+     * ou en fait un ticket. Trier à l'envoi faisait disparaître de l'écran ce
+     * qu'on venait d'écrire — le défaut qui a motivé ce chemin.
+     */
+    public function sendUntriagedReply(Conversation $conversation, User $agent, ?string $body): Message
+    {
+        $message = DB::transaction(function () use ($conversation, $agent, $body): Message {
+            $message = $this->write($conversation, [
+                // Sans ticket : le message reste rattaché à la seule
+                // conversation, et ne compte dans aucun délai.
+                'support_request_id' => null,
+                // Mais daté comme trié, et par son auteur : « à trier » décrit
+                // ce que le conducteur attend, jamais ce que l'agent a déjà
+                // écrit. Sans cela la réponse se compterait elle-même dans la
+                // bannière, et un ticket ouvert plus tard l'avalerait.
+                'triaged_at' => now(),
+                'triaged_by_user_id' => $agent->getKey(),
+                'sender_type' => $agent->getMorphClass(),
+                'sender_id' => $agent->getKey(),
+                'sender_name' => $agent->fullName(),
+                'type' => MessageType::Text,
+                'body' => $body,
+            ]);
+
+            $conversation->increment('driver_unread_count');
+            $this->stampLastMessage($conversation, $message);
+
+            return $message;
+        });
+
+        // Après la transaction : la notification est mise en file, et le
+        // worker ne doit pas lire une ligne pas encore visible.
+        $conversation->driver->notify(new SupportMessageReceived($message));
+        MessageSent::dispatch($message);
+
+        return $message;
+    }
+
+    /**
      * Message système : aucun émetteur, d'où l'absence de relation `sender`.
      *
      * @param  array<string, mixed>  $payload

@@ -219,5 +219,13 @@ class AppServiceProvider extends ServiceProvider
         // profils qui suivent la boutique ; écrire dans le stock reste au
         // magasinier et à la direction.
         Gate::define('manageStock', fn (User $user): bool => $user->hasAnyRole(['stock', 'direction']));
+
+        /*
+         * Redistribuer un ticket : un agent reprend le sien à son compte
+         * (« M'assigner », ouvert à tous), mais désigner un *autre*
+         * destinataire est un acte d'encadrement — c'est répartir la charge de
+         * l'équipe, pas traiter une demande.
+         */
+        Gate::define('reassignSupportRequest', fn (User $user): bool => $user->hasRole('direction'));
     }
 }

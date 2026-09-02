@@ -85,4 +85,26 @@ class MessageAttachment extends Model
     {
         return $this->message_id === null;
     }
+
+    /**
+     * Une image se montre dans le fil ; tout autre fichier se propose.
+     */
+    public function isImage(): bool
+    {
+        return str_starts_with($this->mime_type, 'image/');
+    }
+
+    /**
+     * Taille lisible : « 1,2 Mo », pas « 1258291 ».
+     */
+    public function humanSize(): string
+    {
+        $bytes = $this->size_bytes;
+
+        return match (true) {
+            $bytes >= 1_048_576 => number_format($bytes / 1_048_576, 1, ',', ' ').' Mo',
+            $bytes >= 1_024 => number_format($bytes / 1_024, 0, ',', ' ').' Ko',
+            default => $bytes.' o',
+        };
+    }
 }

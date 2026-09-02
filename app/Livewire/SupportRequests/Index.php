@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -65,6 +66,13 @@ class Index extends Component
     public ?string $selected = null;
 
     public string $draft = '';
+
+    /**
+     * Saisie du compositeur de tri, distincte de `$draft` : répondre sans
+     * ticket et répondre dans un ticket sont deux gestes, et un brouillon
+     * commencé dans l'un ne doit pas réapparaître dans l'autre.
+     */
+    public string $triageDraft = '';
 
     /** Nombre de messages affichés dans le fil, augmenté par `loadOlder()`. */
     public int $messageLimit = 30;
@@ -129,6 +137,7 @@ class Index extends Component
         $this->selected = $conversationId;
         $this->messageLimit = 30;
         $this->draft = '';
+        $this->triageDraft = '';
 
         $request = $this->liveRequest();
 
@@ -223,6 +232,30 @@ class Index extends Component
         $this->dispatch('toast', message: __('backoffice.support_requests.dismissed'));
     }
 
+    /**
+     * Répond sans ouvrir de ticket. La réponse suffit souvent : une question
+     * dont on connaît la réponse n'a pas besoin d'un dossier chronométré.
+     *
+     * Répondre sort les messages de la file — c'est traité — mais le fil
+     * garde tout : rien ne disparaît sans laisser sa trace à l'écran.
+     */
+    public function sendTriageReply(MessageService $messages): void
+    {
+        $this->validate(['triageDraft' => ['required', 'string', 'max:4000']]);
+
+        $conversation = $this->conversation();
+
+        if ($conversation === null) {
+            return;
+        }
+
+        $messages->sendUntriagedReply($conversation, $this->agent(), $this->triageDraft);
+
+        $this->triageDraft = '';
+        $this->dispatch('messages-updated');
+        $this->dispatch('toast', message: __('backoffice.support_requests.replied_without_ticket'));
+    }
+
     public function send(MessageService $messages): void
     {
         $this->validate(['draft' => ['required', 'string', 'max:4000']]);
@@ -247,7 +280,16 @@ class Index extends Component
             return;
         }
 
-        $this->draft = $template->body;
+        // Le modèle atterrit dans le compositeur affiché : celui du tri quand
+        // il y a des messages à trier sans ticket ouvert, celui du ticket
+        // sinon. Mêmes conditions que la vue, sans quoi l'agent verrait son
+        // modèle disparaître dans un champ invisible.
+        if ($this->liveRequest() === null && $this->untriagedCount() > 0) {
+            $this->triageDraft = $template->body;
+        } else {
+            $this->draft = $template->body;
+        }
+
         $this->templatesOpen = false;
 
         // Compté à l'insertion, pas à l'envoi : l'agent retouche souvent le
@@ -263,6 +305,29 @@ class Index extends Component
             $requests->assign($request, $this->agent());
             $this->dispatch('toast', message: __('backoffice.support_requests.assigned'));
         }
+    }
+
+    /**
+     * Confie le ticket à un autre agent. Réservé à la direction : répartir la
+     * charge de l'équipe n'est pas traiter une demande.
+     *
+     * L'autorisation est vérifiée ici et pas seulement masquée dans la vue, et
+     * la cible est cherchée parmi les agents *éligibles* — on ne doit pas
+     * pouvoir assigner un ticket à quelqu'un qui n'a pas accès au module.
+     */
+    public function reassign(string $userId, SupportRequestService $requests): void
+    {
+        Gate::authorize('reassignSupportRequest');
+
+        $request = $this->liveRequest();
+        $target = $this->assignableAgents()->firstWhere('id', $userId);
+
+        if ($request === null || $target === null) {
+            return;
+        }
+
+        $requests->assign($request, $target);
+        $this->dispatch('toast', message: __('backoffice.support_requests.reassigned', ['name' => $target->fullName()]));
     }
 
     public function recategorise(string $category, SupportRequestService $requests): void
@@ -305,6 +370,11 @@ class Index extends Component
         return view('livewire.support-requests.index', [
             'triageCount' => $this->triageQuery()->count(),
             'ticketCount' => SupportRequest::query()->live()->count(),
+            // Santé de la file, lisible avant d'ouvrir un fil : ce qui est en
+            // retard, et ce qui m'incombe.
+            'breachedCount' => SupportRequest::query()->live()->breached()->count(),
+            'mineCount' => SupportRequest::query()->live()->where('assigned_user_id', Auth::id())->count(),
+            'openedPerDay' => $this->openedPerDay(),
             'rows' => $this->tab === 'triage' ? $this->triageRows() : $this->ticketRows(),
             'conversation' => $this->conversation(),
             'thread' => $this->thread(),
@@ -313,8 +383,50 @@ class Index extends Component
             'history' => $this->history(),
             'untriagedCount' => $this->untriagedCount(),
             'templates' => $this->templatesOpen ? MessageTemplate::query()->active()->orderBy('title')->get() : collect(),
+            // Liste chargée seulement pour qui peut redistribuer : une requête
+            // de moins pour tous les autres agents.
+            'assignableAgents' => Gate::allows('reassignSupportRequest') ? $this->assignableAgents() : collect(),
             'sla' => $sla,
         ]);
+    }
+
+    /**
+     * Tickets ouverts par jour sur les sept derniers, du plus ancien à
+     * aujourd'hui : la courbe de la carte « Tickets en cours ». Un jour sans
+     * ticket vaut zéro, pas une absence — la courbe garde ses sept barres.
+     *
+     * @return list<int>
+     */
+    private function openedPerDay(): array
+    {
+        $from = now()->subDays(6)->startOfDay();
+
+        $counts = SupportRequest::query()
+            ->where('created_at', '>=', $from)
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as n')
+            ->groupBy('day')
+            ->pluck('n', 'day');
+
+        return collect(range(0, 6))
+            ->map(fn (int $offset): int => (int) ($counts[$from->copy()->addDays($offset)->toDateString()] ?? 0))
+            ->all();
+    }
+
+    /**
+     * Agents à qui un ticket peut être confié : actifs, et habilités au module.
+     *
+     * `permission()` est le scope du trait spatie — inutile de réécrire la
+     * jointure sur les rôles à la main.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     */
+    private function assignableAgents()
+    {
+        return User::query()
+            ->active()
+            ->permission(BackOfficeModule::SupportRequests->permission())
+            ->orderBy('name')
+            ->get();
     }
 
     /**
@@ -359,14 +471,7 @@ class Index extends Component
             ->when($this->status !== null, fn (Builder $q): Builder => $q->where('status', $this->status))
             ->when($this->status === null, fn (Builder $q): Builder => $q->live())
             ->when($this->assigned === 'me', fn (Builder $q): Builder => $q->where('assigned_user_id', Auth::id()))
-            ->when($this->breachedOnly, fn (Builder $q): Builder => $q
-                ->where(fn (Builder $inner): Builder => $inner
-                    ->where(fn (Builder $f): Builder => $f
-                        ->whereNull('first_response_at')
-                        ->where('sla_first_response_due', '<', now()))
-                    ->orWhere(fn (Builder $r): Builder => $r
-                        ->whereNull('resolved_at')
-                        ->where('sla_resolution_due', '<', now()))))
+            ->when($this->breachedOnly, fn (Builder $q): Builder => $q->breached())
             ->when($this->search !== '', fn (Builder $q): Builder => $q
                 ->whereHas('driver', fn (Builder $d): Builder => $this->matchDriver($d)))
             ->orderBy('sla_first_response_due')
