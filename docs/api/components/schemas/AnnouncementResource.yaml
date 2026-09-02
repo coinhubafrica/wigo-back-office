@@ -1,0 +1,30 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  title:
+    type: string
+    examples:
+      - 'Nouveau bonus surprise cette semaine !'
+  media_type:
+    type: string
+    enum:
+      - image
+      - video
+  media_url:
+    type: string
+    examples:
+      - 'https://cdn.wigopro.example/announcements/bonus-surprise.jpg'
+  order:
+    type: integer
+    examples:
+      - 1
+required:
+  - id
+  - title
+  - media_type
+  - media_url
+  - order
+title: AnnouncementResource

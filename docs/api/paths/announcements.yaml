@@ -1,0 +1,37 @@
+/announcements:
+  get:
+    operationId: v1.announcements.index
+    description: |-
+      Uniquement celles publiées : actives et, si elles ont une fenêtre de
+      diffusion, dans cette fenêtre. Triées par ordre d'affichage.
+
+      Pagination par curseur : `meta.next_cursor` porte le curseur suivant
+      (`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`
+      est plafonné à 50.
+    summary: "Lister les bannières de l'accueil"
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  type: array
+                  items:
+                    $ref: ../components/schemas/AnnouncementResource.yaml
+                meta:
+                  type: object
+                  description: 'Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page).'
+                links:
+                  type: object
+                  description: "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml

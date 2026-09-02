@@ -1,0 +1,71 @@
+# Contrat de l'API mobile WiGO PRO, écrit à la main.
+#
+# Ce fichier est la racine : il porte les métadonnées et référence un fichier
+# de chemins par tag (un tag = un contrôleur de `app/Http/Controllers/Api/V1`).
+# `php artisan docs:bundle` résout ces références et écrit `openapi.json` à la
+# racine du dépôt, qui est l'artefact publié — ne jamais l'éditer à la main.
+#
+# L'ordre des tags ci-dessous pilote l'ordre de la barre latérale de /docs/api.
+openapi: 3.1.0
+
+info:
+  title: 'WiGO PRO — API mobile'
+  # La version vient de `config('wigo.docs.version')` (env `API_VERSION`) ;
+  # la valeur ici est le repli quand la spec est lue hors de l'application.
+  version: 1.0.0
+  # Le corps vit dans `info/description.md` : c'est du Markdown lisible et
+  # diffable, et la page d'accueil de /docs/api le rend tel quel.
+  description:
+    $file: info/description.md
+
+servers:
+  - url: '{origin}/api/v1'
+    description: 'Serveur courant'
+    variables:
+      origin:
+        default: 'http://localhost:8000'
+        description: "Origine de l'instance (schéma, domaine, port)."
+
+security:
+  - bearer: []
+
+tags:
+  - name: Auth
+    description: "Connexion par OTP, profil du chauffeur et photo d'identité."
+  - name: Announcement
+    description: "Bannières publiées sur l'accueil de l'application."
+  - name: Challenge
+    description: 'Défis en cours et progression du chauffeur.'
+  - name: Wallet
+    description: 'Solde, historique et demandes de recharge.'
+  - name: Shop
+    description: 'Catalogue, points de retrait et commandes.'
+  - name: Cnps
+    description: 'Déclarations CNPS et référence assuré.'
+  - name: Support
+    description: 'Fil de discussion avec le support, pièces jointes incluses.'
+  - name: Notification
+    description: 'Notifications in-app et marquage comme lues.'
+  - name: Broadcast
+    description: "Authentification des canaux privés WebSocket. Voir le guide « Temps réel »."
+
+# `$tagged` fusionne des fichiers de chemins dans cet ordre, en apposant le tag
+# à chaque opération du fichier — le tag n'est donc écrit qu'une fois, ici, au
+# lieu d'être répété sur les 33 opérations. Deux fichiers ne peuvent pas
+# déclarer le même chemin : le bundler lève dans ce cas.
+paths:
+  $tagged:
+    Auth: paths/auth.yaml
+    Announcement: paths/announcements.yaml
+    Challenge: paths/challenges.yaml
+    Wallet: paths/wallet.yaml
+    Shop: paths/shop.yaml
+    Cnps: paths/cnps.yaml
+    Support: paths/support.yaml
+    Notification: paths/notifications.yaml
+    Broadcast: paths/broadcast.yaml
+
+components:
+  securitySchemes:
+    bearer:
+      $file: components/securitySchemes/bearer.yaml

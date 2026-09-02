@@ -164,7 +164,7 @@ pagination) suffit à détecter un nouveau message sans écouter le socket.
 ## Client Flutter
 
 Intégration détaillée (paquet, authentification, abonnement, cycle de vie) :
-[`/docs/api/realtime/flutter`](/docs/api/realtime/flutter).
+[`/docs/api/guides/realtime-flutter`](/docs/api/guides/realtime-flutter).
 
 ## Fichiers de référence
 

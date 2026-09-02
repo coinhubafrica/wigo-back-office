@@ -1,0 +1,23 @@
+description: 'Validation error'
+content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          description: 'Errors overview.'
+          examples:
+            - 'Les données envoyées sont invalides.'
+        errors:
+          type: object
+          description: 'A detailed description of each field that failed validation.'
+          additionalProperties:
+            type: array
+            items:
+              type: string
+              examples:
+                - 'Le champ téléphone doit être un numéro de téléphone valide.'
+      required:
+        - message
+        - errors

@@ -1,0 +1,363 @@
+/cnps:
+  get:
+    operationId: v1.cnps.show
+    description: |-
+      Le montant mensuel de référence, le mois en cours et les douze mois
+      précédents, du plus récent au plus ancien.
+
+      Suivi purement déclaratif : les montants sont ceux que le conducteur
+      déclare avoir payés dans Wave. Seuls les états de la CNPS font foi.
+      `status` se déduit du cumul déclaré face à la référence en vigueur ce
+      mois-là — le mois en cours vaut `pending`, jamais `late`.
+
+      `reference` est `null` tant que le conducteur n'a fixé aucun montant ;
+      `reference_amount` l'est pour les mois antérieurs au premier montant fixé.
+
+      Reste lisible par un conducteur suspendu, comme le profil.
+    summary: 'Mon relevé de cotisations CNPS'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    reference:
+                      type:
+                        - object
+                        - 'null'
+                      properties:
+                        amount:
+                          type: integer
+                          examples:
+                            - 9000
+                        effective_from:
+                          type: string
+                          examples:
+                            - '2026-01-01'
+                        set_by:
+                          type: string
+                          enum:
+                            - driver
+                            - agent
+                      required:
+                        - amount
+                        - effective_from
+                        - set_by
+                    current:
+                      type: object
+                      properties:
+                        period:
+                          type: string
+                          examples:
+                            - '2026-08'
+                        label:
+                          type: string
+                          examples:
+                            - 'Août 2026'
+                        reference_amount:
+                          type:
+                            - integer
+                            - 'null'
+                          examples:
+                            - 9000
+                        declared_amount:
+                          type: integer
+                          examples:
+                            - 7200
+                        remaining:
+                          type: integer
+                          examples:
+                            - 1800
+                        progress:
+                          type: integer
+                          examples:
+                            - 80
+                        status:
+                          type: string
+                          enum:
+                            - paid
+                            - partial
+                            - late
+                            - pending
+                        declarations:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                examples:
+                                  - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+                              declared_amount:
+                                type: integer
+                                examples:
+                                  - 7200
+                              payment_date:
+                                type: string
+                                examples:
+                                  - '2026-08-05'
+                              has_proof:
+                                type: boolean
+                            required:
+                              - id
+                              - declared_amount
+                              - payment_date
+                              - has_proof
+                      required:
+                        - period
+                        - label
+                        - reference_amount
+                        - declared_amount
+                        - remaining
+                        - progress
+                        - status
+                        - declarations
+                    history:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          period:
+                            type: string
+                            examples:
+                              - '2026-07'
+                          label:
+                            type: string
+                            examples:
+                              - 'Juillet 2026'
+                          reference_amount:
+                            type:
+                              - integer
+                              - 'null'
+                            examples:
+                              - 9000
+                          declared_amount:
+                            type: integer
+                            examples:
+                              - 9000
+                          remaining:
+                            type: integer
+                            examples:
+                              - 0
+                          progress:
+                            type: integer
+                            examples:
+                              - 100
+                          status:
+                            type: string
+                            enum:
+                              - paid
+                              - partial
+                              - late
+                              - pending
+                          declarations:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  examples:
+                                    - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+                                declared_amount:
+                                  type: integer
+                                  examples:
+                                    - 9000
+                                payment_date:
+                                  type: string
+                                  examples:
+                                    - '2026-07-04'
+                                has_proof:
+                                  type: boolean
+                              required:
+                                - id
+                                - declared_amount
+                                - payment_date
+                                - has_proof
+                        required:
+                          - period
+                          - label
+                          - reference_amount
+                          - declared_amount
+                          - remaining
+                          - progress
+                          - status
+                          - declarations
+                  required:
+                    - reference
+                    - current
+                    - history
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+'/cnps/declarations/{declaration}/proof':
+  get:
+    operationId: v1.cnps.declarations.proof
+    description: |-
+      Route signée et temporaire. La signature ne vaut pas autorisation : le
+      conducteur authentifié doit être celui qui a déposé la déclaration.
+    summary: "Télécharger le justificatif d'une déclaration"
+    parameters:
+      -
+        name: declaration
+        in: path
+        required: true
+        description: "Identifiant de la déclaration."
+        schema:
+          type: string
+          examples:
+            - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+    responses:
+      200:
+        description: ''
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+        headers:
+          Transfer-Encoding:
+            required: true
+            schema:
+              type: string
+              enum:
+                - chunked
+      403:
+        description: 'An error'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Error overview.'
+                  examples:
+                    - "Vous n'avez pas accès à cette ressource."
+              required:
+                - message
+      404:
+        $ref: ../components/responses/ModelNotFoundException.yaml
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+/cnps/declarations:
+  post:
+    operationId: v1.cnps.declarations.store
+    description: |-
+      Enregistre un paiement RSTI effectué dans Wave. Un mois peut être réglé
+      en plusieurs versements : chaque appel ajoute une ligne, il n'y a pas de
+      conflit sur un mois déjà déclaré.
+
+      Le justificatif est facultatif — une capture Wave que le conducteur garde
+      pour ses propres archives (jpg, png ou pdf, 5 Mo au plus).
+    summary: 'Déclarer un versement'
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: ../components/schemas/StoreCnpsDeclarationRequest.yaml
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      examples:
+                        - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+                    period:
+                      type: string
+                      examples:
+                        - '2026-08'
+                    declared_amount:
+                      type: integer
+                      examples:
+                        - 7200
+                    payment_date:
+                      type: string
+                      examples:
+                        - '2026-08-05'
+                    has_proof:
+                      type: boolean
+                  required:
+                    - id
+                    - period
+                    - declared_amount
+                    - payment_date
+                    - has_proof
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+      422:
+        $ref: ../components/responses/ValidationException.yaml
+/cnps/reference:
+  put:
+    operationId: v1.cnps.reference.update
+    description: |-
+      Le montant que le conducteur vise chaque mois. L'historique est conservé :
+      une nouvelle ligne est créée, l'ancienne reste, pour que les mois passés
+      gardent le montant qui s'appliquait à l'époque.
+    summary: 'Fixer le montant mensuel de référence'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/UpdateCnpsReferenceRequest.yaml
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    amount:
+                      type: integer
+                      examples:
+                        - 9000
+                    effective_from:
+                      type: string
+                      examples:
+                        - '2026-09-01'
+                    set_by:
+                      type: string
+                      enum:
+                        - driver
+                        - agent
+                  required:
+                    - amount
+                    - effective_from
+                    - set_by
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+      422:
+        $ref: ../components/responses/ValidationException.yaml

@@ -1,0 +1,278 @@
+/support/conversation:
+  get:
+    operationId: v1.support.conversation
+    description: |-
+      L'état de la conversation : aperçu du dernier message et nombre de
+      messages non lus, de quoi alimenter la pastille de l'écran d'accueil.
+
+      La conversation est créée à la volée si le conducteur n'a jamais écrit,
+      pour que l'application n'ait pas de cas particulier à traiter.
+    summary: 'Fil du conducteur'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  $ref: ../components/schemas/ConversationResource.yaml
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+/support/conversation/messages:
+  get:
+    operationId: v1.support.messages.index
+    description: |-
+      Tout l'historique du conducteur, du plus récent au plus ancien.
+
+      Pagination par curseur : `meta.next_cursor` porte le curseur suivant
+      (`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`
+      est plafonné à 50.
+    summary: 'Messages du fil'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  type: array
+                  items:
+                    $ref: ../components/schemas/MessageResource.yaml
+                meta:
+                  type: object
+                  description: 'Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page).'
+                links:
+                  type: object
+                  description: "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+  post:
+    operationId: v1.support.messages.store
+    description: |-
+      Le message rejoint le fil du conducteur. S'il existe un ticket en cours,
+      il s'y rattache ; sinon il attend d'être trié par un agent — le
+      conducteur, lui, ne voit qu'une conversation continue.
+
+      `Idempotency-Key` (UUID) est obligatoire : un renvoi après coupure
+      réseau ne doit pas poster deux fois.
+    summary: 'Écrire au support'
+    parameters:
+      -
+        $ref: ../components/parameters/IdempotencyKey.yaml
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/SendSupportMessageRequest.yaml
+    responses:
+      201:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  $ref: ../components/schemas/MessageResource.yaml
+              required:
+                - message
+                - data
+      403:
+        description: 'An error'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Error overview.'
+                  examples:
+                    - "Vous n'avez pas accès à cette ressource."
+              required:
+                - message
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+      422:
+        $ref: ../components/responses/ValidationException.yaml
+      409:
+        $ref: ../components/responses/Conflict.yaml
+/support/conversation/read:
+  post:
+    operationId: v1.support.read
+    description: |-
+      Remet à zéro le compteur de non-lus et horodate les messages reçus.
+      Sans effet si tout était déjà lu.
+    summary: 'Marquer le fil comme lu'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  $ref: ../components/schemas/ConversationResource.yaml
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+/support/unread:
+  get:
+    operationId: v1.support.unread
+    description: |-
+      Réponse minimale, pour la pastille : l'application n'a pas à charger le
+      fil entier pour savoir s'il y a du nouveau.
+    summary: 'Nombre de messages non lus'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    unread_count:
+                      type: integer
+                      examples:
+                        - 2
+                  required:
+                    - unread_count
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+'/support/attachments/{attachment}':
+  get:
+    operationId: v1.support.attachments.show
+    description: |-
+      Accessible par URL signée seulement : le fichier vit sur le disque
+      privé et n'a pas d'URL publique. Répond 403 pour la pièce jointe d'un
+      autre conducteur — l'URL signée en atteste, la vérification aussi.
+    summary: 'Télécharger une pièce jointe'
+    parameters:
+      -
+        name: attachment
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      200:
+        description: ''
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+        headers:
+          Transfer-Encoding:
+            required: true
+            schema:
+              type: string
+              enum:
+                - chunked
+      403:
+        description: 'An error'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Error overview.'
+                  examples:
+                    - "Vous n'avez pas accès à cette ressource."
+              required:
+                - message
+      404:
+        $ref: ../components/responses/ModelNotFoundException.yaml
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+/support/attachments:
+  post:
+    operationId: v1.support.attachments.store
+    description: |-
+      Renvoie l'identifiant à passer dans `attachment_ids` à l'envoi du
+      message. En deux temps délibérément : le dépôt est lent et se réessaie
+      seul, et l'envoi du message reste en JSON — donc compatible avec
+      l'empreinte de corps de l'idempotence.
+
+      Une pièce jointe jamais rattachée est purgée au bout de 24 heures.
+    summary: 'Déposer une pièce jointe'
+    parameters:
+      -
+        $ref: ../components/parameters/IdempotencyKey.yaml
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: ../components/schemas/StoreSupportAttachmentRequest.yaml
+    responses:
+      201:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  $ref: ../components/schemas/MessageAttachmentResource.yaml
+              required:
+                - message
+                - data
+      403:
+        description: 'An error'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Error overview.'
+                  examples:
+                    - "Vous n'avez pas accès à cette ressource."
+              required:
+                - message
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+      422:
+        $ref: ../components/responses/ValidationException.yaml
+      409:
+        $ref: ../components/responses/Conflict.yaml

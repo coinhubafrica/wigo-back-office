@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\Storage;
  * Ce n'est pas une `JsonResource` : la charge utile est une composition — le
  * challenge plus la progression propre au conducteur, calculée par
  * `DriverProgressService` — et non la projection d'un modèle. En faire une
- * ressource conduisait Scramble à publier toutes les colonnes du modèle
- * `Challenge` (`draw_seed`, `min_rating_enabled`…) au lieu du contrat réel :
- * celui-ci est déclaré par l'annotation `@response` du contrôleur.
+ * ressource exposerait le modèle `Challenge` lui-même (`draw_seed`,
+ * `min_rating_enabled`…) au lieu du contrat réel, qui est publié dans
+ * `docs/api/paths/challenges.yaml`.
  */
 class DriverChallengePayload
 {

@@ -1,0 +1,56 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  read_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-29T09:45:03Z'
+  created_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-29T09:42:11Z'
+  type:
+    type: string
+    description: |-
+      Identifie la notification concrète (`App\Notifications\*`), pas
+      une catégorie d'affichage — voir `category` pour celle-ci.
+    enum:
+      - recharge_credited
+      - campaign
+      - support_message
+  category:
+    type: string
+    enum:
+      - recharge
+      - campaign
+      - support
+  title:
+    type: string
+    examples:
+      - 'Recharge créditée'
+  body:
+    type: string
+    examples:
+      - 'Votre solde YANGO PRO a été crédité de 10 000 FCFA.'
+  deeplink:
+    type: string
+    description: 'Route interne de `wigo_pro` à ouvrir au clic.'
+    examples:
+      - 'wigo://recharge'
+required:
+  - id
+  - read_at
+  - created_at
+  - type
+  - category
+  - title
+  - body
+  - deeplink
+title: NotificationResource

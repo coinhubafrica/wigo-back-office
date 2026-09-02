@@ -67,6 +67,31 @@ return [
     'docs' => [
         'enabled' => (bool) env('API_DOCS_ENABLED', false),
         'token' => env('API_DOCS_TOKEN'),
+
+        /*
+         * Version publiée dans `info.version` du contrat.
+         */
+        'version' => env('API_VERSION', '1.0.0'),
+
+        /*
+         * Guides en Markdown publiés comme pages de `/docs/api/guides/{slug}`.
+         *
+         * Les fichiers de `docs/` sont la source unique : ils restent lisibles
+         * sur GitHub et par l'équipe mobile, et le site ne fait que les rendre.
+         * Le slug fait partie du contrat des liens (il est cité dans les
+         * guides eux-mêmes et dans la description du contrat) : ne pas le
+         * renommer à la légère.
+         */
+        'guides' => [
+            'realtime' => [
+                'title' => 'Temps réel (WebSocket)',
+                'file' => 'docs/REALTIME.md',
+            ],
+            'realtime-flutter' => [
+                'title' => 'Temps réel (client Flutter)',
+                'file' => 'docs/REALTIME_FLUTTER.md',
+            ],
+        ],
     ],
 
 ];

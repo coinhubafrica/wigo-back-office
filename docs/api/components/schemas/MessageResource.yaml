@@ -1,0 +1,81 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  sender_type:
+    type:
+      - string
+      - 'null'
+    description: 'Auteur du message. `null` pour un message système.'
+    enum:
+      - user
+      - driver
+      - null
+  sender_name:
+    type:
+      - string
+      - 'null'
+    description: "Nom de l'agent, figé à l'envoi."
+    examples:
+      - 'Mariam KONÉ'
+  type:
+    type: string
+    enum:
+      - text
+      - attachment
+      - system
+  body:
+    type:
+      - string
+      - 'null'
+    examples:
+      - "Bonjour, votre recharge a bien été créditée."
+  system_event:
+    type:
+      - string
+      - 'null'
+    description: 'Évènement porté par un message système.'
+    enum:
+      - request_opened
+      - request_assigned
+      - request_resolved
+      - request_reopened
+      - driver_suspended
+      - driver_reactivated
+      - shop_order_ready
+      - recharge_credited
+      - null
+  system_payload:
+    type:
+      - array
+      - 'null'
+    items: {}
+  attachments:
+    type: array
+    items:
+      $ref: ../../components/schemas/MessageAttachmentResource.yaml
+  read_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-29T09:45:03Z'
+  created_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-29T09:42:11Z'
+required:
+  - id
+  - sender_type
+  - sender_name
+  - type
+  - body
+  - system_event
+  - system_payload
+  - read_at
+  - created_at
+title: MessageResource

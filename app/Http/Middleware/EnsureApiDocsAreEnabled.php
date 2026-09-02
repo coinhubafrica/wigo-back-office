@@ -7,11 +7,12 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Interrupteur principal de la documentation générée.
+ * Interrupteur principal de la documentation.
  *
- * Scramble laisse passer l'environnement local avant de consulter la
- * autorisation `viewApiDocs` : ce middleware s'exécute en amont pour que
- * `API_DOCS_ENABLED=false` ferme réellement `/docs/api` partout.
+ * `EnsureApiDocsAreAuthorized` ouvre l'environnement local sans jeton ; cet
+ * interrupteur-ci s'applique en amont et sans exception, pour que
+ * `API_DOCS_ENABLED=false` ferme réellement la documentation partout, local
+ * compris.
  */
 class EnsureApiDocsAreEnabled
 {

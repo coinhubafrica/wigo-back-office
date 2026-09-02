@@ -1,0 +1,13 @@
+description: Unauthenticated
+content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          description: 'Error overview.'
+          examples:
+            - 'Authentification requise.'
+      required:
+        - message

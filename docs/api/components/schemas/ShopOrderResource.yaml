@@ -1,0 +1,92 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  ref:
+    type: string
+    examples:
+      - CMD-2026-0114
+  status:
+    type: string
+    enum:
+      - ordered
+      - ready
+      - out_for_delivery
+      - collected
+      - delivered
+      - cancelled
+  status_label:
+    type: string
+    enum:
+      - Commandée
+      - Prête
+      - 'En livraison'
+      - Retirée
+      - Livrée
+      - Annulée
+  fulfilment_mode:
+    type: string
+    enum:
+      - pickup
+      - delivery
+  pickup_code:
+    type:
+      - string
+      - 'null'
+    description: 'Code à présenter au comptoir. `null` pour une livraison.'
+    examples:
+      - '482913'
+  total:
+    type: integer
+    description: 'Total en FCFA.'
+    examples:
+      - 22500
+  lines:
+    type: array
+    items:
+      type: object
+      properties:
+        product_id:
+          type:
+            - string
+            - 'null'
+          examples:
+            - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+        name:
+          type: string
+          examples:
+            - 'Amortisseur avant Dzire'
+        qty:
+          type: integer
+          examples:
+            - 1
+        price:
+          type: integer
+          examples:
+            - 22500
+        line_total:
+          type: integer
+          examples:
+            - 22500
+      required:
+        - product_id
+        - name
+        - qty
+        - price
+        - line_total
+  placed_at:
+    type: string
+    examples:
+      - '2026-08-29T09:42:11Z'
+required:
+  - id
+  - ref
+  - status
+  - status_label
+  - fulfilment_mode
+  - pickup_code
+  - total
+  - placed_at
+title: ShopOrderResource

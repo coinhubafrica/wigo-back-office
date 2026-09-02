@@ -1,0 +1,14 @@
+type: object
+properties:
+  file:
+    type: string
+    format: binary
+    contentMediaType: application/octet-stream
+    description: |-
+      Image seule en v1 : aucun antivirus n'existe dans la chaîne, et
+      un agent ouvrant un document déposé par un tiers sur un outil
+      interne est un risque qu'on ne sait pas encore couvrir. Le type
+      est vérifié sur le contenu, pas sur l'extension.
+required:
+  - file
+title: StoreSupportAttachmentRequest

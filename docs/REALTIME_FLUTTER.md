@@ -1,7 +1,7 @@
 # Temps réel — client Flutter
 
-> Contrat WebSocket (canaux, évènements, auth) : `/docs/api/realtime`. Cette
-> page ne couvre que l'intégration Flutter.
+> Contrat WebSocket (canaux, évènements, auth) :
+> `/docs/api/guides/realtime`. Cette page ne couvre que l'intégration Flutter.
 
 Reverb parle le protocole Pusher : pas de SDK maison côté mobile, le paquet
 [`pusher_channels_flutter`](https://pub.dev/packages/pusher_channels_flutter)
@@ -112,4 +112,4 @@ Préfixe `private-` à écrire explicitement : contrairement à Laravel Echo
   `pusher.unsubscribe(channelName: ...)` en la quittant.
 - `onConnectionStateChange` signale les déconnexions : y activer le repli
   sur `GET /api/v1/support/unread` (voir « Repli sans websocket » dans
-  `/docs/api/realtime`) tant que l'état n'est pas revenu à `CONNECTED`.
+  `/docs/api/guides/realtime`) tant que l'état n'est pas revenu à `CONNECTED`.

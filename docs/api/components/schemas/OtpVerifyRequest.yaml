@@ -1,0 +1,26 @@
+type: object
+properties:
+  phone:
+    type: string
+    pattern: '^\+[1-9]\d{7,14}$'
+    examples:
+      - '+2250717738299'
+  code:
+    type: string
+    examples:
+      - '482913'
+  device_name:
+    type: string
+    maxLength: 120
+    examples:
+      - 'iPhone de Kouadio'
+  terms_version:
+    type: string
+    maxLength: 20
+    examples:
+      - '2026-01-01'
+required:
+  - phone
+  - code
+  - device_name
+title: OtpVerifyRequest

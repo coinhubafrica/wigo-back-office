@@ -15,7 +15,6 @@ use App\Models\MessageAttachment;
 use App\Services\Support\ConversationResolver;
 use App\Services\Support\MessageService;
 use App\Settings\SupportSettings;
-use App\Support\Scramble\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -47,7 +46,6 @@ class SupportController extends Controller
      * La conversation est créée à la volée si le conducteur n'a jamais écrit,
      * pour que l'application n'ait pas de cas particulier à traiter.
      */
-    #[ApiResponse(ConversationResource::class)]
     public function conversation(Request $request): JsonResponse
     {
         $conversation = $this->conversations->for($this->driver($request));
@@ -64,7 +62,6 @@ class SupportController extends Controller
      * (`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`
      * est plafonné à 50.
      */
-    #[ApiResponse(MessageResource::class, collection: true, paginated: true)]
     public function messages(Request $request): JsonResponse
     {
         $conversation = $this->conversations->for($this->driver($request));
@@ -85,7 +82,6 @@ class SupportController extends Controller
      * Remet à zéro le compteur de non-lus et horodate les messages reçus.
      * Sans effet si tout était déjà lu.
      */
-    #[ApiResponse(ConversationResource::class)]
     public function markRead(Request $request): JsonResponse
     {
         $conversation = $this->conversations->for($this->driver($request));
@@ -126,7 +122,6 @@ class SupportController extends Controller
      * `Idempotency-Key` (UUID) est obligatoire : un renvoi après coupure
      * réseau ne doit pas poster deux fois.
      */
-    #[ApiResponse(MessageResource::class)]
     public function sendMessage(SendSupportMessageRequest $request): JsonResponse
     {
         $driver = $this->driver($request);
@@ -161,7 +156,6 @@ class SupportController extends Controller
      *
      * Une pièce jointe jamais rattachée est purgée au bout de 24 heures.
      */
-    #[ApiResponse(MessageAttachmentResource::class)]
     public function uploadAttachment(StoreSupportAttachmentRequest $request): JsonResponse
     {
         $driver = $this->driver($request);

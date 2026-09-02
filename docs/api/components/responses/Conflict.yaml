@@ -1,0 +1,20 @@
+# Rejeu détecté par le middleware `idempotency` : même clé, corps différent.
+# Repris à l'identique de ce que publiait DocumentIdempotencyKey, pour que le
+# contrat déjà consommé par l'application mobile ne change pas de forme.
+description: "La clé a déjà servi pour une requête au corps différent ; rien n'est créé."
+content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          description: 'Message prêt à afficher, en français.'
+          examples:
+            - 'Cette clé a déjà été utilisée pour une autre requête.'
+        errors:
+          type: object
+          description: 'Erreurs par champ ; ici la clé `Idempotency-Key`.'
+      required:
+        - message
+        - errors

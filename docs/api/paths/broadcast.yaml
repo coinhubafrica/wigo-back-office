@@ -1,0 +1,95 @@
+# Route fournie par le framework (`withBroadcasting()` dans bootstrap/app.php),
+# pas par un contrôleur du dépôt : son contrat est donc écrit ici de bout en
+# bout. Elle répond à GET comme à POST ; les SDK Pusher postent, et c'est ce
+# que documente le guide « Temps réel ».
+/broadcasting/auth:
+  get:
+    operationId: v1.broadcasting.auth.show
+    summary: "Autoriser l'abonnement à un canal privé (GET)"
+    description: |-
+      Variante GET de l'opération ci-dessous, acceptée par la route du
+      framework. Les SDK Pusher postent : préférer `POST`, documenté plus bas.
+    parameters:
+      - name: socket_id
+        in: query
+        required: true
+        description: "Identifiant de la connexion WebSocket."
+        schema:
+          type: string
+      - name: channel_name
+        in: query
+        required: true
+        description: "Nom complet du canal, préfixe `private-` inclus."
+        schema:
+          type: string
+    responses:
+      200:
+        description: "Abonnement autorisé : la signature à renvoyer au serveur WebSocket."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                auth:
+                  type: string
+                  description: "Signature `clé:hmac` attendue par Reverb."
+                  examples:
+                    - 'app-key:9f1c2b7e4d3a4f8b9c2e1a5d6b7c8e90'
+              required:
+                - auth
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+      403:
+        description: "Le canal n'appartient pas au conducteur authentifié, ou n'existe pas."
+  post:
+    operationId: v1.broadcasting.auth
+    summary: "Autoriser l'abonnement à un canal privé"
+    description: |-
+      Appelée automatiquement par le client Pusher avant de souscrire à un
+      canal privé ; le client y présente le jeton Sanctum du conducteur.
+
+      Un canal inconnu, ou qui n'appartient pas au conducteur authentifié,
+      répond **403** — jamais 404, pour ne rien révéler de l'existence d'une
+      ressource à qui n'y a pas droit.
+
+      Ne pas confondre avec `/broadcasting/auth` (sans le préfixe `api/v1`),
+      qui attend une session de navigateur et refusera un jeton Sanctum.
+
+      Les règles d'accès aux canaux vivent dans `routes/channels.php`. Voir le
+      guide [« Temps réel »](/docs/api/guides/realtime).
+    requestBody:
+      required: true
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            type: object
+            properties:
+              socket_id:
+                type: string
+                description: "Identifiant de la connexion WebSocket, fourni par le client Pusher."
+                example: '123456.789012'
+              channel_name:
+                type: string
+                description: "Nom complet du canal, préfixe `private-` inclus."
+                example: private-conversation.01HZY3M4N5P6Q7R8S9T0V1W2X3
+            required:
+              - socket_id
+              - channel_name
+    responses:
+      200:
+        description: "Abonnement autorisé : la signature à renvoyer au serveur WebSocket."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                auth:
+                  type: string
+                  description: "Signature `clé:hmac` attendue par Reverb."
+                  example: 'app-key:9f1c2b7e4d3a4f8b9c2e1a5d6b7c8e90'
+              required:
+                - auth
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+      403:
+        description: "Le canal n'appartient pas au conducteur authentifié, ou n'existe pas."

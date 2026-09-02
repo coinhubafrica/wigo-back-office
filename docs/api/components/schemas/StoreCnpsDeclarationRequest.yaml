@@ -1,0 +1,32 @@
+type: object
+properties:
+  period:
+    type: string
+    pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+    examples:
+      - '2026-08'
+  amount:
+    type: integer
+    minimum: 1
+    maximum: 1000000
+    examples:
+      - 7200
+  payment_date:
+    type: string
+    format: date-time
+    examples:
+      - '2026-08-05T14:30:00Z'
+  proof:
+    type:
+      - string
+      - 'null'
+    format: binary
+    contentMediaType: application/octet-stream
+    description: |-
+      Capture du paiement Wave, facultative — jpg, png ou pdf, 5 Mo au
+      plus. Le type est vérifié sur le contenu, pas sur l'extension.
+required:
+  - period
+  - amount
+  - payment_date
+title: StoreCnpsDeclarationRequest

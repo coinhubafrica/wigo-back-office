@@ -1,0 +1,27 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  name:
+    type: string
+    examples:
+      - 'Agence Cocody Angré'
+  address:
+    type: string
+    examples:
+      - 'Rue des Jardins, Cocody Angré, Abidjan'
+  opening_hours:
+    type:
+      - string
+      - 'null'
+    description: "Horaires d'ouverture en clair, `null` si l'agence n'en publie pas."
+    examples:
+      - 'Lun–Sam 8 h – 18 h'
+required:
+  - id
+  - name
+  - address
+  - opening_hours
+title: PickupPointResource

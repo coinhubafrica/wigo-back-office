@@ -12,4 +12,4 @@ The seeder is idempotent, keyed on phone: it updates in place and only creates a
 
 `POST /auth/otp/request` returns the plain `code` in its response when `wigo.otp.expose_code` (`WIGO_OTP_EXPOSE_CODE`) is on — enabled in phpunit.xml and local `.env`, so tests and manual calls log in with two requests instead of reading the code out of the log. This is a complete OTP bypass: `OtpService::exposesCode()` returns false whenever the app is in production regardless of config, and a test asserts that. Never remove that guard, and never default the env var to true.
 
-Scramble cannot infer a conditionally-present key, so the endpoint carries an explicit `@response` annotation marking `code?` optional. Without it the published contract wrongly lists `code` as required.
+Because that key is only sometimes present, the contract lists `code` under `properties` but leaves it out of `required` in `docs/api/paths/auth.yaml`. Publishing it as required would tell the mobile team to expect a field production never sends.

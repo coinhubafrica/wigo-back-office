@@ -1,78 +1,74 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "WiGO PRO \u2014 API mobile",
+        "title": "WiGO PRO — API mobile",
         "version": "1.0.0",
-        "description": "Contrat entre le back-office Laravel et l'application mobile **WiGO PRO**\n(chauffeurs Yango en C\u00f4te d'Ivoire, op\u00e9r\u00e9 par At Confort Plus).\n\n- Montants en **entiers FCFA** (XOF).\n- Dates au format **ISO 8601 UTC**.\n- Identifiants **ULID**.\n- Messages d'erreur **en fran\u00e7ais**, pr\u00eats \u00e0 afficher.\n- Enveloppe unique : succ\u00e8s `{ message, data }`, erreur\n  `{ message, errors }`. Le code HTTP porte le statut, jamais le corps.\n- Pagination **curseur** : `meta.next_cursor` et `links.next`,\n  `per_page` \u2264 50.\n- Authentification par **jeton Sanctum** (habilitation `mobile:*`) obtenu\n  via `POST /auth/otp/verify`.\n\nMessagerie en direct (WebSocket) : voir [`/docs/api/realtime`](/docs/api/realtime)."
+        "description": "Contrat entre le back-office Laravel et l'application mobile **WiGO PRO**\n(chauffeurs Yango en Côte d'Ivoire, opéré par At Confort Plus).\n\n- Montants en **entiers FCFA** (XOF).\n- Dates au format **ISO 8601 UTC**.\n- Identifiants **ULID**.\n- Messages d'erreur **en français**, prêts à afficher.\n- Enveloppe unique : succès `{ message, data }`, erreur\n  `{ message, errors }`. Le code HTTP porte le statut, jamais le corps.\n- Pagination **curseur** : `meta.next_cursor` et `links.next`,\n  `per_page` ≤ 50.\n- Authentification par **jeton Sanctum** (habilitation `mobile:*`) obtenu\n  via `POST /auth/otp/verify`.\n\nMessagerie en direct (WebSocket) : voir [`/docs/api/guides/realtime`](/docs/api/guides/realtime)."
     },
     "servers": [
         {
-            "url": "http://localhost:8000/api/v1"
+            "url": "{origin}/api/v1",
+            "description": "Serveur courant",
+            "variables": {
+                "origin": {
+                    "default": "http://localhost:8000",
+                    "description": "Origine de l'instance (schéma, domaine, port)."
+                }
+            }
         }
     ],
     "security": [
         {
-            "http": []
+            "bearer": []
+        }
+    ],
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Connexion par OTP, profil du chauffeur et photo d'identité."
+        },
+        {
+            "name": "Announcement",
+            "description": "Bannières publiées sur l'accueil de l'application."
+        },
+        {
+            "name": "Challenge",
+            "description": "Défis en cours et progression du chauffeur."
+        },
+        {
+            "name": "Wallet",
+            "description": "Solde, historique et demandes de recharge."
+        },
+        {
+            "name": "Shop",
+            "description": "Catalogue, points de retrait et commandes."
+        },
+        {
+            "name": "Cnps",
+            "description": "Déclarations CNPS et référence assuré."
+        },
+        {
+            "name": "Support",
+            "description": "Fil de discussion avec le support, pièces jointes incluses."
+        },
+        {
+            "name": "Notification",
+            "description": "Notifications in-app et marquage comme lues."
+        },
+        {
+            "name": "Broadcast",
+            "description": "Authentification des canaux privés WebSocket. Voir le guide « Temps réel »."
         }
     ],
     "paths": {
-        "/announcements": {
-            "get": {
-                "operationId": "v1.announcements.index",
-                "description": "Uniquement celles publi\u00e9es : actives et, si elles ont une fen\u00eatre de\ndiffusion, dans cette fen\u00eatre. Tri\u00e9es par ordre d'affichage.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la derni\u00e8re page), \u00e0 renvoyer dans `?cursor=`. `per_page`\nest plafonn\u00e9 \u00e0 50.",
-                "summary": "Lister les banni\u00e8res de l'accueil",
-                "tags": [
-                    "Announcement"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/AnnouncementResource"
-                                            }
-                                        },
-                                        "meta": {
-                                            "type": "object",
-                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
-                                        },
-                                        "links": {
-                                            "type": "object",
-                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/auth/otp/request": {
             "post": {
-                "operationId": "v1.auth.otp.request",
-                "description": "Envoie un code \u00e0 6 chiffres (valable 5 minutes) par SMS ou WhatsApp. Le\nconducteur doit \u00eatre pr\u00e9-enregistr\u00e9 par le back-office : l'application\nmobile ne cr\u00e9e pas de compte.\n\nLimit\u00e9 \u00e0 3 envois par tranche de 10 minutes et par num\u00e9ro.\n\nEn d\u00e9veloppement et en test (`WIGO_OTP_EXPOSE_CODE`), la r\u00e9ponse contient\nen plus le champ `code` : il est toujours absent en production.",
-                "summary": "Demander un code OTP",
                 "tags": [
                     "Auth"
                 ],
+                "operationId": "v1.auth.otp.request",
+                "description": "Envoie un code à 6 chiffres (valable 5 minutes) par SMS ou WhatsApp. Le\nconducteur doit être pré-enregistré par le back-office : l'application\nmobile ne crée pas de compte.\n\nLimité à 3 envois par tranche de 10 minutes et par numéro.\n\nEn développement et en test (`WIGO_OTP_EXPOSE_CODE`), la réponse contient\nen plus le champ `code` : il est toujours absent en production.",
+                "summary": "Demander un code OTP",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -92,7 +88,10 @@
                                     "type": "object",
                                     "properties": {
                                         "message": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "examples": [
+                                                "Un code de connexion vous a été envoyé. Il expire dans 5 minutes."
+                                            ]
                                         },
                                         "data": {
                                             "type": "object",
@@ -105,10 +104,17 @@
                                                     ]
                                                 },
                                                 "expires_at": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "examples": [
+                                                        "2026-08-29T09:47:11Z"
+                                                    ]
                                                 },
                                                 "code": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "description": "Uniquement en développement et en recette\n(`WIGO_OTP_EXPOSE_CODE`) : absent en production.",
+                                                    "examples": [
+                                                        "482913"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -134,12 +140,12 @@
         },
         "/auth/otp/verify": {
             "post": {
-                "operationId": "v1.auth.otp.verify",
-                "description": "D\u00e9livre un jeton Sanctum portant l'habilitation `mobile:*`, \u00e0 placer dans\nl'en-t\u00eate `Authorization: Bearer <token>`. Plusieurs codes peuvent \u00eatre\nvalides simultan\u00e9ment ; une v\u00e9rification r\u00e9ussie les consomme tous.\n\nApr\u00e8s 5 saisies erron\u00e9es, le num\u00e9ro est verrouill\u00e9 15 minutes.",
-                "summary": "V\u00e9rifier l'OTP et obtenir un jeton",
                 "tags": [
                     "Auth"
                 ],
+                "operationId": "v1.auth.otp.verify",
+                "description": "Délivre un jeton Sanctum portant l'habilitation `mobile:*`, à placer dans\nl'en-tête `Authorization: Bearer <token>`. Plusieurs codes peuvent être\nvalides simultanément ; une vérification réussie les consomme tous.\n\nAprès 5 saisies erronées, le numéro est verrouillé 15 minutes.",
+                "summary": "Vérifier l'OTP et obtenir un jeton",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -165,7 +171,11 @@
                                             "type": "object",
                                             "properties": {
                                                 "token": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "description": "Jeton Sanctum, à présenter en `Authorization: Bearer <token>`.",
+                                                    "examples": [
+                                                        "14|9f1c2b7e4d3a4f8b9c2e1a5d6b7c8e90wYjKQpX7ZmN3vB8cA2dE"
+                                                    ]
                                                 },
                                                 "driver": {
                                                     "$ref": "#/components/schemas/DriverResource"
@@ -174,7 +184,10 @@
                                                     "type": "object",
                                                     "properties": {
                                                         "current_version": {
-                                                            "type": "string"
+                                                            "type": "string",
+                                                            "examples": [
+                                                                "1.0"
+                                                            ]
                                                         },
                                                         "accepted": {
                                                             "type": "boolean"
@@ -210,12 +223,12 @@
         },
         "/auth/logout": {
             "post": {
-                "operationId": "v1.auth.logout",
-                "description": "R\u00e9voque uniquement le jeton pr\u00e9sent\u00e9 ; les autres appareils du conducteur\nrestent connect\u00e9s.",
-                "summary": "Se d\u00e9connecter",
                 "tags": [
                     "Auth"
                 ],
+                "operationId": "v1.auth.logout",
+                "description": "Révoque uniquement le jeton présenté ; les autres appareils du conducteur\nrestent connectés.",
+                "summary": "Se déconnecter",
                 "responses": {
                     "200": {
                         "description": "",
@@ -225,7 +238,10 @@
                                     "type": "object",
                                     "properties": {
                                         "message": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "examples": [
+                                                "Vous avez été déconnecté."
+                                            ]
                                         },
                                         "data": {
                                             "type": "object",
@@ -250,12 +266,12 @@
         },
         "/me": {
             "get": {
-                "operationId": "v1.me",
-                "description": "Accessible m\u00eame lorsque le compte est suspendu, afin que l'application\npuisse afficher le motif et permettre la d\u00e9connexion.",
-                "summary": "Profil du conducteur",
                 "tags": [
                     "Auth"
                 ],
+                "operationId": "v1.me",
+                "description": "Accessible même lorsque le compte est suspendu, afin que l'application\npuisse afficher le motif et permettre la déconnexion.",
+                "summary": "Profil du conducteur",
                 "responses": {
                     "200": {
                         "description": "",
@@ -266,7 +282,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "description": "Message prêt à afficher, en français."
                                         },
                                         "data": {
                                             "$ref": "#/components/schemas/DriverResource"
@@ -288,12 +304,12 @@
         },
         "/me/push-token": {
             "put": {
-                "operationId": "v1.push-token",
-                "description": "Requis pour recevoir les notifications push (messages data-only).",
-                "summary": "Enregistrer le jeton FCM de l'appareil",
                 "tags": [
                     "Auth"
                 ],
+                "operationId": "v1.push-token",
+                "description": "Requis pour recevoir les notifications push (messages data-only).",
+                "summary": "Enregistrer le jeton FCM de l'appareil",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -313,7 +329,10 @@
                                     "type": "object",
                                     "properties": {
                                         "message": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "examples": [
+                                                "Jeton de notification enregistré."
+                                            ]
                                         },
                                         "data": {
                                             "type": "object",
@@ -341,12 +360,12 @@
         },
         "/me/photo": {
             "post": {
-                "operationId": "v1.photo.update",
-                "description": "Remplace la photo du conducteur : le profil est mis \u00e0 jour aussit\u00f4t, il\nn'y a pas de validation par un agent. L'ancienne photo est supprim\u00e9e du\ndisque dans la foul\u00e9e.\n\nAccessible m\u00eame lorsque le compte est suspendu \u2014 la photo rel\u00e8ve du\nprofil, pas des op\u00e9rations m\u00e9tier.",
-                "summary": "Changer ma photo de profil",
                 "tags": [
                     "Auth"
                 ],
+                "operationId": "v1.photo.update",
+                "description": "Remplace la photo du conducteur : le profil est mis à jour aussitôt, il\nn'y a pas de validation par un agent. L'ancienne photo est supprimée du\ndisque dans la foulée.\n\nAccessible même lorsque le compte est suspendu — la photo relève du\nprofil, pas des opérations métier.",
+                "summary": "Changer ma photo de profil",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -366,13 +385,19 @@
                                     "type": "object",
                                     "properties": {
                                         "message": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "examples": [
+                                                "Votre photo de profil a été mise à jour."
+                                            ]
                                         },
                                         "data": {
                                             "type": "object",
                                             "properties": {
                                                 "photo_url": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "examples": [
+                                                        "https://cdn.wigopro.example/drivers/01HZY3M4N5P6Q7R8S9T0V1W2X3/photo.jpg?signature=…"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -399,12 +424,12 @@
         },
         "/me/photo/{driver}": {
             "get": {
-                "operationId": "v1.photo",
-                "description": "Route sign\u00e9e et temporaire, dont l'URL est fournie par `photo_url` du\nprofil. La signature ne vaut pas autorisation : le conducteur\nauthentifi\u00e9 doit \u00eatre celui de la photo.",
-                "summary": "T\u00e9l\u00e9charger ma photo de profil",
                 "tags": [
                     "Auth"
                 ],
+                "operationId": "v1.photo",
+                "description": "Route signée et temporaire, dont l'URL est fournie par `photo_url` du\nprofil. La signature ne vaut pas autorisation : le conducteur\nauthentifié doit être celui de la photo.",
+                "summary": "Télécharger ma photo de profil",
                 "parameters": [
                     {
                         "name": "driver",
@@ -450,7 +475,7 @@
                                             "type": "string",
                                             "description": "Error overview.",
                                             "examples": [
-                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                                "Vous n'avez pas accès à cette ressource."
                                             ]
                                         }
                                     },
@@ -470,20 +495,45 @@
                 }
             }
         },
-        "/broadcasting/auth": {
+        "/announcements": {
             "get": {
-                "operationId": "v1.",
-                "summary": "Authenticate the request for channel access",
                 "tags": [
-                    "Broadcast"
+                    "Announcement"
                 ],
+                "operationId": "v1.announcements.index",
+                "description": "Uniquement celles publiées : actives et, si elles ont une fenêtre de\ndiffusion, dans cette fenêtre. Triées par ordre d'affichage.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`\nest plafonné à 50.",
+                "summary": "Lister les bannières de l'accueil",
                 "responses": {
                     "200": {
                         "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/AnnouncementResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
                                 }
                             }
                         }
@@ -496,12 +546,12 @@
         },
         "/challenges": {
             "get": {
-                "operationId": "v1.challenges",
-                "description": "Un \u00e9l\u00e9ment par challenge ouvert, avec la progression propre au\nconducteur : tickets d\u00e9tenus et courses restantes avant le prochain pour\nune tombola, rang et prime pour un classement, gain \u00e9ventuel. Les blocs\n`ticketing`, `leaderboard` et `won` ne sont pr\u00e9sents que lorsqu'ils\ns'appliquent au challenge.\n\n`meta.weekly_history` porte les douze derni\u00e8res semaines de courses\ntermin\u00e9es, de la plus ancienne \u00e0 la semaine en cours.\n\nReste accessible \u00e0 un conducteur suspendu, comme le profil : ses\ncompteurs cessent simplement de progresser.",
-                "summary": "Challenges en cours du conducteur",
                 "tags": [
                     "Challenge"
                 ],
+                "operationId": "v1.challenges",
+                "description": "Un élément par challenge ouvert, avec la progression propre au\nconducteur : tickets détenus et courses restantes avant le prochain pour\nune tombola, rang et prime pour un classement, gain éventuel. Les blocs\n`ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils\ns'appliquent au challenge.\n\n`meta.weekly_history` porte les douze dernières semaines de courses\nterminées, de la plus ancienne à la semaine en cours.\n\nReste accessible à un conducteur suspendu, comme le profil : ses\ncompteurs cessent simplement de progresser.",
+                "summary": "Challenges en cours du conducteur",
                 "responses": {
                     "200": {
                         "description": "",
@@ -519,13 +569,22 @@
                                                 "type": "object",
                                                 "properties": {
                                                     "id": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "examples": [
+                                                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                                                        ]
                                                     },
                                                     "reference": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "examples": [
+                                                            "CH-2026-039"
+                                                        ]
                                                     },
                                                     "name": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "examples": [
+                                                            "Tombola de la rentrée"
+                                                        ]
                                                     },
                                                     "type": {
                                                         "type": "string",
@@ -544,21 +603,33 @@
                                                         ]
                                                     },
                                                     "criteria_summary": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "examples": [
+                                                            "1 ticket toutes les 10 courses terminées"
+                                                        ]
                                                     },
                                                     "period": {
                                                         "type": "object",
                                                         "properties": {
                                                             "start": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "examples": [
+                                                                    "2026-08-25"
+                                                                ]
                                                             },
                                                             "end": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "examples": [
+                                                                    "2026-08-31"
+                                                                ]
                                                             },
                                                             "week_iso": {
                                                                 "type": [
                                                                     "string",
                                                                     "null"
+                                                                ],
+                                                                "examples": [
+                                                                    "2026-W35"
                                                                 ]
                                                             }
                                                         },
@@ -575,12 +646,18 @@
                                                         ],
                                                         "properties": {
                                                             "name": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "examples": [
+                                                                    "Casque Bluetooth"
+                                                                ]
                                                             },
                                                             "photo_url": {
                                                                 "type": [
                                                                     "string",
                                                                     "null"
+                                                                ],
+                                                                "examples": [
+                                                                    "https://cdn.wigopro.example/challenges/casque-bluetooth.jpg"
                                                                 ]
                                                             }
                                                         },
@@ -593,19 +670,34 @@
                                                         "type": "object",
                                                         "properties": {
                                                             "trips_per_ticket": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    10
+                                                                ]
                                                             },
                                                             "orders_completed": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    34
+                                                                ]
                                                             },
                                                             "tickets_held": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    3
+                                                                ]
                                                             },
                                                             "progress_in_block": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    4
+                                                                ]
                                                             },
                                                             "orders_to_next_ticket": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    6
+                                                                ]
                                                             }
                                                         },
                                                         "required": [
@@ -623,15 +715,24 @@
                                                                 "type": [
                                                                     "integer",
                                                                     "null"
+                                                                ],
+                                                                "examples": [
+                                                                    4
                                                                 ]
                                                             },
                                                             "winning_places": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    10
+                                                                ]
                                                             },
                                                             "reward_amount": {
                                                                 "type": [
                                                                     "integer",
                                                                     "null"
+                                                                ],
+                                                                "examples": [
+                                                                    15000
                                                                 ]
                                                             },
                                                             "in_winning_range": {
@@ -652,25 +753,37 @@
                                                                 "type": [
                                                                     "string",
                                                                     "null"
+                                                                ],
+                                                                "examples": [
+                                                                    "2026-08-31T20:00:00Z"
                                                                 ]
                                                             },
                                                             "prize_name": {
                                                                 "type": [
                                                                     "string",
                                                                     "null"
+                                                                ],
+                                                                "examples": [
+                                                                    "Casque Bluetooth"
                                                                 ]
                                                             },
                                                             "amount": {
                                                                 "type": [
                                                                     "integer",
                                                                     "null"
+                                                                ],
+                                                                "examples": [
+                                                                    15000
                                                                 ]
                                                             },
                                                             "credited": {
                                                                 "type": "boolean"
                                                             },
                                                             "collection_note": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "examples": [
+                                                                    "À retirer à l'agence Cocody Angré sous 30 jours."
+                                                                ]
                                                             }
                                                         },
                                                         "required": [
@@ -702,16 +815,28 @@
                                                         "type": "object",
                                                         "properties": {
                                                             "week_iso": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "examples": [
+                                                                    "2026-W35"
+                                                                ]
                                                             },
                                                             "label": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "examples": [
+                                                                    "25–31 août"
+                                                                ]
                                                             },
                                                             "orders_completed": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    34
+                                                                ]
                                                             },
                                                             "current": {
-                                                                "type": "boolean"
+                                                                "type": "boolean",
+                                                                "examples": [
+                                                                    true
+                                                                ]
                                                             }
                                                         },
                                                         "required": [
@@ -743,14 +868,534 @@
                 }
             }
         },
+        "/wallet": {
+            "get": {
+                "tags": [
+                    "Wallet"
+                ],
+                "operationId": "v1.wallet.show",
+                "description": "Solde courant et plafonds de recharge. Le solde vient du cache local,\nrafraîchi auprès de Yango dès qu'il a vieilli ; il est nul tant qu'aucune\nlecture n'a abouti (conducteur pas encore rapproché du parc).\n\n`remaining_today` dit ce qu'il reste à engager aujourd'hui : les sessions\nouvertes mais non payées comptent déjà.",
+                "summary": "Portefeuille Yango Pro",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "balance": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "examples": [
+                                                        42500
+                                                    ]
+                                                },
+                                                "balance_read_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "examples": [
+                                                        "2026-08-29T08:12:03Z"
+                                                    ]
+                                                },
+                                                "currency": {
+                                                    "type": "string",
+                                                    "examples": [
+                                                        "XOF"
+                                                    ]
+                                                },
+                                                "limits": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "min": {
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                500
+                                                            ]
+                                                        },
+                                                        "max": {
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                100000
+                                                            ]
+                                                        },
+                                                        "daily_cap": {
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                150000
+                                                            ]
+                                                        },
+                                                        "remaining_today": {
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                150000
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "min",
+                                                        "max",
+                                                        "daily_cap",
+                                                        "remaining_today"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "balance",
+                                                "balance_read_at",
+                                                "currency",
+                                                "limits"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/wallet/recharges": {
+            "get": {
+                "tags": [
+                    "Wallet"
+                ],
+                "operationId": "v1.wallet.recharges.index",
+                "description": "De la plus récente à la plus ancienne. Pagination par curseur :\n`meta.next_cursor` porte le curseur suivant (`null` sur la dernière\npage), à renvoyer dans `?cursor=`. `per_page` est plafonné à 50.",
+                "summary": "Historique des recharges",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/TransactionResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Wallet"
+                ],
+                "operationId": "v1.wallet.recharges.store",
+                "description": "Ouvre une session de paiement Wave et rend `wave_launch_url`, que\nl'application ouvre pour que le conducteur paie. La recharge n'est\ncréditée qu'au retour du webhook de Wave — jamais à cette étape.\n\nL'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois\nla même requête ne crée qu'une recharge.",
+                "summary": "Lancer une recharge",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreRechargeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/TransactionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
+                }
+            }
+        },
+        "/wallet/recharges/{transaction}": {
+            "get": {
+                "tags": [
+                    "Wallet"
+                ],
+                "operationId": "v1.wallet.recharges.show",
+                "description": "La recharge d'un autre conducteur répond 404 : rien ne fuit d'un compte\nà l'autre.",
+                "summary": "État d'une recharge",
+                "parameters": [
+                    {
+                        "name": "transaction",
+                        "in": "path",
+                        "required": true,
+                        "description": "The transaction ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/TransactionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/shop/products": {
+            "get": {
+                "tags": [
+                    "Shop"
+                ],
+                "operationId": "v1.shop.products",
+                "description": "Les pièces disponibles à la commande, triées par nom.\n\n`fits_my_vehicle=1` restreint aux pièces qui vont sur le véhicule du\nconducteur, pièces universelles comprises. Le filtre est sans effet —\ncatalogue complet — si le conducteur n'a pas de véhicule ou si son\nmodèle n'est pas au référentiel : mieux vaut tout montrer qu'une\nboutique vide.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`\nest plafonné à 50.",
+                "summary": "Catalogue de la boutique",
+                "parameters": [
+                    {
+                        "name": "fits_my_vehicle",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ProductResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/shop/pickup-points": {
+            "get": {
+                "tags": [
+                    "Shop"
+                ],
+                "operationId": "v1.shop.pickup-points",
+                "description": "Les agences ouvertes au retrait, triées par nom. Un identifiant de cette\nliste alimente `pickup_point_id` à la commande.\n\nListe courte et non paginée : la réponse porte toutes les agences.",
+                "summary": "Points de retrait",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PickupPointResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/shop/orders": {
+            "get": {
+                "tags": [
+                    "Shop"
+                ],
+                "operationId": "v1.shop.orders.index",
+                "description": "Les commandes du conducteur, de la plus récente à la plus ancienne.",
+                "summary": "Mes commandes",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ShopOrderResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Shop"
+                ],
+                "operationId": "v1.shop.orders.store",
+                "description": "Décrémente le stock et rend la commande créée. En retrait, la réponse\nporte le code à six chiffres à présenter au comptoir.\n\nL'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois\nla même requête ne crée qu'une commande.",
+                "summary": "Passer commande",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreShopOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ShopOrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
+                }
+            }
+        },
+        "/shop/orders/{order}": {
+            "get": {
+                "tags": [
+                    "Shop"
+                ],
+                "operationId": "v1.shop.orders.show",
+                "description": "Une commande d'un autre conducteur répond 404 : rien ne fuit d'un compte\nà l'autre.",
+                "summary": "Détail d'une commande",
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "description": "The order ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ShopOrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/cnps": {
             "get": {
-                "operationId": "v1.cnps.show",
-                "description": "Le montant mensuel de r\u00e9f\u00e9rence, le mois en cours et les douze mois\npr\u00e9c\u00e9dents, du plus r\u00e9cent au plus ancien.\n\nSuivi purement d\u00e9claratif : les montants sont ceux que le conducteur\nd\u00e9clare avoir pay\u00e9s dans Wave. Seuls les \u00e9tats de la CNPS font foi.\n`status` se d\u00e9duit du cumul d\u00e9clar\u00e9 face \u00e0 la r\u00e9f\u00e9rence en vigueur ce\nmois-l\u00e0 \u2014 le mois en cours vaut `pending`, jamais `late`.\n\n`reference` est `null` tant que le conducteur n'a fix\u00e9 aucun montant ;\n`reference_amount` l'est pour les mois ant\u00e9rieurs au premier montant fix\u00e9.\n\nReste lisible par un conducteur suspendu, comme le profil.",
-                "summary": "Mon relev\u00e9 de cotisations CNPS",
                 "tags": [
                     "Cnps"
                 ],
+                "operationId": "v1.cnps.show",
+                "description": "Le montant mensuel de référence, le mois en cours et les douze mois\nprécédents, du plus récent au plus ancien.\n\nSuivi purement déclaratif : les montants sont ceux que le conducteur\ndéclare avoir payés dans Wave. Seuls les états de la CNPS font foi.\n`status` se déduit du cumul déclaré face à la référence en vigueur ce\nmois-là — le mois en cours vaut `pending`, jamais `late`.\n\n`reference` est `null` tant que le conducteur n'a fixé aucun montant ;\n`reference_amount` l'est pour les mois antérieurs au premier montant fixé.\n\nReste lisible par un conducteur suspendu, comme le profil.",
+                "summary": "Mon relevé de cotisations CNPS",
                 "responses": {
                     "200": {
                         "description": "",
@@ -772,10 +1417,16 @@
                                                     ],
                                                     "properties": {
                                                         "amount": {
-                                                            "type": "integer"
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                9000
+                                                            ]
                                                         },
                                                         "effective_from": {
-                                                            "type": "string"
+                                                            "type": "string",
+                                                            "examples": [
+                                                                "2026-01-01"
+                                                            ]
                                                         },
                                                         "set_by": {
                                                             "type": "string",
@@ -795,25 +1446,43 @@
                                                     "type": "object",
                                                     "properties": {
                                                         "period": {
-                                                            "type": "string"
+                                                            "type": "string",
+                                                            "examples": [
+                                                                "2026-08"
+                                                            ]
                                                         },
                                                         "label": {
-                                                            "type": "string"
+                                                            "type": "string",
+                                                            "examples": [
+                                                                "Août 2026"
+                                                            ]
                                                         },
                                                         "reference_amount": {
                                                             "type": [
                                                                 "integer",
                                                                 "null"
+                                                            ],
+                                                            "examples": [
+                                                                9000
                                                             ]
                                                         },
                                                         "declared_amount": {
-                                                            "type": "integer"
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                7200
+                                                            ]
                                                         },
                                                         "remaining": {
-                                                            "type": "integer"
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                1800
+                                                            ]
                                                         },
                                                         "progress": {
-                                                            "type": "integer"
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                80
+                                                            ]
                                                         },
                                                         "status": {
                                                             "type": "string",
@@ -830,13 +1499,22 @@
                                                                 "type": "object",
                                                                 "properties": {
                                                                     "id": {
-                                                                        "type": "string"
+                                                                        "type": "string",
+                                                                        "examples": [
+                                                                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                                                                        ]
                                                                     },
                                                                     "declared_amount": {
-                                                                        "type": "integer"
+                                                                        "type": "integer",
+                                                                        "examples": [
+                                                                            7200
+                                                                        ]
                                                                     },
                                                                     "payment_date": {
-                                                                        "type": "string"
+                                                                        "type": "string",
+                                                                        "examples": [
+                                                                            "2026-08-05"
+                                                                        ]
                                                                     },
                                                                     "has_proof": {
                                                                         "type": "boolean"
@@ -868,25 +1546,43 @@
                                                         "type": "object",
                                                         "properties": {
                                                             "period": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "examples": [
+                                                                    "2026-07"
+                                                                ]
                                                             },
                                                             "label": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "examples": [
+                                                                    "Juillet 2026"
+                                                                ]
                                                             },
                                                             "reference_amount": {
                                                                 "type": [
                                                                     "integer",
                                                                     "null"
+                                                                ],
+                                                                "examples": [
+                                                                    9000
                                                                 ]
                                                             },
                                                             "declared_amount": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    9000
+                                                                ]
                                                             },
                                                             "remaining": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    0
+                                                                ]
                                                             },
                                                             "progress": {
-                                                                "type": "integer"
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    100
+                                                                ]
                                                             },
                                                             "status": {
                                                                 "type": "string",
@@ -903,13 +1599,22 @@
                                                                     "type": "object",
                                                                     "properties": {
                                                                         "id": {
-                                                                            "type": "string"
+                                                                            "type": "string",
+                                                                            "examples": [
+                                                                                "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                                                                            ]
                                                                         },
                                                                         "declared_amount": {
-                                                                            "type": "integer"
+                                                                            "type": "integer",
+                                                                            "examples": [
+                                                                                9000
+                                                                            ]
                                                                         },
                                                                         "payment_date": {
-                                                                            "type": "string"
+                                                                            "type": "string",
+                                                                            "examples": [
+                                                                                "2026-07-04"
+                                                                            ]
                                                                         },
                                                                         "has_proof": {
                                                                             "type": "boolean"
@@ -960,20 +1665,23 @@
         },
         "/cnps/declarations/{declaration}/proof": {
             "get": {
-                "operationId": "v1.cnps.declarations.proof",
-                "description": "Route sign\u00e9e et temporaire. La signature ne vaut pas autorisation : le\nconducteur authentifi\u00e9 doit \u00eatre celui qui a d\u00e9pos\u00e9 la d\u00e9claration.",
-                "summary": "T\u00e9l\u00e9charger le justificatif d'une d\u00e9claration",
                 "tags": [
                     "Cnps"
                 ],
+                "operationId": "v1.cnps.declarations.proof",
+                "description": "Route signée et temporaire. La signature ne vaut pas autorisation : le\nconducteur authentifié doit être celui qui a déposé la déclaration.",
+                "summary": "Télécharger le justificatif d'une déclaration",
                 "parameters": [
                     {
                         "name": "declaration",
                         "in": "path",
                         "required": true,
-                        "description": "The declaration ID",
+                        "description": "Identifiant de la déclaration.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "examples": [
+                                "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                            ]
                         }
                     }
                 ],
@@ -1011,7 +1719,7 @@
                                             "type": "string",
                                             "description": "Error overview.",
                                             "examples": [
-                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                                "Vous n'avez pas accès à cette ressource."
                                             ]
                                         }
                                     },
@@ -1033,12 +1741,12 @@
         },
         "/cnps/declarations": {
             "post": {
-                "operationId": "v1.cnps.declarations.store",
-                "description": "Enregistre un paiement RSTI effectu\u00e9 dans Wave. Un mois peut \u00eatre r\u00e9gl\u00e9\nen plusieurs versements : chaque appel ajoute une ligne, il n'y a pas de\nconflit sur un mois d\u00e9j\u00e0 d\u00e9clar\u00e9.\n\nLe justificatif est facultatif \u2014 une capture Wave que le conducteur garde\npour ses propres archives (jpg, png ou pdf, 5 Mo au plus).",
-                "summary": "D\u00e9clarer un versement",
                 "tags": [
                     "Cnps"
                 ],
+                "operationId": "v1.cnps.declarations.store",
+                "description": "Enregistre un paiement RSTI effectué dans Wave. Un mois peut être réglé\nen plusieurs versements : chaque appel ajoute une ligne, il n'y a pas de\nconflit sur un mois déjà déclaré.\n\nLe justificatif est facultatif — une capture Wave que le conducteur garde\npour ses propres archives (jpg, png ou pdf, 5 Mo au plus).",
+                "summary": "Déclarer un versement",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1064,16 +1772,28 @@
                                             "type": "object",
                                             "properties": {
                                                 "id": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "examples": [
+                                                        "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                                                    ]
                                                 },
                                                 "period": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "examples": [
+                                                        "2026-08"
+                                                    ]
                                                 },
                                                 "declared_amount": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "examples": [
+                                                        7200
+                                                    ]
                                                 },
                                                 "payment_date": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "examples": [
+                                                        "2026-08-05"
+                                                    ]
                                                 },
                                                 "has_proof": {
                                                     "type": "boolean"
@@ -1107,12 +1827,12 @@
         },
         "/cnps/reference": {
             "put": {
-                "operationId": "v1.cnps.reference.update",
-                "description": "Le montant que le conducteur vise chaque mois. L'historique est conserv\u00e9 :\nune nouvelle ligne est cr\u00e9\u00e9e, l'ancienne reste, pour que les mois pass\u00e9s\ngardent le montant qui s'appliquait \u00e0 l'\u00e9poque.",
-                "summary": "Fixer le montant mensuel de r\u00e9f\u00e9rence",
                 "tags": [
                     "Cnps"
                 ],
+                "operationId": "v1.cnps.reference.update",
+                "description": "Le montant que le conducteur vise chaque mois. L'historique est conservé :\nune nouvelle ligne est créée, l'ancienne reste, pour que les mois passés\ngardent le montant qui s'appliquait à l'époque.",
+                "summary": "Fixer le montant mensuel de référence",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1138,10 +1858,16 @@
                                             "type": "object",
                                             "properties": {
                                                 "amount": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "examples": [
+                                                        9000
+                                                    ]
                                                 },
                                                 "effective_from": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "examples": [
+                                                        "2026-09-01"
+                                                    ]
                                                 },
                                                 "set_by": {
                                                     "type": "string",
@@ -1175,455 +1901,14 @@
                 }
             }
         },
-        "/notifications": {
-            "get": {
-                "operationId": "v1.notifications.index",
-                "description": "Les plus r\u00e9centes d'abord. La charge utile de chaque notification est\naplatie \u00e0 la racine (`type`, `category`, `title`, `body`, `deeplink`).\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la derni\u00e8re page), \u00e0 renvoyer dans `?cursor=`. `per_page`\nest plafonn\u00e9 \u00e0 50.",
-                "summary": "Notifications du conducteur",
-                "tags": [
-                    "Notification"
-                ],
-                "parameters": [
-                    {
-                        "name": "per_page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "default": 20
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/NotificationResource"
-                                            }
-                                        },
-                                        "meta": {
-                                            "type": "object",
-                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
-                                        },
-                                        "links": {
-                                            "type": "object",
-                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/notifications/read-all": {
-            "post": {
-                "operationId": "v1.notifications.read-all",
-                "summary": "Tout marquer comme lu",
-                "tags": [
-                    "Notification"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "unread_count": {
-                                                    "type": "integer"
-                                                }
-                                            },
-                                            "required": [
-                                                "unread_count"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/notifications/{notification}/read": {
-            "post": {
-                "operationId": "v1.notifications.read",
-                "description": "R\u00e9pond 404 pour une notification qui n'appartient pas au conducteur :\nrien ne doit fuir d'un compte \u00e0 l'autre, pas m\u00eame son existence.",
-                "summary": "Marquer une notification comme lue",
-                "tags": [
-                    "Notification"
-                ],
-                "parameters": [
-                    {
-                        "name": "notification",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/NotificationResource"
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/shop/products": {
-            "get": {
-                "operationId": "v1.shop.products",
-                "description": "Les pi\u00e8ces disponibles \u00e0 la commande, tri\u00e9es par nom.\n\n`fits_my_vehicle=1` restreint aux pi\u00e8ces qui vont sur le v\u00e9hicule du\nconducteur, pi\u00e8ces universelles comprises. Le filtre est sans effet \u2014\ncatalogue complet \u2014 si le conducteur n'a pas de v\u00e9hicule ou si son\nmod\u00e8le n'est pas au r\u00e9f\u00e9rentiel : mieux vaut tout montrer qu'une\nboutique vide.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la derni\u00e8re page), \u00e0 renvoyer dans `?cursor=`. `per_page`\nest plafonn\u00e9 \u00e0 50.",
-                "summary": "Catalogue de la boutique",
-                "tags": [
-                    "Shop"
-                ],
-                "parameters": [
-                    {
-                        "name": "fits_my_vehicle",
-                        "in": "query",
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/ProductResource"
-                                            }
-                                        },
-                                        "meta": {
-                                            "type": "object",
-                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
-                                        },
-                                        "links": {
-                                            "type": "object",
-                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/shop/pickup-points": {
-            "get": {
-                "operationId": "v1.shop.pickup-points",
-                "description": "Les agences ouvertes au retrait, tri\u00e9es par nom. Un identifiant de cette\nliste alimente `pickup_point_id` \u00e0 la commande.\n\nListe courte et non pagin\u00e9e : la r\u00e9ponse porte toutes les agences.",
-                "summary": "Points de retrait",
-                "tags": [
-                    "Shop"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/PickupPointResource"
-                                            }
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/shop/orders": {
-            "get": {
-                "operationId": "v1.shop.orders.index",
-                "description": "Les commandes du conducteur, de la plus r\u00e9cente \u00e0 la plus ancienne.",
-                "summary": "Mes commandes",
-                "tags": [
-                    "Shop"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/ShopOrderResource"
-                                            }
-                                        },
-                                        "meta": {
-                                            "type": "object",
-                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
-                                        },
-                                        "links": {
-                                            "type": "object",
-                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            },
-            "post": {
-                "operationId": "v1.shop.orders.store",
-                "description": "D\u00e9cr\u00e9mente le stock et rend la commande cr\u00e9\u00e9e. En retrait, la r\u00e9ponse\nporte le code \u00e0 six chiffres \u00e0 pr\u00e9senter au comptoir.\n\nL'en-t\u00eate `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois\nla m\u00eame requ\u00eate ne cr\u00e9e qu'une commande.",
-                "summary": "Passer commande",
-                "tags": [
-                    "Shop"
-                ],
-                "parameters": [
-                    {
-                        "name": "Idempotency-Key",
-                        "in": "header",
-                        "required": true,
-                        "description": "UUID propre \u00e0 la requ\u00eate. Renvoyer deux fois le m\u00eame appel avec la m\u00eame cl\u00e9 ne cr\u00e9e qu'une ressource : la r\u00e9ponse enregistr\u00e9e est rendue telle quelle. La cl\u00e9 expire au bout de 24 h.",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreShopOrderRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/ShopOrderResource"
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "409": {
-                        "description": "La cl\u00e9 a d\u00e9j\u00e0 servi pour une requ\u00eate au corps diff\u00e9rent ; rien n'est cr\u00e9\u00e9.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "errors": {
-                                            "type": "object",
-                                            "description": "Erreurs par champ ; ici la cl\u00e9 `Idempotency-Key`."
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/shop/orders/{order}": {
-            "get": {
-                "operationId": "v1.shop.orders.show",
-                "description": "Une commande d'un autre conducteur r\u00e9pond 404 : rien ne fuit d'un compte\n\u00e0 l'autre.",
-                "summary": "D\u00e9tail d'une commande",
-                "tags": [
-                    "Shop"
-                ],
-                "parameters": [
-                    {
-                        "name": "order",
-                        "in": "path",
-                        "required": true,
-                        "description": "The order ID",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/ShopOrderResource"
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/support/conversation": {
             "get": {
-                "operationId": "v1.support.conversation",
-                "description": "L'\u00e9tat de la conversation : aper\u00e7u du dernier message et nombre de\nmessages non lus, de quoi alimenter la pastille de l'\u00e9cran d'accueil.\n\nLa conversation est cr\u00e9\u00e9e \u00e0 la vol\u00e9e si le conducteur n'a jamais \u00e9crit,\npour que l'application n'ait pas de cas particulier \u00e0 traiter.",
-                "summary": "Fil du conducteur",
                 "tags": [
                     "Support"
                 ],
+                "operationId": "v1.support.conversation",
+                "description": "L'état de la conversation : aperçu du dernier message et nombre de\nmessages non lus, de quoi alimenter la pastille de l'écran d'accueil.\n\nLa conversation est créée à la volée si le conducteur n'a jamais écrit,\npour que l'application n'ait pas de cas particulier à traiter.",
+                "summary": "Fil du conducteur",
                 "responses": {
                     "200": {
                         "description": "",
@@ -1634,7 +1919,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "description": "Message prêt à afficher, en français."
                                         },
                                         "data": {
                                             "$ref": "#/components/schemas/ConversationResource"
@@ -1656,12 +1941,12 @@
         },
         "/support/conversation/messages": {
             "get": {
-                "operationId": "v1.support.messages.index",
-                "description": "Tout l'historique du conducteur, du plus r\u00e9cent au plus ancien.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la derni\u00e8re page), \u00e0 renvoyer dans `?cursor=`. `per_page`\nest plafonn\u00e9 \u00e0 50.",
-                "summary": "Messages du fil",
                 "tags": [
                     "Support"
                 ],
+                "operationId": "v1.support.messages.index",
+                "description": "Tout l'historique du conducteur, du plus récent au plus ancien.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`\nest plafonné à 50.",
+                "summary": "Messages du fil",
                 "responses": {
                     "200": {
                         "description": "",
@@ -1672,7 +1957,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "description": "Message prêt à afficher, en français."
                                         },
                                         "data": {
                                             "type": "array",
@@ -1682,7 +1967,7 @@
                                         },
                                         "meta": {
                                             "type": "object",
-                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page)."
                                         },
                                         "links": {
                                             "type": "object",
@@ -1703,23 +1988,15 @@
                 }
             },
             "post": {
-                "operationId": "v1.support.messages.store",
-                "description": "Le message rejoint le fil du conducteur. S'il existe un ticket en cours,\nil s'y rattache ; sinon il attend d'\u00eatre tri\u00e9 par un agent \u2014 le\nconducteur, lui, ne voit qu'une conversation continue.\n\n`Idempotency-Key` (UUID) est obligatoire : un renvoi apr\u00e8s coupure\nr\u00e9seau ne doit pas poster deux fois.",
-                "summary": "\u00c9crire au support",
                 "tags": [
                     "Support"
                 ],
+                "operationId": "v1.support.messages.store",
+                "description": "Le message rejoint le fil du conducteur. S'il existe un ticket en cours,\nil s'y rattache ; sinon il attend d'être trié par un agent — le\nconducteur, lui, ne voit qu'une conversation continue.\n\n`Idempotency-Key` (UUID) est obligatoire : un renvoi après coupure\nréseau ne doit pas poster deux fois.",
+                "summary": "Écrire au support",
                 "parameters": [
                     {
-                        "name": "Idempotency-Key",
-                        "in": "header",
-                        "required": true,
-                        "description": "UUID propre \u00e0 la requ\u00eate. Renvoyer deux fois le m\u00eame appel avec la m\u00eame cl\u00e9 ne cr\u00e9e qu'une ressource : la r\u00e9ponse enregistr\u00e9e est rendue telle quelle. La cl\u00e9 expire au bout de 24 h.",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
+                        "$ref": "#/components/parameters/IdempotencyKey"
                     }
                 ],
                 "requestBody": {
@@ -1741,7 +2018,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "description": "Message prêt à afficher, en français."
                                         },
                                         "data": {
                                             "$ref": "#/components/schemas/MessageResource"
@@ -1766,7 +2043,7 @@
                                             "type": "string",
                                             "description": "Error overview.",
                                             "examples": [
-                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                                "Vous n'avez pas accès à cette ressource."
                                             ]
                                         }
                                     },
@@ -1784,40 +2061,19 @@
                         "$ref": "#/components/responses/ValidationException"
                     },
                     "409": {
-                        "description": "La cl\u00e9 a d\u00e9j\u00e0 servi pour une requ\u00eate au corps diff\u00e9rent ; rien n'est cr\u00e9\u00e9.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "errors": {
-                                            "type": "object",
-                                            "description": "Erreurs par champ ; ici la cl\u00e9 `Idempotency-Key`."
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
+                        "$ref": "#/components/responses/Conflict"
                     }
                 }
             }
         },
         "/support/conversation/read": {
             "post": {
-                "operationId": "v1.support.read",
-                "description": "Remet \u00e0 z\u00e9ro le compteur de non-lus et horodate les messages re\u00e7us.\nSans effet si tout \u00e9tait d\u00e9j\u00e0 lu.",
-                "summary": "Marquer le fil comme lu",
                 "tags": [
                     "Support"
                 ],
+                "operationId": "v1.support.read",
+                "description": "Remet à zéro le compteur de non-lus et horodate les messages reçus.\nSans effet si tout était déjà lu.",
+                "summary": "Marquer le fil comme lu",
                 "responses": {
                     "200": {
                         "description": "",
@@ -1828,7 +2084,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "description": "Message prêt à afficher, en français."
                                         },
                                         "data": {
                                             "$ref": "#/components/schemas/ConversationResource"
@@ -1850,12 +2106,12 @@
         },
         "/support/unread": {
             "get": {
-                "operationId": "v1.support.unread",
-                "description": "R\u00e9ponse minimale, pour la pastille : l'application n'a pas \u00e0 charger le\nfil entier pour savoir s'il y a du nouveau.",
-                "summary": "Nombre de messages non lus",
                 "tags": [
                     "Support"
                 ],
+                "operationId": "v1.support.unread",
+                "description": "Réponse minimale, pour la pastille : l'application n'a pas à charger le\nfil entier pour savoir s'il y a du nouveau.",
+                "summary": "Nombre de messages non lus",
                 "responses": {
                     "200": {
                         "description": "",
@@ -1871,7 +2127,10 @@
                                             "type": "object",
                                             "properties": {
                                                 "unread_count": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "examples": [
+                                                        2
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -1895,12 +2154,12 @@
         },
         "/support/attachments/{attachment}": {
             "get": {
-                "operationId": "v1.support.attachments.show",
-                "description": "Accessible par URL sign\u00e9e seulement : le fichier vit sur le disque\npriv\u00e9 et n'a pas d'URL publique. R\u00e9pond 403 pour la pi\u00e8ce jointe d'un\nautre conducteur \u2014 l'URL sign\u00e9e en atteste, la v\u00e9rification aussi.",
-                "summary": "T\u00e9l\u00e9charger une pi\u00e8ce jointe",
                 "tags": [
                     "Support"
                 ],
+                "operationId": "v1.support.attachments.show",
+                "description": "Accessible par URL signée seulement : le fichier vit sur le disque\nprivé et n'a pas d'URL publique. Répond 403 pour la pièce jointe d'un\nautre conducteur — l'URL signée en atteste, la vérification aussi.",
+                "summary": "Télécharger une pièce jointe",
                 "parameters": [
                     {
                         "name": "attachment",
@@ -1945,7 +2204,7 @@
                                             "type": "string",
                                             "description": "Error overview.",
                                             "examples": [
-                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                                "Vous n'avez pas accès à cette ressource."
                                             ]
                                         }
                                     },
@@ -1967,23 +2226,15 @@
         },
         "/support/attachments": {
             "post": {
-                "operationId": "v1.support.attachments.store",
-                "description": "Renvoie l'identifiant \u00e0 passer dans `attachment_ids` \u00e0 l'envoi du\nmessage. En deux temps d\u00e9lib\u00e9r\u00e9ment : le d\u00e9p\u00f4t est lent et se r\u00e9essaie\nseul, et l'envoi du message reste en JSON \u2014 donc compatible avec\nl'empreinte de corps de l'idempotence.\n\nUne pi\u00e8ce jointe jamais rattach\u00e9e est purg\u00e9e au bout de 24 heures.",
-                "summary": "D\u00e9poser une pi\u00e8ce jointe",
                 "tags": [
                     "Support"
                 ],
+                "operationId": "v1.support.attachments.store",
+                "description": "Renvoie l'identifiant à passer dans `attachment_ids` à l'envoi du\nmessage. En deux temps délibérément : le dépôt est lent et se réessaie\nseul, et l'envoi du message reste en JSON — donc compatible avec\nl'empreinte de corps de l'idempotence.\n\nUne pièce jointe jamais rattachée est purgée au bout de 24 heures.",
+                "summary": "Déposer une pièce jointe",
                 "parameters": [
                     {
-                        "name": "Idempotency-Key",
-                        "in": "header",
-                        "required": true,
-                        "description": "UUID propre \u00e0 la requ\u00eate. Renvoyer deux fois le m\u00eame appel avec la m\u00eame cl\u00e9 ne cr\u00e9e qu'une ressource : la r\u00e9ponse enregistr\u00e9e est rendue telle quelle. La cl\u00e9 expire au bout de 24 h.",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
+                        "$ref": "#/components/parameters/IdempotencyKey"
                     }
                 ],
                 "requestBody": {
@@ -2006,7 +2257,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "description": "Message prêt à afficher, en français."
                                         },
                                         "data": {
                                             "$ref": "#/components/schemas/MessageAttachmentResource"
@@ -2031,7 +2282,7 @@
                                             "type": "string",
                                             "description": "Error overview.",
                                             "examples": [
-                                                "Vous n'avez pas acc\u00e8s \u00e0 cette ressource."
+                                                "Vous n'avez pas accès à cette ressource."
                                             ]
                                         }
                                     },
@@ -2049,122 +2300,28 @@
                         "$ref": "#/components/responses/ValidationException"
                     },
                     "409": {
-                        "description": "La cl\u00e9 a d\u00e9j\u00e0 servi pour une requ\u00eate au corps diff\u00e9rent ; rien n'est cr\u00e9\u00e9.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "errors": {
-                                            "type": "object",
-                                            "description": "Erreurs par champ ; ici la cl\u00e9 `Idempotency-Key`."
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
+                        "$ref": "#/components/responses/Conflict"
                     }
                 }
             }
         },
-        "/wallet": {
+        "/notifications": {
             "get": {
-                "operationId": "v1.wallet.show",
-                "description": "Solde courant et plafonds de recharge. Le solde vient du cache local,\nrafra\u00eechi aupr\u00e8s de Yango d\u00e8s qu'il a vieilli ; il est nul tant qu'aucune\nlecture n'a abouti (conducteur pas encore rapproch\u00e9 du parc).\n\n`remaining_today` dit ce qu'il reste \u00e0 engager aujourd'hui : les sessions\nouvertes mais non pay\u00e9es comptent d\u00e9j\u00e0.",
-                "summary": "Portefeuille Yango Pro",
                 "tags": [
-                    "Wallet"
+                    "Notification"
                 ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "balance": {
-                                                    "type": [
-                                                        "integer",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "balance_read_at": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "currency": {
-                                                    "type": "string"
-                                                },
-                                                "limits": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "min": {
-                                                            "type": "integer"
-                                                        },
-                                                        "max": {
-                                                            "type": "integer"
-                                                        },
-                                                        "daily_cap": {
-                                                            "type": "integer"
-                                                        },
-                                                        "remaining_today": {
-                                                            "type": "integer"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "min",
-                                                        "max",
-                                                        "daily_cap",
-                                                        "remaining_today"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "balance",
-                                                "balance_read_at",
-                                                "currency",
-                                                "limits"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
+                "operationId": "v1.notifications.index",
+                "description": "Les plus récentes d'abord. La charge utile de chaque notification est\naplatie à la racine (`type`, `category`, `title`, `body`, `deeplink`).\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`\nest plafonné à 50.",
+                "summary": "Notifications du conducteur",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
                         }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
                     }
-                }
-            }
-        },
-        "/wallet/recharges": {
-            "get": {
-                "operationId": "v1.wallet.recharges.index",
-                "description": "De la plus r\u00e9cente \u00e0 la plus ancienne. Pagination par curseur :\n`meta.next_cursor` porte le curseur suivant (`null` sur la derni\u00e8re\npage), \u00e0 renvoyer dans `?cursor=`. `per_page` est plafonn\u00e9 \u00e0 50.",
-                "summary": "Historique des recharges",
-                "tags": [
-                    "Wallet"
                 ],
                 "responses": {
                     "200": {
@@ -2176,17 +2333,17 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "description": "Message prêt à afficher, en français."
                                         },
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/TransactionResource"
+                                                "$ref": "#/components/schemas/NotificationResource"
                                             }
                                         },
                                         "meta": {
                                             "type": "object",
-                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la derni\u00e8re page)."
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page)."
                                         },
                                         "links": {
                                             "type": "object",
@@ -2205,39 +2362,17 @@
                         "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
-            },
+            }
+        },
+        "/notifications/read-all": {
             "post": {
-                "operationId": "v1.wallet.recharges.store",
-                "description": "Ouvre une session de paiement Wave et rend `wave_launch_url`, que\nl'application ouvre pour que le conducteur paie. La recharge n'est\ncr\u00e9dit\u00e9e qu'au retour du webhook de Wave \u2014 jamais \u00e0 cette \u00e9tape.\n\nL'en-t\u00eate `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois\nla m\u00eame requ\u00eate ne cr\u00e9e qu'une recharge.",
-                "summary": "Lancer une recharge",
                 "tags": [
-                    "Wallet"
+                    "Notification"
                 ],
-                "parameters": [
-                    {
-                        "name": "Idempotency-Key",
-                        "in": "header",
-                        "required": true,
-                        "description": "UUID propre \u00e0 la requ\u00eate. Renvoyer deux fois le m\u00eame appel avec la m\u00eame cl\u00e9 ne cr\u00e9e qu'une ressource : la r\u00e9ponse enregistr\u00e9e est rendue telle quelle. La cl\u00e9 expire au bout de 24 h.",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreRechargeRequest"
-                            }
-                        }
-                    }
-                },
+                "operationId": "v1.notifications.read-all",
+                "summary": "Tout marquer comme lu",
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "",
                         "content": {
                             "application/json": {
@@ -2245,11 +2380,21 @@
                                     "type": "object",
                                     "properties": {
                                         "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "type": "string"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/TransactionResource"
+                                            "type": "object",
+                                            "properties": {
+                                                "unread_count": {
+                                                    "type": "integer",
+                                                    "examples": [
+                                                        0
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "unread_count"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -2260,53 +2405,25 @@
                             }
                         }
                     },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "409": {
-                        "description": "La cl\u00e9 a d\u00e9j\u00e0 servi pour une requ\u00eate au corps diff\u00e9rent ; rien n'est cr\u00e9\u00e9.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
-                                        },
-                                        "errors": {
-                                            "type": "object",
-                                            "description": "Erreurs par champ ; ici la cl\u00e9 `Idempotency-Key`."
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "errors"
-                                    ]
-                                }
-                            }
-                        }
                     }
                 }
             }
         },
-        "/wallet/recharges/{transaction}": {
-            "get": {
-                "operationId": "v1.wallet.recharges.show",
-                "description": "La recharge d'un autre conducteur r\u00e9pond 404 : rien ne fuit d'un compte\n\u00e0 l'autre.",
-                "summary": "\u00c9tat d'une recharge",
+        "/notifications/{notification}/read": {
+            "post": {
                 "tags": [
-                    "Wallet"
+                    "Notification"
                 ],
+                "operationId": "v1.notifications.read",
+                "description": "Répond 404 pour une notification qui n'appartient pas au conducteur :\nrien ne doit fuir d'un compte à l'autre, pas même son existence.",
+                "summary": "Marquer une notification comme lue",
                 "parameters": [
                     {
-                        "name": "transaction",
+                        "name": "notification",
                         "in": "path",
                         "required": true,
-                        "description": "The transaction ID",
                         "schema": {
                             "type": "string"
                         }
@@ -2322,10 +2439,10 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Message pr\u00eat \u00e0 afficher, en fran\u00e7ais."
+                                            "description": "Message prêt à afficher, en français."
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/TransactionResource"
+                                            "$ref": "#/components/schemas/NotificationResource"
                                         }
                                     },
                                     "required": [
@@ -2344,13 +2461,251 @@
                     }
                 }
             }
+        },
+        "/broadcasting/auth": {
+            "get": {
+                "tags": [
+                    "Broadcast"
+                ],
+                "operationId": "v1.broadcasting.auth.show",
+                "summary": "Autoriser l'abonnement à un canal privé (GET)",
+                "description": "Variante GET de l'opération ci-dessous, acceptée par la route du\nframework. Les SDK Pusher postent : préférer `POST`, documenté plus bas.",
+                "parameters": [
+                    {
+                        "name": "socket_id",
+                        "in": "query",
+                        "required": true,
+                        "description": "Identifiant de la connexion WebSocket.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "channel_name",
+                        "in": "query",
+                        "required": true,
+                        "description": "Nom complet du canal, préfixe `private-` inclus.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Abonnement autorisé : la signature à renvoyer au serveur WebSocket.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "auth": {
+                                            "type": "string",
+                                            "description": "Signature `clé:hmac` attendue par Reverb.",
+                                            "examples": [
+                                                "app-key:9f1c2b7e4d3a4f8b9c2e1a5d6b7c8e90"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "auth"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Le canal n'appartient pas au conducteur authentifié, ou n'existe pas."
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Broadcast"
+                ],
+                "operationId": "v1.broadcasting.auth",
+                "summary": "Autoriser l'abonnement à un canal privé",
+                "description": "Appelée automatiquement par le client Pusher avant de souscrire à un\ncanal privé ; le client y présente le jeton Sanctum du conducteur.\n\nUn canal inconnu, ou qui n'appartient pas au conducteur authentifié,\nrépond **403** — jamais 404, pour ne rien révéler de l'existence d'une\nressource à qui n'y a pas droit.\n\nNe pas confondre avec `/broadcasting/auth` (sans le préfixe `api/v1`),\nqui attend une session de navigateur et refusera un jeton Sanctum.\n\nLes règles d'accès aux canaux vivent dans `routes/channels.php`. Voir le\nguide [« Temps réel »](/docs/api/guides/realtime).",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "socket_id": {
+                                        "type": "string",
+                                        "description": "Identifiant de la connexion WebSocket, fourni par le client Pusher.",
+                                        "example": "123456.789012"
+                                    },
+                                    "channel_name": {
+                                        "type": "string",
+                                        "description": "Nom complet du canal, préfixe `private-` inclus.",
+                                        "example": "private-conversation.01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                                    }
+                                },
+                                "required": [
+                                    "socket_id",
+                                    "channel_name"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Abonnement autorisé : la signature à renvoyer au serveur WebSocket.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "auth": {
+                                            "type": "string",
+                                            "description": "Signature `clé:hmac` attendue par Reverb.",
+                                            "example": "app-key:9f1c2b7e4d3a4f8b9c2e1a5d6b7c8e90"
+                                        }
+                                    },
+                                    "required": [
+                                        "auth"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Le canal n'appartient pas au conducteur authentifié, ou n'existe pas."
+                    }
+                }
+            }
         }
     },
     "components": {
-        "securitySchemes": {
-            "http": {
-                "type": "http",
-                "scheme": "bearer"
+        "parameters": {
+            "IdempotencyKey": {
+                "name": "Idempotency-Key",
+                "in": "header",
+                "required": true,
+                "description": "UUID propre à la requête. Renvoyer deux fois le même appel avec la même clé ne crée qu'une ressource : la réponse enregistrée est rendue telle quelle. La clé expire au bout de 24 h.",
+                "schema": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "example": "9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90"
+            }
+        },
+        "responses": {
+            "AuthenticationException": {
+                "description": "Unauthenticated",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview.",
+                                    "examples": [
+                                        "Authentification requise."
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
+            "Conflict": {
+                "description": "La clé a déjà servi pour une requête au corps différent ; rien n'est créé.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Message prêt à afficher, en français.",
+                                    "examples": [
+                                        "Cette clé a déjà été utilisée pour une autre requête."
+                                    ]
+                                },
+                                "errors": {
+                                    "type": "object",
+                                    "description": "Erreurs par champ ; ici la clé `Idempotency-Key`."
+                                }
+                            },
+                            "required": [
+                                "message",
+                                "errors"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ModelNotFoundException": {
+                "description": "Not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview.",
+                                    "examples": [
+                                        "Ressource introuvable."
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ValidationException": {
+                "description": "Validation error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Errors overview.",
+                                    "examples": [
+                                        "Les données envoyées sont invalides."
+                                    ]
+                                },
+                                "errors": {
+                                    "type": "object",
+                                    "description": "A detailed description of each field that failed validation.",
+                                    "additionalProperties": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "examples": [
+                                                "Le champ téléphone doit être un numéro de téléphone valide."
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+                            "required": [
+                                "message",
+                                "errors"
+                            ]
+                        }
+                    }
+                }
             }
         },
         "schemas": {
@@ -2358,10 +2713,16 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "title": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "Nouveau bonus surprise cette semaine !"
+                        ]
                     },
                     "media_type": {
                         "type": "string",
@@ -2371,10 +2732,16 @@
                         ]
                     },
                     "media_url": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "https://cdn.wigopro.example/announcements/bonus-surprise.jpg"
+                        ]
                     },
                     "order": {
-                        "type": "integer"
+                        "type": "integer",
+                        "examples": [
+                            1
+                        ]
                     }
                 },
                 "required": [
@@ -2390,7 +2757,10 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "unread_count": {
                         "type": "integer",
@@ -2404,7 +2774,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Auteur du dernier message. `null` s'il est syst\u00e8me.",
+                        "description": "Auteur du dernier message. `null` s'il est système.",
                         "enum": [
                             "user",
                             "driver",
@@ -2417,19 +2787,25 @@
                             "null"
                         ],
                         "examples": [
-                            "Nous avons bien re\u00e7u votre demande."
+                            "Nous avons bien reçu votre demande."
                         ]
                     },
                     "last_message_at": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "2026-08-29T09:42:11Z"
                         ]
                     },
                     "driver_read_at": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "2026-08-29T09:45:03Z"
                         ]
                     }
                 },
@@ -2447,17 +2823,26 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "first_name": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "Kouadio"
+                        ]
                     },
                     "last_name": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "Bamba"
+                        ]
                     },
                     "phone": {
                         "type": "string",
-                        "description": "Num\u00e9ro au format international.",
+                        "description": "Numéro au format international.",
                         "examples": [
                             "+2250717738299"
                         ]
@@ -2467,7 +2852,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Num\u00e9ro de permis de conduire.",
+                        "description": "Numéro de permis de conduire.",
                         "examples": [
                             "COMB012500370370A"
                         ]
@@ -2477,11 +2862,14 @@
                             "string",
                             "null"
                         ],
-                        "description": "URL sign\u00e9e et temporaire (une heure). Rafra\u00eechie \u00e0 chaque\nlecture du profil."
+                        "description": "URL signée et temporaire (une heure). Rafraîchie à chaque\nlecture du profil.",
+                        "examples": [
+                            "https://cdn.wigopro.example/drivers/01HZY3M4N5P6Q7R8S9T0V1W2X3/photo.jpg?signature=…"
+                        ]
                     },
                     "status": {
                         "type": "string",
-                        "description": "Un conducteur `suspended` conserve son jeton mais re\u00e7oit 403 sur\nles ressources m\u00e9tier.",
+                        "description": "Un conducteur `suspended` conserve son jeton mais reçoit 403 sur\nles ressources métier.",
                         "enum": [
                             "active",
                             "suspended",
@@ -2498,22 +2886,34 @@
                                 "type": [
                                     "string",
                                     "null"
+                                ],
+                                "examples": [
+                                    "SUZUKI"
                                 ]
                             },
                             "model": {
                                 "type": [
                                     "string",
                                     "null"
+                                ],
+                                "examples": [
+                                    "Dzire"
                                 ]
                             },
                             "color": {
                                 "type": [
                                     "string",
                                     "null"
+                                ],
+                                "examples": [
+                                    "Blanc"
                                 ]
                             },
                             "plate": {
-                                "type": "string"
+                                "type": "string",
+                                "examples": [
+                                    "CI-4521-AB"
+                                ]
                             }
                         },
                         "required": [
@@ -2547,11 +2947,17 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "url": {
                         "type": "string",
-                        "description": "URL sign\u00e9e, valable une heure."
+                        "description": "URL signée, valable une heure.",
+                        "examples": [
+                            "https://cdn.wigopro.example/support/attachments/01HZY3M4N5P6Q7R8S9T0V1W2X3.jpg?signature=…"
+                        ]
                     },
                     "original_name": {
                         "type": "string",
@@ -2576,12 +2982,18 @@
                         "type": [
                             "integer",
                             "null"
+                        ],
+                        "examples": [
+                            1280
                         ]
                     },
                     "height": {
                         "type": [
                             "integer",
                             "null"
+                        ],
+                        "examples": [
+                            960
                         ]
                     }
                 },
@@ -2600,14 +3012,17 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "sender_type": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "description": "Auteur du message. `null` pour un message syst\u00e8me.",
+                        "description": "Auteur du message. `null` pour un message système.",
                         "enum": [
                             "user",
                             "driver",
@@ -2619,9 +3034,9 @@
                             "string",
                             "null"
                         ],
-                        "description": "Nom de l'agent, fig\u00e9 \u00e0 l'envoi.",
+                        "description": "Nom de l'agent, figé à l'envoi.",
                         "examples": [
-                            "Mariam KON\u00c9"
+                            "Mariam KONÉ"
                         ]
                     },
                     "type": {
@@ -2636,6 +3051,9 @@
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "Bonjour, votre recharge a bien été créditée."
                         ]
                     },
                     "system_event": {
@@ -2643,7 +3061,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "\u00c9v\u00e8nement port\u00e9 par un message syst\u00e8me.",
+                        "description": "Évènement porté par un message système.",
                         "enum": [
                             "request_opened",
                             "request_assigned",
@@ -2673,12 +3091,18 @@
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "2026-08-29T09:45:03Z"
                         ]
                     },
                     "created_at": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "2026-08-29T09:42:11Z"
                         ]
                     }
                 },
@@ -2699,30 +3123,75 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "read_at": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "2026-08-29T09:45:03Z"
                         ]
                     },
                     "created_at": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "2026-08-29T09:42:11Z"
                         ]
                     },
-                    "": {
-                        "type": "array",
-                        "items": {}
+                    "type": {
+                        "type": "string",
+                        "description": "Identifie la notification concrète (`App\\Notifications\\*`), pas\nune catégorie d'affichage — voir `category` pour celle-ci.",
+                        "enum": [
+                            "recharge_credited",
+                            "campaign",
+                            "support_message"
+                        ]
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "recharge",
+                            "campaign",
+                            "support"
+                        ]
+                    },
+                    "title": {
+                        "type": "string",
+                        "examples": [
+                            "Recharge créditée"
+                        ]
+                    },
+                    "body": {
+                        "type": "string",
+                        "examples": [
+                            "Votre solde YANGO PRO a été crédité de 10 000 FCFA."
+                        ]
+                    },
+                    "deeplink": {
+                        "type": "string",
+                        "description": "Route interne de `wigo_pro` à ouvrir au clic.",
+                        "examples": [
+                            "wigo://recharge"
+                        ]
                     }
                 },
                 "required": [
                     "id",
                     "read_at",
                     "created_at",
-                    null
+                    "type",
+                    "category",
+                    "title",
+                    "body",
+                    "deeplink"
                 ],
                 "title": "NotificationResource"
             },
@@ -2739,7 +3208,10 @@
                 "properties": {
                     "phone": {
                         "type": "string",
-                        "pattern": "^\\+[1-9]\\d{7,14}$"
+                        "pattern": "^\\+[1-9]\\d{7,14}$",
+                        "examples": [
+                            "+2250717738299"
+                        ]
                     },
                     "channel": {
                         "$ref": "#/components/schemas/OtpChannel"
@@ -2755,18 +3227,30 @@
                 "properties": {
                     "phone": {
                         "type": "string",
-                        "pattern": "^\\+[1-9]\\d{7,14}$"
+                        "pattern": "^\\+[1-9]\\d{7,14}$",
+                        "examples": [
+                            "+2250717738299"
+                        ]
                     },
                     "code": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "482913"
+                        ]
                     },
                     "device_name": {
                         "type": "string",
-                        "maxLength": 120
+                        "maxLength": 120,
+                        "examples": [
+                            "iPhone de Kouadio"
+                        ]
                     },
                     "terms_version": {
                         "type": "string",
-                        "maxLength": 20
+                        "maxLength": 20,
+                        "examples": [
+                            "2026-01-01"
+                        ]
                     }
                 },
                 "required": [
@@ -2780,13 +3264,22 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "Agence Cocody Angré"
+                        ]
                     },
                     "address": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "Rue des Jardins, Cocody Angré, Abidjan"
+                        ]
                     },
                     "opening_hours": {
                         "type": [
@@ -2795,7 +3288,7 @@
                         ],
                         "description": "Horaires d'ouverture en clair, `null` si l'agence n'en publie pas.",
                         "examples": [
-                            "Lun\u2013Sam 8 h \u2013 18 h"
+                            "Lun–Sam 8 h – 18 h"
                         ]
                     }
                 },
@@ -2811,24 +3304,39 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "reference": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "PRD-AMORT-DZR"
+                        ]
                     },
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "Amortisseur avant Dzire"
+                        ]
                     },
                     "description": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "Amortisseur avant compatible SUZUKI Dzire, pose incluse."
                         ]
                     },
                     "category": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "Suspension"
                         ]
                     },
                     "vehicle_model": {
@@ -2836,7 +3344,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Mod\u00e8le compatible, `null` pour une pi\u00e8ce universelle.",
+                        "description": "Modèle compatible, `null` pour une pièce universelle.",
                         "examples": [
                             "SUZUKI Dzire"
                         ]
@@ -2849,7 +3357,10 @@
                         ]
                     },
                     "stock": {
-                        "type": "integer"
+                        "type": "integer",
+                        "examples": [
+                            12
+                        ]
                     },
                     "status": {
                         "type": "string",
@@ -2863,6 +3374,9 @@
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "https://cdn.wigopro.example/products/amortisseur-dzire.jpg"
                         ]
                     }
                 },
@@ -2886,17 +3400,23 @@
                             "string",
                             "null"
                         ],
-                        "description": "Texte du message. Facultatif si des pi\u00e8ces jointes sont\ntransmises \u2014 une photo seule est un message valable.",
-                        "maxLength": 4000
+                        "description": "Texte du message. Facultatif si des pièces jointes sont\ntransmises — une photo seule est un message valable.",
+                        "maxLength": 4000,
+                        "examples": [
+                            "Bonjour, je n'ai pas reçu le reçu de ma dernière recharge."
+                        ]
                     },
                     "attachment_ids": {
                         "type": [
                             "array",
                             "null"
                         ],
-                        "description": "Identifiants renvoy\u00e9s par `POST /support/attachments`, \u00e0\nrattacher \u00e0 ce message. Cinq au plus.",
+                        "description": "Identifiants renvoyés par `POST /support/attachments`, à\nrattacher à ce message. Cinq au plus.",
                         "items": {
-                            "type": "string"
+                            "type": "string",
+                            "examples": [
+                                "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                            ]
                         },
                         "maxItems": 5
                     }
@@ -2907,7 +3427,10 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "ref": {
                         "type": "string",
@@ -2929,12 +3452,12 @@
                     "status_label": {
                         "type": "string",
                         "enum": [
-                            "Command\u00e9e",
-                            "Pr\u00eate",
+                            "Commandée",
+                            "Prête",
                             "En livraison",
-                            "Retir\u00e9e",
-                            "Livr\u00e9e",
-                            "Annul\u00e9e"
+                            "Retirée",
+                            "Livrée",
+                            "Annulée"
                         ]
                     },
                     "fulfilment_mode": {
@@ -2949,7 +3472,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Code \u00e0 pr\u00e9senter au comptoir. `null` pour une livraison.",
+                        "description": "Code à présenter au comptoir. `null` pour une livraison.",
                         "examples": [
                             "482913"
                         ]
@@ -2970,19 +3493,34 @@
                                     "type": [
                                         "string",
                                         "null"
+                                    ],
+                                    "examples": [
+                                        "01HZY3M4N5P6Q7R8S9T0V1W2X3"
                                     ]
                                 },
                                 "name": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "examples": [
+                                        "Amortisseur avant Dzire"
+                                    ]
                                 },
                                 "qty": {
-                                    "type": "integer"
+                                    "type": "integer",
+                                    "examples": [
+                                        1
+                                    ]
                                 },
                                 "price": {
-                                    "type": "integer"
+                                    "type": "integer",
+                                    "examples": [
+                                        22500
+                                    ]
                                 },
                                 "line_total": {
-                                    "type": "integer"
+                                    "type": "integer",
+                                    "examples": [
+                                        22500
+                                    ]
                                 }
                             },
                             "required": [
@@ -2995,7 +3533,10 @@
                         }
                     },
                     "placed_at": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "2026-08-29T09:42:11Z"
+                        ]
                     }
                 },
                 "required": [
@@ -3015,16 +3556,25 @@
                 "properties": {
                     "period": {
                         "type": "string",
-                        "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                        "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                        "examples": [
+                            "2026-08"
+                        ]
                     },
                     "amount": {
                         "type": "integer",
                         "minimum": 1,
-                        "maximum": 1000000
+                        "maximum": 1000000,
+                        "examples": [
+                            7200
+                        ]
                     },
                     "payment_date": {
                         "type": "string",
-                        "format": "date-time"
+                        "format": "date-time",
+                        "examples": [
+                            "2026-08-05T14:30:00Z"
+                        ]
                     },
                     "proof": {
                         "type": [
@@ -3033,7 +3583,7 @@
                         ],
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Capture du paiement Wave, facultative \u2014 jpg, png ou pdf, 5 Mo au\nplus. Le type est v\u00e9rifi\u00e9 sur le contenu, pas sur l'extension."
+                        "description": "Capture du paiement Wave, facultative — jpg, png ou pdf, 5 Mo au\nplus. Le type est vérifié sur le contenu, pas sur l'extension."
                     }
                 },
                 "required": [
@@ -3048,7 +3598,7 @@
                 "properties": {
                     "amount": {
                         "type": "integer",
-                        "description": "Montant de la recharge, en francs CFA entiers. Le plafond JOURNALIER, lui, ne peut pas s'exprimer ici : il\nd\u00e9pend de ce que le conducteur a d\u00e9j\u00e0 engag\u00e9 aujourd'hui, et\nc'est `RechargeService` qui le fait respecter.",
+                        "description": "Montant de la recharge, en francs CFA entiers. Le plafond JOURNALIER, lui, ne peut pas s'exprimer ici : il\ndépend de ce que le conducteur a déjà engagé aujourd'hui, et\nc'est `RechargeService` qui le fait respecter.",
                         "examples": [
                             10000
                         ],
@@ -3070,12 +3620,18 @@
                             "type": "object",
                             "properties": {
                                 "product_id": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "examples": [
+                                        "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                                    ]
                                 },
                                 "qty": {
                                     "type": "integer",
                                     "minimum": 1,
-                                    "maximum": 50
+                                    "maximum": 50,
+                                    "examples": [
+                                        1
+                                    ]
                                 }
                             },
                             "required": [
@@ -3087,15 +3643,18 @@
                         "maxItems": 20
                     },
                     "fulfilment_mode": {
-                        "description": "Retrait en agence ou livraison \u00e0 une position.",
-                        "$ref": "#/components/schemas/FulfilmentMode"
+                        "$ref": "#/components/schemas/FulfilmentMode",
+                        "description": "Retrait en agence ou livraison à une position."
                     },
                     "pickup_point_id": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "description": "Agence de retrait, parmi celles que rend `GET /shop/pickup-points`. Obligatoire en mode `pickup`, sauf s'il n'existe qu'une seule\nagence ouverte : elle est alors prise par d\u00e9faut. Une livraison\nd\u00e9signe \u00e0 la place une position et un num\u00e9ro o\u00f9 joindre le\nconducteur."
+                        "description": "Agence de retrait, parmi celles que rend `GET /shop/pickup-points`. Obligatoire en mode `pickup`, sauf s'il n'existe qu'une seule\nagence ouverte : elle est alors prise par défaut. Une livraison\ndésigne à la place une position et un numéro où joindre le\nconducteur.",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "latitude": {
                         "type": [
@@ -3103,7 +3662,10 @@
                             "null"
                         ],
                         "minimum": -90,
-                        "maximum": 90
+                        "maximum": 90,
+                        "examples": [
+                            5.345317
+                        ]
                     },
                     "longitude": {
                         "type": [
@@ -3111,21 +3673,30 @@
                             "null"
                         ],
                         "minimum": -180,
-                        "maximum": 180
+                        "maximum": 180,
+                        "examples": [
+                            -3.996802
+                        ]
                     },
                     "contact_phone": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "maxLength": 32
+                        "maxLength": 32,
+                        "examples": [
+                            "+2250717738299"
+                        ]
                     },
                     "address_hint": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "maxLength": 255
+                        "maxLength": 255,
+                        "examples": [
+                            "Immeuble bleu, en face de la pharmacie, Cocody"
+                        ]
                     }
                 },
                 "required": [
@@ -3141,7 +3712,7 @@
                         "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Image seule en v1 : aucun antivirus n'existe dans la cha\u00eene, et\nun agent ouvrant un document d\u00e9pos\u00e9 par un tiers sur un outil\ninterne est un risque qu'on ne sait pas encore couvrir. Le type\nest v\u00e9rifi\u00e9 sur le contenu, pas sur l'extension."
+                        "description": "Image seule en v1 : aucun antivirus n'existe dans la chaîne, et\nun agent ouvrant un document déposé par un tiers sur un outil\ninterne est un risque qu'on ne sait pas encore couvrir. Le type\nest vérifié sur le contenu, pas sur l'extension."
                     }
                 },
                 "required": [
@@ -3153,7 +3724,10 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
                     },
                     "ref": {
                         "type": "string",
@@ -3172,7 +3746,7 @@
                     },
                     "status": {
                         "type": "string",
-                        "description": "Le fil est plus \u00e9troit que le stockage : `to_review` \u2014 encaiss\u00e9\npar Wave mais pas encore port\u00e9 au solde \u2014 se lit `failed`, le\nconducteur n'ayant de toute fa\u00e7on rien re\u00e7u.",
+                        "description": "Le fil est plus étroit que le stockage : `to_review` — encaissé\npar Wave mais pas encore porté au solde — se lit `failed`, le\nconducteur n'ayant de toute façon rien reçu.",
                         "enum": [
                             "pending",
                             "credited",
@@ -3183,10 +3757,10 @@
                         "type": "string",
                         "enum": [
                             "En attente",
-                            "Pay\u00e9e",
-                            "Recharg\u00e9",
-                            "\u00c9chec",
-                            "\u00c0 v\u00e9rifier"
+                            "Payée",
+                            "Rechargé",
+                            "Échec",
+                            "À vérifier"
                         ]
                     },
                     "amount": {
@@ -3203,12 +3777,18 @@
                         ]
                     },
                     "label": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "Recharge Wave"
+                        ]
                     },
                     "sublabel": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "+225 07 17 73 82 99"
                         ]
                     },
                     "wave_launch_url": {
@@ -3216,33 +3796,51 @@
                             "string",
                             "null"
                         ],
-                        "description": "Adresse de paiement Wave. Nulle d\u00e8s que la recharge n'est plus\nen attente."
+                        "description": "Adresse de paiement Wave. Nulle dès que la recharge n'est plus\nen attente.",
+                        "examples": [
+                            "https://pay.wave.com/c/cos-1-abc123XYZ"
+                        ]
                     },
                     "receipt_code": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "WAVE-8F3A21"
                         ]
                     },
                     "receipt_url": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "https://cdn.wigopro.example/receipts/01HZY3M4N5P6Q7R8S9T0V1W2X3.pdf"
                         ]
                     },
                     "initiated_at": {
-                        "type": "string"
+                        "type": "string",
+                        "examples": [
+                            "2026-08-29T09:40:02Z"
+                        ]
                     },
                     "paid_at": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "2026-08-29T09:41:15Z"
                         ]
                     },
                     "credited_at": {
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "examples": [
+                            "2026-08-29T09:42:11Z"
                         ]
                     }
                 },
@@ -3271,7 +3869,10 @@
                     "amount": {
                         "type": "integer",
                         "minimum": 3600,
-                        "maximum": 21600
+                        "maximum": 21600,
+                        "examples": [
+                            9000
+                        ]
                     },
                     "effective_from": {
                         "type": [
@@ -3279,7 +3880,10 @@
                             "null"
                         ],
                         "format": "date-time",
-                        "description": "Mois \u00e0 partir duquel le montant s'applique. Par d\u00e9faut, le\npremier jour du mois en cours."
+                        "description": "Mois à partir duquel le montant s'applique. Par défaut, le\npremier jour du mois en cours.",
+                        "examples": [
+                            "2026-09-01T00:00:00Z"
+                        ]
                     }
                 },
                 "required": [
@@ -3294,7 +3898,7 @@
                         "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Photo de profil : jpg, png ou webp, 5 Mo au plus. Le type est\nv\u00e9rifi\u00e9 sur le contenu, pas sur l'extension, et `dimensions`\n\u00e9carte les images trop petites pour \u00eatre reconnaissables."
+                        "description": "Photo de profil : jpg, png ou webp, 5 Mo au plus. Le type est\nvérifié sur le contenu, pas sur l'extension, et `dimensions`\nécarte les images trop petites pour être reconnaissables."
                     }
                 },
                 "required": [
@@ -3307,7 +3911,10 @@
                 "properties": {
                     "fcm_token": {
                         "type": "string",
-                        "maxLength": 255
+                        "maxLength": 255,
+                        "examples": [
+                            "dGhpcyBpcyBhIGZha2UgZmNtIHRva2Vu:APA91bF3x9k..."
+                        ]
                     }
                 },
                 "required": [
@@ -3316,74 +3923,10 @@
                 "title": "UpdatePushTokenRequest"
             }
         },
-        "responses": {
-            "ValidationException": {
-                "description": "Validation error",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string",
-                                    "description": "Errors overview."
-                                },
-                                "errors": {
-                                    "type": "object",
-                                    "description": "A detailed description of each field that failed validation.",
-                                    "additionalProperties": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            },
-                            "required": [
-                                "message",
-                                "errors"
-                            ]
-                        }
-                    }
-                }
-            },
-            "AuthenticationException": {
-                "description": "Unauthenticated",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string",
-                                    "description": "Error overview."
-                                }
-                            },
-                            "required": [
-                                "message"
-                            ]
-                        }
-                    }
-                }
-            },
-            "ModelNotFoundException": {
-                "description": "Not found",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string",
-                                    "description": "Error overview."
-                                }
-                            },
-                            "required": [
-                                "message"
-                            ]
-                        }
-                    }
-                }
+        "securitySchemes": {
+            "bearer": {
+                "type": "http",
+                "scheme": "bearer"
             }
         }
     }

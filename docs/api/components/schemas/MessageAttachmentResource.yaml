@@ -1,0 +1,45 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  url:
+    type: string
+    description: 'URL signée, valable une heure.'
+    examples:
+      - 'https://cdn.wigopro.example/support/attachments/01HZY3M4N5P6Q7R8S9T0V1W2X3.jpg?signature=…'
+  original_name:
+    type: string
+    examples:
+      - recu-wave.jpg
+  mime_type:
+    type: string
+    examples:
+      - image/jpeg
+  size_bytes:
+    type: integer
+    description: 'Taille en octets.'
+    examples:
+      - 184320
+  width:
+    type:
+      - integer
+      - 'null'
+    examples:
+      - 1280
+  height:
+    type:
+      - integer
+      - 'null'
+    examples:
+      - 960
+required:
+  - id
+  - url
+  - original_name
+  - mime_type
+  - size_bytes
+  - width
+  - height
+title: MessageAttachmentResource

@@ -1,0 +1,46 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  unread_count:
+    type: integer
+    description: 'Messages non lus par le conducteur.'
+    examples:
+      - 2
+  last_message_sender_type:
+    type:
+      - string
+      - 'null'
+    description: "Auteur du dernier message. `null` s'il est système."
+    enum:
+      - user
+      - driver
+      - null
+  last_message_preview:
+    type:
+      - string
+      - 'null'
+    examples:
+      - 'Nous avons bien reçu votre demande.'
+  last_message_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-29T09:42:11Z'
+  driver_read_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-29T09:45:03Z'
+required:
+  - id
+  - unread_count
+  - last_message_sender_type
+  - last_message_preview
+  - last_message_at
+  - driver_read_at
+title: ConversationResource

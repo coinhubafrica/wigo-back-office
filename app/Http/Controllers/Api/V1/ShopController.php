@@ -14,7 +14,6 @@ use App\Models\PickupPoint;
 use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Services\Shop\ShopOrderService;
-use App\Support\Scramble\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,7 +39,6 @@ class ShopController extends Controller
      * (`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`
      * est plafonné à 50.
      */
-    #[ApiResponse(ProductResource::class, collection: true, paginated: true)]
     public function index(Request $request): JsonResponse
     {
         $products = Product::query()
@@ -71,7 +69,6 @@ class ShopController extends Controller
      *
      * Liste courte et non paginée : la réponse porte toutes les agences.
      */
-    #[ApiResponse(PickupPointResource::class, collection: true)]
     public function pickupPoints(): JsonResponse
     {
         $points = PickupPoint::query()
@@ -87,7 +84,6 @@ class ShopController extends Controller
      *
      * Les commandes du conducteur, de la plus récente à la plus ancienne.
      */
-    #[ApiResponse(ShopOrderResource::class, collection: true, paginated: true)]
     public function orders(Request $request): JsonResponse
     {
         $orders = $this->driver($request)
@@ -109,7 +105,6 @@ class ShopController extends Controller
      * L'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois
      * la même requête ne crée qu'une commande.
      */
-    #[ApiResponse(ShopOrderResource::class)]
     public function storeOrder(StoreShopOrderRequest $request): JsonResponse
     {
         /** @var list<array{product_id: string, qty: int}> $lines */
@@ -140,7 +135,6 @@ class ShopController extends Controller
      * Une commande d'un autre conducteur répond 404 : rien ne fuit d'un compte
      * à l'autre.
      */
-    #[ApiResponse(ShopOrderResource::class)]
     public function showOrder(Request $request, ShopOrder $order): JsonResponse
     {
         abort_unless($order->driver_id === $this->driver($request)->getKey(), 404);

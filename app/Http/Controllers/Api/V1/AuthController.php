@@ -12,7 +12,6 @@ use App\Http\Resources\DriverResource;
 use App\Models\Driver;
 use App\Services\Auth\OtpService;
 use App\Settings\OtpSettings;
-use App\Support\Scramble\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -132,7 +131,6 @@ class AuthController extends Controller
      * Accessible même lorsque le compte est suspendu, afin que l'application
      * puisse afficher le motif et permettre la déconnexion.
      */
-    #[ApiResponse(DriverResource::class)]
     public function me(Request $request): JsonResponse
     {
         return $this->okApiResponse(new DriverResource($this->driver($request)->load('vehicle')));

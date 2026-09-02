@@ -10,9 +10,9 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 /**
  * Relevé de cotisations tel que l'écran « Cotisations CNPS » l'affiche.
  *
- * Classe simple, volontairement pas une `JsonResource` avec `@mixin` : Scramble
- * publierait alors chaque colonne des tables plutôt que le contrat réel. La
- * forme est déclarée par `@response` sur la méthode du contrôleur.
+ * Classe simple, volontairement pas une `JsonResource` avec `@mixin` : le
+ * relevé est une composition, pas la projection d'un modèle. Sa forme est
+ * publiée dans `docs/api/paths/cnps.yaml`.
  */
 class CnpsStatementPayload
 {

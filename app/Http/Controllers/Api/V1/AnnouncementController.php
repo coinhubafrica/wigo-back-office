@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AnnouncementResource;
 use App\Models\Announcement;
-use App\Support\Scramble\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +21,6 @@ class AnnouncementController extends Controller
      * (`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`
      * est plafonné à 50.
      */
-    #[ApiResponse(AnnouncementResource::class, collection: true, paginated: true)]
     public function index(Request $request): JsonResponse
     {
         $announcements = Announcement::query()

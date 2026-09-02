@@ -1,0 +1,231 @@
+/challenges:
+  get:
+    operationId: v1.challenges
+    description: |-
+      Un élément par challenge ouvert, avec la progression propre au
+      conducteur : tickets détenus et courses restantes avant le prochain pour
+      une tombola, rang et prime pour un classement, gain éventuel. Les blocs
+      `ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils
+      s'appliquent au challenge.
+
+      `meta.weekly_history` porte les douze dernières semaines de courses
+      terminées, de la plus ancienne à la semaine en cours.
+
+      Reste accessible à un conducteur suspendu, comme le profil : ses
+      compteurs cessent simplement de progresser.
+    summary: 'Challenges en cours du conducteur'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        examples:
+                          - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+                      reference:
+                        type: string
+                        examples:
+                          - CH-2026-039
+                      name:
+                        type: string
+                        examples:
+                          - 'Tombola de la rentrée'
+                      type:
+                        type: string
+                        enum:
+                          - leaderboard
+                          - raffle
+                          - surprise
+                      status:
+                        type: string
+                        enum:
+                          - active
+                          - draw_pending
+                          - payout_pending
+                      criteria_summary:
+                        type: string
+                        examples:
+                          - '1 ticket toutes les 10 courses terminées'
+                      period:
+                        type: object
+                        properties:
+                          start:
+                            type: string
+                            examples:
+                              - '2026-08-25'
+                          end:
+                            type: string
+                            examples:
+                              - '2026-08-31'
+                          week_iso:
+                            type:
+                              - string
+                              - 'null'
+                            examples:
+                              - '2026-W35'
+                        required:
+                          - start
+                          - end
+                          - week_iso
+                      prize:
+                        type:
+                          - object
+                          - 'null'
+                        properties:
+                          name:
+                            type: string
+                            examples:
+                              - 'Casque Bluetooth'
+                          photo_url:
+                            type:
+                              - string
+                              - 'null'
+                            examples:
+                              - 'https://cdn.wigopro.example/challenges/casque-bluetooth.jpg'
+                        required:
+                          - name
+                          - photo_url
+                      ticketing:
+                        type: object
+                        properties:
+                          trips_per_ticket:
+                            type: integer
+                            examples:
+                              - 10
+                          orders_completed:
+                            type: integer
+                            examples:
+                              - 34
+                          tickets_held:
+                            type: integer
+                            examples:
+                              - 3
+                          progress_in_block:
+                            type: integer
+                            examples:
+                              - 4
+                          orders_to_next_ticket:
+                            type: integer
+                            examples:
+                              - 6
+                        required:
+                          - trips_per_ticket
+                          - orders_completed
+                          - tickets_held
+                          - progress_in_block
+                          - orders_to_next_ticket
+                      leaderboard:
+                        type: object
+                        properties:
+                          rank:
+                            type:
+                              - integer
+                              - 'null'
+                            examples:
+                              - 4
+                          winning_places:
+                            type: integer
+                            examples:
+                              - 10
+                          reward_amount:
+                            type:
+                              - integer
+                              - 'null'
+                            examples:
+                              - 15000
+                          in_winning_range:
+                            type: boolean
+                        required:
+                          - rank
+                          - winning_places
+                          - reward_amount
+                          - in_winning_range
+                      won:
+                        type: object
+                        properties:
+                          drawn_at:
+                            type:
+                              - string
+                              - 'null'
+                            examples:
+                              - '2026-08-31T20:00:00Z'
+                          prize_name:
+                            type:
+                              - string
+                              - 'null'
+                            examples:
+                              - 'Casque Bluetooth'
+                          amount:
+                            type:
+                              - integer
+                              - 'null'
+                            examples:
+                              - 15000
+                          credited:
+                            type: boolean
+                          collection_note:
+                            type: string
+                            examples:
+                              - "À retirer à l'agence Cocody Angré sous 30 jours."
+                        required:
+                          - drawn_at
+                          - prize_name
+                          - amount
+                          - credited
+                    required:
+                      - id
+                      - reference
+                      - name
+                      - type
+                      - status
+                      - criteria_summary
+                      - period
+                      - prize
+                meta:
+                  type: object
+                  properties:
+                    weekly_history:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          week_iso:
+                            type: string
+                            examples:
+                              - '2026-W35'
+                          label:
+                            type: string
+                            examples:
+                              - '25–31 août'
+                          orders_completed:
+                            type: integer
+                            examples:
+                              - 34
+                          current:
+                            type: boolean
+                            examples:
+                              - true
+                        required:
+                          - week_iso
+                          - label
+                          - orders_completed
+                          - current
+                  required:
+                    - weekly_history
+              required:
+                - message
+                - data
+                - meta
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml

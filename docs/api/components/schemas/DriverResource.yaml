@@ -1,0 +1,85 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  first_name:
+    type: string
+    examples:
+      - Kouadio
+  last_name:
+    type: string
+    examples:
+      - Bamba
+  phone:
+    type: string
+    description: 'Numéro au format international.'
+    examples:
+      - '+2250717738299'
+  license_no:
+    type:
+      - string
+      - 'null'
+    description: 'Numéro de permis de conduire.'
+    examples:
+      - COMB012500370370A
+  photo_url:
+    type:
+      - string
+      - 'null'
+    description: |-
+      URL signée et temporaire (une heure). Rafraîchie à chaque
+      lecture du profil.
+    examples:
+      - 'https://cdn.wigopro.example/drivers/01HZY3M4N5P6Q7R8S9T0V1W2X3/photo.jpg?signature=…'
+  status:
+    type: string
+    description: |-
+      Un conducteur `suspended` conserve son jeton mais reçoit 403 sur
+      les ressources métier.
+    enum:
+      - active
+      - suspended
+      - dormant
+  vehicle:
+    type:
+      - object
+      - 'null'
+    properties:
+      make:
+        type:
+          - string
+          - 'null'
+        examples:
+          - SUZUKI
+      model:
+        type:
+          - string
+          - 'null'
+        examples:
+          - Dzire
+      color:
+        type:
+          - string
+          - 'null'
+        examples:
+          - Blanc
+      plate:
+        type: string
+        examples:
+          - CI-4521-AB
+    required:
+      - make
+      - model
+      - color
+      - plate
+required:
+  - id
+  - first_name
+  - last_name
+  - phone
+  - license_no
+  - photo_url
+  - status
+title: DriverResource

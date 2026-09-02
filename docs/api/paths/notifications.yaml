@@ -1,0 +1,106 @@
+/notifications:
+  get:
+    operationId: v1.notifications.index
+    description: |-
+      Les plus récentes d'abord. La charge utile de chaque notification est
+      aplatie à la racine (`type`, `category`, `title`, `body`, `deeplink`).
+
+      Pagination par curseur : `meta.next_cursor` porte le curseur suivant
+      (`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`
+      est plafonné à 50.
+    summary: 'Notifications du conducteur'
+    parameters:
+      -
+        name: per_page
+        in: query
+        schema:
+          type: integer
+          default: 20
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  type: array
+                  items:
+                    $ref: ../components/schemas/NotificationResource.yaml
+                meta:
+                  type: object
+                  description: 'Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page).'
+                links:
+                  type: object
+                  description: "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+/notifications/read-all:
+  post:
+    operationId: v1.notifications.read-all
+    summary: 'Tout marquer comme lu'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    unread_count:
+                      type: integer
+                      examples:
+                        - 0
+                  required:
+                    - unread_count
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+'/notifications/{notification}/read':
+  post:
+    operationId: v1.notifications.read
+    description: |-
+      Répond 404 pour une notification qui n'appartient pas au conducteur :
+      rien ne doit fuir d'un compte à l'autre, pas même son existence.
+    summary: 'Marquer une notification comme lue'
+    parameters:
+      -
+        name: notification
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  $ref: ../components/schemas/NotificationResource.yaml
+              required:
+                - message
+                - data
+      404:
+        $ref: ../components/responses/ModelNotFoundException.yaml
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml

@@ -1,0 +1,21 @@
+type: object
+properties:
+  amount:
+    type: integer
+    minimum: 3600
+    maximum: 21600
+    examples:
+      - 9000
+  effective_from:
+    type:
+      - string
+      - 'null'
+    format: date-time
+    description: |-
+      Mois à partir duquel le montant s'applique. Par défaut, le
+      premier jour du mois en cours.
+    examples:
+      - '2026-09-01T00:00:00Z'
+required:
+  - amount
+title: UpdateCnpsReferenceRequest

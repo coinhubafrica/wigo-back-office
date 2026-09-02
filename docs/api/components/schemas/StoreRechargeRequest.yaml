@@ -1,0 +1,15 @@
+type: object
+properties:
+  amount:
+    type: integer
+    description: |-
+      Montant de la recharge, en francs CFA entiers. Le plafond JOURNALIER, lui, ne peut pas s'exprimer ici : il
+      dépend de ce que le conducteur a déjà engagé aujourd'hui, et
+      c'est `RechargeService` qui le fait respecter.
+    examples:
+      - 10000
+    minimum: 500
+    maximum: 100000
+required:
+  - amount
+title: StoreRechargeRequest

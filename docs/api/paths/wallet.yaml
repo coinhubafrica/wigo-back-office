@@ -1,0 +1,184 @@
+/wallet:
+  get:
+    operationId: v1.wallet.show
+    description: |-
+      Solde courant et plafonds de recharge. Le solde vient du cache local,
+      rafraîchi auprès de Yango dès qu'il a vieilli ; il est nul tant qu'aucune
+      lecture n'a abouti (conducteur pas encore rapproché du parc).
+
+      `remaining_today` dit ce qu'il reste à engager aujourd'hui : les sessions
+      ouvertes mais non payées comptent déjà.
+    summary: 'Portefeuille Yango Pro'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    balance:
+                      type:
+                        - integer
+                        - 'null'
+                      examples:
+                        - 42500
+                    balance_read_at:
+                      type:
+                        - string
+                        - 'null'
+                      examples:
+                        - '2026-08-29T08:12:03Z'
+                    currency:
+                      type: string
+                      examples:
+                        - XOF
+                    limits:
+                      type: object
+                      properties:
+                        min:
+                          type: integer
+                          examples:
+                            - 500
+                        max:
+                          type: integer
+                          examples:
+                            - 100000
+                        daily_cap:
+                          type: integer
+                          examples:
+                            - 150000
+                        remaining_today:
+                          type: integer
+                          examples:
+                            - 150000
+                      required:
+                        - min
+                        - max
+                        - daily_cap
+                        - remaining_today
+                  required:
+                    - balance
+                    - balance_read_at
+                    - currency
+                    - limits
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+/wallet/recharges:
+  get:
+    operationId: v1.wallet.recharges.index
+    description: |-
+      De la plus récente à la plus ancienne. Pagination par curseur :
+      `meta.next_cursor` porte le curseur suivant (`null` sur la dernière
+      page), à renvoyer dans `?cursor=`. `per_page` est plafonné à 50.
+    summary: 'Historique des recharges'
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  type: array
+                  items:
+                    $ref: ../components/schemas/TransactionResource.yaml
+                meta:
+                  type: object
+                  description: 'Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page).'
+                links:
+                  type: object
+                  description: "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+  post:
+    operationId: v1.wallet.recharges.store
+    description: |-
+      Ouvre une session de paiement Wave et rend `wave_launch_url`, que
+      l'application ouvre pour que le conducteur paie. La recharge n'est
+      créditée qu'au retour du webhook de Wave — jamais à cette étape.
+
+      L'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois
+      la même requête ne crée qu'une recharge.
+    summary: 'Lancer une recharge'
+    parameters:
+      -
+        $ref: ../components/parameters/IdempotencyKey.yaml
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/StoreRechargeRequest.yaml
+    responses:
+      201:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  $ref: ../components/schemas/TransactionResource.yaml
+              required:
+                - message
+                - data
+      422:
+        $ref: ../components/responses/ValidationException.yaml
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+      409:
+        $ref: ../components/responses/Conflict.yaml
+'/wallet/recharges/{transaction}':
+  get:
+    operationId: v1.wallet.recharges.show
+    description: |-
+      La recharge d'un autre conducteur répond 404 : rien ne fuit d'un compte
+      à l'autre.
+    summary: "État d'une recharge"
+    parameters:
+      -
+        name: transaction
+        in: path
+        required: true
+        description: 'The transaction ID'
+        schema:
+          type: string
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+                data:
+                  $ref: ../components/schemas/TransactionResource.yaml
+              required:
+                - message
+                - data
+      404:
+        $ref: ../components/responses/ModelNotFoundException.yaml
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml

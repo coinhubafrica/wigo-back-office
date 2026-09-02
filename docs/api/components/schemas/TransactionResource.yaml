@@ -1,0 +1,108 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  ref:
+    type: string
+    examples:
+      - RCH-2026-0871
+  type:
+    type: string
+    enum:
+      - recharge
+      - order_payment
+      - cnps_declaration
+      - bonus_payout
+  status:
+    type: string
+    description: |-
+      Le fil est plus étroit que le stockage : `to_review` — encaissé
+      par Wave mais pas encore porté au solde — se lit `failed`, le
+      conducteur n'ayant de toute façon rien reçu.
+    enum:
+      - pending
+      - credited
+      - failed
+  status_label:
+    type: string
+    enum:
+      - 'En attente'
+      - Payée
+      - Rechargé
+      - Échec
+      - 'À vérifier'
+  amount:
+    type: integer
+    description: 'Montant en FCFA.'
+    examples:
+      - 10000
+  currency:
+    type: string
+    examples:
+      - XOF
+  label:
+    type: string
+    examples:
+      - 'Recharge Wave'
+  sublabel:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '+225 07 17 73 82 99'
+  wave_launch_url:
+    type:
+      - string
+      - 'null'
+    description: |-
+      Adresse de paiement Wave. Nulle dès que la recharge n'est plus
+      en attente.
+    examples:
+      - 'https://pay.wave.com/c/cos-1-abc123XYZ'
+  receipt_code:
+    type:
+      - string
+      - 'null'
+    examples:
+      - WAVE-8F3A21
+  receipt_url:
+    type:
+      - string
+      - 'null'
+    examples:
+      - 'https://cdn.wigopro.example/receipts/01HZY3M4N5P6Q7R8S9T0V1W2X3.pdf'
+  initiated_at:
+    type: string
+    examples:
+      - '2026-08-29T09:40:02Z'
+  paid_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-29T09:41:15Z'
+  credited_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-29T09:42:11Z'
+required:
+  - id
+  - ref
+  - type
+  - status
+  - status_label
+  - amount
+  - currency
+  - label
+  - sublabel
+  - wave_launch_url
+  - receipt_code
+  - receipt_url
+  - initiated_at
+  - paid_at
+  - credited_at
+title: TransactionResource

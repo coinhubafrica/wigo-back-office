@@ -1,0 +1,13 @@
+type: object
+properties:
+  photo:
+    type: string
+    format: binary
+    contentMediaType: application/octet-stream
+    description: |-
+      Photo de profil : jpg, png ou webp, 5 Mo au plus. Le type est
+      vérifié sur le contenu, pas sur l'extension, et `dimensions`
+      écarte les images trop petites pour être reconnaissables.
+required:
+  - photo
+title: UpdateDriverPhotoRequest

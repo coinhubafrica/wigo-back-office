@@ -11,9 +11,10 @@ use Illuminate\Support\Facades\Log;
 /**
  * Callback de Wave Checkout — serveur à serveur, hors du contrat mobile.
  *
- * Volontairement dans `Api\` et non `Api\V1\` : `config/scramble.php` exclut
- * `api/webhooks` de la documentation publiée, l'application mobile n'a rien à
- * faire de cette route.
+ * Volontairement dans `Api\` et non `Api\V1\` : le contrat mobile ne couvre
+ * que `api/v1`, et l'application mobile n'a rien à faire de cette route.
+ * `tests/Feature/Docs/ApiDocumentationTest.php` vérifie qu'elle n'y figure
+ * pas.
  *
  * L'accusé part immédiatement, quel que soit le sort du crédit : un webhook
  * qui traîne est un webhook que Wave rejoue. Le travail réel se fait en file.

@@ -1,0 +1,25 @@
+type: object
+properties:
+  body:
+    type:
+      - string
+      - 'null'
+    description: |-
+      Texte du message. Facultatif si des pièces jointes sont
+      transmises — une photo seule est un message valable.
+    maxLength: 4000
+    examples:
+      - "Bonjour, je n'ai pas reçu le reçu de ma dernière recharge."
+  attachment_ids:
+    type:
+      - array
+      - 'null'
+    description: |-
+      Identifiants renvoyés par `POST /support/attachments`, à
+      rattacher à ce message. Cinq au plus.
+    items:
+      type: string
+      examples:
+        - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+    maxItems: 5
+title: SendSupportMessageRequest

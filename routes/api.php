@@ -17,8 +17,9 @@ use Illuminate\Support\Facades\Route;
 | API mobile WiGO PRO — /api/v1
 |--------------------------------------------------------------------------
 |
-| Contrat : `openapi.yaml`. Jetons Sanctum portant l'habilitation `mobile:*`,
-| 60 requêtes/minute par jeton, réponses et erreurs en français.
+| Contrat : `docs/api/`, publié en `openapi.json` et sur `/docs/api`. Jetons
+| Sanctum portant l'habilitation `mobile:*`, 60 requêtes/minute par jeton,
+| réponses et erreurs en français.
 |
 */
 
@@ -142,8 +143,8 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
 | Webhooks
 |--------------------------------------------------------------------------
 |
-| Appels serveur à serveur, hors du contrat mobile (`api_path` de Scramble les
-| exclut). Pas de jeton : la signature tient lieu d'authentification.
+| Appels serveur à serveur, hors du contrat mobile — celui-ci ne couvre que
+| `api/v1`. Pas de jeton : la signature tient lieu d'authentification.
 |
 */
 

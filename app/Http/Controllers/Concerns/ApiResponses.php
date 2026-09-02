@@ -18,10 +18,10 @@ use Symfony\Component\HttpFoundation\Response;
  * gestionnaire d'exceptions de `bootstrap/app.php`, qui produit la même
  * enveloppe : un contrôleur n'a donc pas à les construire lui-même.
  *
- * Scramble ne sait pas traverser ce trait pour déduire le contrat : chaque
- * méthode de contrôleur déclare donc le type de sa charge utile avec
- * l'attribut #[ApiResponse], que l'extension App\Support\Scramble\WrapApiEnvelope
- * transforme en schéma enveloppé.
+ * Cette enveloppe est publiée explicitement dans le contrat écrit à la main
+ * (`docs/api/paths/*.yaml`) : rien ne la déduit du code, et
+ * `tests/Feature/Docs/ApiContractTest.php` échoue si une réponse réelle s'en
+ * écarte.
  */
 trait ApiResponses
 {

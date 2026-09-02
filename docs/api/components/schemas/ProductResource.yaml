@@ -1,0 +1,64 @@
+type: object
+properties:
+  id:
+    type: string
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  reference:
+    type: string
+    examples:
+      - PRD-AMORT-DZR
+  name:
+    type: string
+    examples:
+      - 'Amortisseur avant Dzire'
+  description:
+    type:
+      - string
+      - 'null'
+    examples:
+      - 'Amortisseur avant compatible SUZUKI Dzire, pose incluse.'
+  category:
+    type:
+      - string
+      - 'null'
+    examples:
+      - Suspension
+  vehicle_model:
+    type:
+      - string
+      - 'null'
+    description: 'Modèle compatible, `null` pour une pièce universelle.'
+    examples:
+      - 'SUZUKI Dzire'
+  price:
+    type: integer
+    description: 'Prix unitaire en FCFA.'
+    examples:
+      - 45000
+  stock:
+    type: integer
+    examples:
+      - 12
+  status:
+    type: string
+    enum:
+      - active
+      - out_of_stock
+      - backorder
+  image_url:
+    type:
+      - string
+      - 'null'
+    examples:
+      - 'https://cdn.wigopro.example/products/amortisseur-dzire.jpg'
+required:
+  - id
+  - reference
+  - name
+  - description
+  - price
+  - stock
+  - status
+  - image_url
+title: ProductResource

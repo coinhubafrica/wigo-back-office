@@ -29,6 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        // La documentation a ses propres verrous (interrupteur + jeton) et ne
+        // partage donc pas le groupe `web` par défaut : elle les applique
+        // elle-même dans `routes/docs.php`.
+        then: function (): void {
+            require __DIR__.'/../routes/docs.php';
+        },
     )
     /*
     | Canaux de diffusion. Déclarés ici et non par `withRouting(channels: ...)` :

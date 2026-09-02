@@ -1,0 +1,14 @@
+# Porté par le middleware `idempotency`. Le middleware est invisible depuis le
+# contrôleur, donc l'en-tête est déclaré ici et référencé par chaque écriture
+# qui le porte ; tests/Feature/Docs/ApiDocumentationTest.php dérive la liste
+# des routes concernées et échoue si l'une d'elles ne le référence pas.
+#
+# Texte repris à l'identique de ce que publiait DocumentIdempotencyKey.
+name: Idempotency-Key
+in: header
+required: true
+description: "UUID propre à la requête. Renvoyer deux fois le même appel avec la même clé ne crée qu'une ressource : la réponse enregistrée est rendue telle quelle. La clé expire au bout de 24 h."
+schema:
+  type: string
+  format: uuid
+example: 9f1c2b7e-4d3a-4f8b-9c2e-1a5d6b7c8e90

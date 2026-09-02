@@ -1,0 +1,70 @@
+type: object
+properties:
+  lines:
+    type: array
+    items:
+      type: object
+      properties:
+        product_id:
+          type: string
+          examples:
+            - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+        qty:
+          type: integer
+          minimum: 1
+          maximum: 50
+          examples:
+            - 1
+      required:
+        - product_id
+        - qty
+    minItems: 1
+    maxItems: 20
+  fulfilment_mode:
+    description: 'Retrait en agence ou livraison à une position.'
+    $ref: ../../components/schemas/FulfilmentMode.yaml
+  pickup_point_id:
+    type:
+      - string
+      - 'null'
+    description: |-
+      Agence de retrait, parmi celles que rend `GET /shop/pickup-points`. Obligatoire en mode `pickup`, sauf s'il n'existe qu'une seule
+      agence ouverte : elle est alors prise par défaut. Une livraison
+      désigne à la place une position et un numéro où joindre le
+      conducteur.
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  latitude:
+    type:
+      - number
+      - 'null'
+    minimum: -90
+    maximum: 90
+    examples:
+      - 5.345317
+  longitude:
+    type:
+      - number
+      - 'null'
+    minimum: -180
+    maximum: 180
+    examples:
+      - -3.996802
+  contact_phone:
+    type:
+      - string
+      - 'null'
+    maxLength: 32
+    examples:
+      - '+2250717738299'
+  address_hint:
+    type:
+      - string
+      - 'null'
+    maxLength: 255
+    examples:
+      - "Immeuble bleu, en face de la pharmacie, Cocody"
+required:
+  - lines
+  - fulfilment_mode
+title: StoreShopOrderRequest

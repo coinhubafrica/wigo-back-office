@@ -1,23 +1,52 @@
 <?php
 
+use App\Support\Docs\OpenApiSpec;
+
 /**
- * La documentation générée est le contrat consommé par l'application mobile :
- * ces tests garantissent qu'elle reste produisible et correctement protégée.
+ * Le contrat publié est consommé par l'application mobile : ces tests
+ * garantissent qu'il reste assemblable, complet et correctement protégé.
+ *
+ * Il est écrit à la main sous `docs/api/` — rien ne le déduit du code, donc la
+ * couverture route par route ci-dessous est le seul garde-fou contre un
+ * endpoint livré sans contrat. La conformité des réponses réelles aux schémas
+ * est vérifiée à part, dans ApiContractTest.
  */
-it('the specification is generated without error', function (): void {
-    $this->artisan('scramble:export')->assertSuccessful();
+it('the specification is assembled without error', function (): void {
+    expect(app(OpenApiSpec::class)->toArray()['openapi'])->toBe('3.1.0');
+
+    // Le fichier committé est l'artefact publié : périmé, l'équipe mobile lit
+    // un contrat qui n'est plus celui du dépôt.
+    $this->artisan('docs:bundle --check')->assertSuccessful();
 });
 
-it('every mobile route is documented', function (): void {
-    $document = apiDocumentationDocument();
+it('every mobile route is documented, and nothing else', function (): void {
+    $paths = apiDocumentationDocument()['paths'];
 
-    $this->assertSame('3.1.0', $document['openapi']);
-    $this->assertArrayHasKey('/auth/otp/request', $document['paths']);
-    $this->assertArrayHasKey('/auth/otp/verify', $document['paths']);
-    $this->assertArrayHasKey('/auth/logout', $document['paths']);
-    $this->assertArrayHasKey('/me', $document['paths']);
-    $this->assertArrayHasKey('/me/push-token', $document['paths']);
-    $this->assertArrayHasKey('/shop/pickup-points', $document['paths']);
+    $documented = [];
+    foreach ($paths as $path => $operations) {
+        foreach (array_keys($operations) as $method) {
+            $documented[] = strtoupper($method).' '.$path;
+        }
+    }
+
+    $expected = [];
+    foreach (apiDocumentationRoutes() as $route) {
+        foreach ($route->methods() as $method) {
+            if (in_array($method, ['HEAD', 'OPTIONS'], true)) {
+                continue;
+            }
+
+            $expected[] = $method.' '.apiDocumentationPath($route->uri());
+        }
+    }
+
+    sort($documented);
+    sort($expected);
+
+    // Les deux sens comptent : une route non documentée laisse l'application
+    // mobile sans contrat, un chemin documenté sans route décrit une API qui
+    // n'existe pas.
+    $this->assertSame($expected, $documented);
 });
 
 it('the webhook is excluded from the mobile contract', function (): void {
@@ -53,31 +82,51 @@ it('validation failures are documented', function (): void {
 });
 
 it('idempotent writes publish their header and conflict', function (): void {
-    $paths = apiDocumentationDocument()['paths'];
+    $document = apiDocumentationDocument();
+    $idempotent = apiDocumentationIdempotentOperations();
 
-    // Le middleware `idempotency` est invisible à Scramble : sans cette
-    // extension, l'essai depuis /docs/api part sans en-tête et prend 422.
-    foreach (['/shop/orders', '/wallet/recharges'] as $path) {
-        $operation = $paths[$path]['post'];
+    // La liste est dérivée des middlewares, pas écrite à la main : une
+    // nouvelle écriture protégée par `idempotency` est couverte d'office.
+    expect($idempotent)->not->toBeEmpty();
 
-        $header = collect($operation['parameters'])->firstWhere('name', 'Idempotency-Key');
+    foreach ($idempotent as [$method, $path]) {
+        $operation = $document['paths'][$path][$method]
+            ?? $this->fail(strtoupper($method)." {$path} n'est pas documenté.");
+
+        $header = collect($operation['parameters'] ?? [])
+            ->map(fn (array $p): array => apiDocumentationResolve($document, $p))
+            ->firstWhere('name', 'Idempotency-Key');
 
         $this->assertNotNull($header, "L'en-tête manque sur {$path}.");
         $this->assertSame('header', $header['in']);
         $this->assertTrue($header['required']);
         $this->assertSame('uuid', $header['schema']['format']);
 
-        $this->assertArrayHasKey('409', $operation['responses']);
+        $this->assertArrayHasKey('409', $operation['responses'], "Le 409 manque sur {$path}.");
     }
 });
 
 it('writes without the middleware do not advertise the header', function (): void {
-    $operation = apiDocumentationDocument()['paths']['/me/push-token']['put'];
+    $document = apiDocumentationDocument();
+    $idempotent = apiDocumentationIdempotentOperations();
 
-    $names = collect($operation['parameters'] ?? [])->pluck('name');
+    foreach ($document['paths'] as $path => $operations) {
+        foreach ($operations as $method => $operation) {
+            if (in_array([$method, $path], $idempotent, true)) {
+                continue;
+            }
 
-    $this->assertFalse($names->contains('Idempotency-Key'));
-    $this->assertArrayNotHasKey('409', $operation['responses']);
+            $names = collect($operation['parameters'] ?? [])
+                ->map(fn (array $p): array => apiDocumentationResolve($document, $p))
+                ->pluck('name');
+
+            $this->assertFalse(
+                $names->contains('Idempotency-Key'),
+                strtoupper($method)." {$path} annonce un en-tête d'idempotence qu'il n'exige pas.",
+            );
+            $this->assertArrayNotHasKey('409', $operation['responses'] ?? []);
+        }
+    }
 });
 
 it('the documentation is reachable in local', function (): void {
@@ -125,15 +174,74 @@ it('the documentation stays closed when no token is configured', function (): vo
     $this->get('/docs/api?token=')->assertForbidden();
 });
 
-/**
- * Le document généré. L'environnement de test n'étant pas `local`, on passe
- * par le jeton de consultation.
- *
- * @return array<string, mixed>
- */
-function apiDocumentationDocument(): array
-{
+it('every internal link carries the consultation token', function (): void {
+    // Sans le jeton sur les liens, un clic depuis une page autorisée renvoie
+    // 403 : c'est le défaut le plus facile à introduire dans ce gabarit.
+    $this->app->detectEnvironment(fn (): string => 'production');
+    config(['wigo.docs.enabled' => true, 'wigo.docs.token' => 'jeton-secret']);
+
+    // La liste des pages est dérivée du contrat, pas écrite à la main : un tag
+    // ou une opération ajoutés sont couverts d'office.
+    //
+    // Chaque lien n'est suivi qu'une fois : la barre latérale répète les mêmes
+    // cibles sur les 46 pages, et les revisiter n'apprendrait rien.
+    $visited = [];
+
+    foreach (apiDocumentationPages() as $url) {
+        $content = $this->get($url.'?token=jeton-secret')->assertOk()->getContent();
+
+        preg_match_all('#href="(?:https?://[^/"]+)?(/docs/[^"]*)"#', (string) $content, $matches);
+
+        expect($matches[1])->not->toBeEmpty();
+
+        foreach (array_unique($matches[1]) as $link) {
+            $this->assertStringContainsString(
+                'token=jeton-secret',
+                $link,
+                "Le lien {$link} de {$url} perd le jeton de consultation.",
+            );
+
+            if (! isset($visited[$link])) {
+                $visited[$link] = true;
+                $this->get($link)->assertOk();
+            }
+        }
+    }
+});
+
+it('no link places the token after the fragment', function (): void {
+    // `#ancre?token=` ne serait pas une requête mais une partie de l'ancre :
+    // le lien répondrait 403 sans que le crawler ne le voie, puisque le client
+    // de test ignore le fragment.
+    $this->app->detectEnvironment(fn (): string => 'production');
+    config(['wigo.docs.enabled' => true, 'wigo.docs.token' => 'jeton-secret']);
+
+    foreach (apiDocumentationPages() as $url) {
+        $content = (string) $this->get($url.'?token=jeton-secret')->assertOk()->getContent();
+
+        $this->assertDoesNotMatchRegularExpression(
+            '#href="[^"]*\#[^"]*\?token=#',
+            $content,
+            "Une ancre de {$url} porte le jeton après le fragment.",
+        );
+    }
+});
+
+it('the guides are published from the repository markdown', function (): void {
     config(['wigo.docs.enabled' => true, 'wigo.docs.token' => 'jeton-de-test']);
 
-    return test()->getJson('/docs/api.json?token=jeton-de-test')->assertOk()->json();
-}
+    $content = (string) $this->get('/docs/api/guides/realtime?token=jeton-de-test')
+        ->assertOk()
+        ->getContent();
+
+    // La page republie `docs/REALTIME.md` : un titre du fichier doit s'y
+    // retrouver, et le titre de tête ne doit pas faire doublon.
+    $this->assertStringContainsString('Authentification du canal', $content);
+    $this->assertSame(1, substr_count($content, '<h1'));
+});
+
+it('an unknown guide is not found', function (): void {
+    config(['wigo.docs.enabled' => true, 'wigo.docs.token' => 'jeton-de-test']);
+
+    $this->get('/docs/api/guides/absent?token=jeton-de-test')->assertNotFound();
+});

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Concerns\ResolvesDriver;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\NotificationResource;
-use App\Support\Scramble\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
@@ -30,7 +29,6 @@ class NotificationController extends Controller
      * (`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page`
      * est plafonné à 50.
      */
-    #[ApiResponse(NotificationResource::class, collection: true, paginated: true)]
     public function index(Request $request): JsonResponse
     {
         $notifications = $this->driver($request)
@@ -50,7 +48,6 @@ class NotificationController extends Controller
      * Répond 404 pour une notification qui n'appartient pas au conducteur :
      * rien ne doit fuir d'un compte à l'autre, pas même son existence.
      */
-    #[ApiResponse(NotificationResource::class)]
     public function markRead(Request $request, string $notification): JsonResponse
     {
         /** @var DatabaseNotification|null $found */

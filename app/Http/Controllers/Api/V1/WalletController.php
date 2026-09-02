@@ -8,7 +8,6 @@ use App\Http\Requests\Api\V1\StoreRechargeRequest;
 use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Services\Recharge\RechargeService;
-use App\Support\Scramble\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -50,7 +49,6 @@ class WalletController extends Controller
      * `meta.next_cursor` porte le curseur suivant (`null` sur la dernière
      * page), à renvoyer dans `?cursor=`. `per_page` est plafonné à 50.
      */
-    #[ApiResponse(TransactionResource::class, collection: true, paginated: true)]
     public function recharges(Request $request): JsonResponse
     {
         $recharges = $this->driver($request)
@@ -76,7 +74,6 @@ class WalletController extends Controller
      * L'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois
      * la même requête ne crée qu'une recharge.
      */
-    #[ApiResponse(TransactionResource::class)]
     public function storeRecharge(StoreRechargeRequest $request): JsonResponse
     {
         $recharge = $this->recharges->initiate(
@@ -97,7 +94,6 @@ class WalletController extends Controller
      * La recharge d'un autre conducteur répond 404 : rien ne fuit d'un compte
      * à l'autre.
      */
-    #[ApiResponse(TransactionResource::class)]
     public function showRecharge(Request $request, Transaction $transaction): JsonResponse
     {
         abort_unless(

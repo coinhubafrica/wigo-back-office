@@ -1,0 +1,10 @@
+type: object
+properties:
+  fcm_token:
+    type: string
+    maxLength: 255
+    examples:
+      - 'dGhpcyBpcyBhIGZha2UgZmNtIHRva2Vu:APA91bF3x9k...'
+required:
+  - fcm_token
+title: UpdatePushTokenRequest
