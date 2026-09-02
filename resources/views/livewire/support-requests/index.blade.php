@@ -17,26 +17,12 @@
 <div wire:poll.60s
      x-data="supportRealtime(@js($selected))">
     <div class="flex flex-wrap items-center gap-1.5">
-        {{-- `aria-pressed` : l'onglet actif n'est signalé que par la couleur,
-             invisible pour un lecteur d'écran sans cet état. --}}
-        <button wire:click="$set('tab', 'triage')"
-                aria-pressed="{{ $tab === 'triage' ? 'true' : 'false' }}"
-                @class([
-                    'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                    'border-primary bg-primary-tint text-primary-text' => $tab === 'triage',
-                    'border-line bg-card text-muted hover:border-primary' => $tab !== 'triage',
-                ])>
-            {{ __('backoffice.support_requests.tab_triage') }} <span class="opacity-70">{{ $triageCount }}</span>
-        </button>
-        <button wire:click="$set('tab', 'tickets')"
-                aria-pressed="{{ $tab === 'tickets' ? 'true' : 'false' }}"
-                @class([
-                    'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                    'border-primary bg-primary-tint text-primary-text' => $tab === 'tickets',
-                    'border-line bg-card text-muted hover:border-primary' => $tab !== 'tickets',
-                ])>
-            {{ __('backoffice.support_requests.tab_tickets') }} <span class="opacity-70">{{ $ticketCount }}</span>
-        </button>
+        <x-chip-filter wire:click="$set('tab', 'triage')" :active="$tab === 'triage'" :count="$triageCount">
+            {{ __('backoffice.support_requests.tab_triage') }}
+        </x-chip-filter>
+        <x-chip-filter wire:click="$set('tab', 'tickets')" :active="$tab === 'tickets'" :count="$ticketCount">
+            {{ __('backoffice.support_requests.tab_tickets') }}
+        </x-chip-filter>
     </div>
 
     <div class="mt-4 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">

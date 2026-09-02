@@ -20,27 +20,13 @@
 
     <div class="mt-5 flex flex-wrap items-center gap-3">
         <div class="flex flex-wrap gap-1.5">
-            {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
-                 invisible pour un lecteur d'écran sans cet état. --}}
-            <button wire:click="filterByStatus(null)"
-                    aria-pressed="{{ $status === null ? 'true' : 'false' }}"
-                    @class([
-                        'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                        'border-primary bg-primary-tint text-primary-text' => $status === null,
-                        'border-line bg-card text-muted hover:border-primary' => $status !== null,
-                    ])>
-                {{ __('backoffice.drivers.all') }} <span class="opacity-70">{{ $statusCounts[null] }}</span>
-            </button>
+            <x-chip-filter wire:click="filterByStatus(null)" :active="$status === null" :count="$statusCounts[null]">
+                {{ __('backoffice.drivers.all') }}
+            </x-chip-filter>
             @foreach (\App\Enums\DriverStatus::cases() as $case)
-                <button wire:click="filterByStatus('{{ $case->value }}')"
-                        aria-pressed="{{ $status === $case->value ? 'true' : 'false' }}"
-                        @class([
-                            'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                            'border-primary bg-primary-tint text-primary-text' => $status === $case->value,
-                            'border-line bg-card text-muted hover:border-primary' => $status !== $case->value,
-                        ])>
-                    {{ $case->label() }} <span class="opacity-70">{{ $statusCounts[$case->value] }}</span>
-                </button>
+                <x-chip-filter wire:click="filterByStatus('{{ $case->value }}')" :active="$status === $case->value" :count="$statusCounts[$case->value]">
+                    {{ $case->label() }}
+                </x-chip-filter>
             @endforeach
         </div>
 

@@ -27,26 +27,9 @@
 
         <div class="flex flex-wrap gap-1.5 border-b border-line px-5 py-3.5">
             @foreach ($chips as $chip)
-                {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
-                     invisible pour un lecteur d'écran sans cet état. --}}
-                <button type="button" wire:click="setFilter('{{ $chip['key'] }}')"
-                        aria-pressed="{{ $filter === $chip['key'] ? 'true' : 'false' }}"
-                        @class([
-                            'flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                            'border-primary bg-primary-tint text-primary-text' => $filter === $chip['key'],
-                            'border-line bg-card text-ink hover:border-primary' => $filter !== $chip['key'] && $chip['count'] > 0,
-                            {{-- Une pastille vide s'efface par une teinte plus douce
-                                 et non par `opacity`, qui faisait passer le libellé
-                                 sous le seuil de contraste AA. --}}
-                            'border-line bg-card text-muted hover:border-primary' => $filter !== $chip['key'] && $chip['count'] === 0,
-                        ])>
+                <x-chip-filter wire:click="setFilter('{{ $chip['key'] }}')" :active="$filter === $chip['key']" :count="$chip['count']">
                     {{ $chip['label'] }}
-                    <span @class([
-                        'rounded-full px-1.5 py-0.5 text-[10.5px] font-bold',
-                        'bg-primary text-white' => $filter === $chip['key'],
-                        'bg-neutral-bg text-neutral-text' => $filter !== $chip['key'],
-                    ])>{{ $chip['count'] }}</span>
-                </button>
+                </x-chip-filter>
             @endforeach
         </div>
 
