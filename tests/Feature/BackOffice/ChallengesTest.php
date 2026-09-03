@@ -119,3 +119,28 @@ function challengesUser(string $role): User
 
     return $user;
 }
+
+it('guards the irreversible draw and the credit actions', function (): void {
+    $challenge = Challenge::factory()->raffle()->create([
+        'status' => ChallengeStatus::DrawPending,
+        'draw_seed' => 'seed-2026',
+    ]);
+
+    // Le tirage est irréversible : un double clic ne doit pas le lancer deux fois.
+    Livewire::actingAs(challengesUser('direction'))
+        ->test(Show::class, ['challenge' => $challenge])
+        ->assertSeeHtml('wire:target="executeDraw"')
+        // La charge utile de duplication est un objet JS, pas un `@js()` resté littéral.
+        ->assertSeeHtml('template\u0022:\u0022duplicate:')
+        ->assertDontSeeHtml('@js(');
+
+    $payout = Challenge::factory()->create(['status' => ChallengeStatus::PayoutPending]);
+    $winner = ChallengeWinner::factory()->for($payout)->create(['credited' => false]);
+
+    Livewire::actingAs(challengesUser('direction'))
+        ->test(Show::class, ['challenge' => $payout])
+        // Blade encode les apostrophes de l'attribut : on vérifie le préfixe.
+        ->assertSeeHtml('wire:target="markCredited(')
+        ->call('confirmAction', 'credit_all')
+        ->assertSeeHtml('wire:target="creditAll"');
+});

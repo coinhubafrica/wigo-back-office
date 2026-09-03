@@ -36,7 +36,7 @@
     @endforeach
 </div>
 
-<div class="mt-4 rounded bg-zinc-100 p-4 text-[13px] leading-7 text-ink">
+<div class="mt-4 rounded bg-neutral-bg p-4 text-[13px] leading-7 text-ink">
     <p>{{ __('backoffice.challenges.period_recap_period') }} : <b>{{ \Illuminate\Support\Carbon::parse($periodStart)->translatedFormat('j M') }} → {{ \Illuminate\Support\Carbon::parse($periodEnd)->translatedFormat('j M') }}</b></p>
     <p>{{ __('backoffice.challenges.period_recap_duration') }} : <b>{{ trans_choice('backoffice.challenges.days', \Illuminate\Support\Carbon::parse($periodStart)->diffInDays(\Illuminate\Support\Carbon::parse($periodEnd)) + 1, ['count' => \Illuminate\Support\Carbon::parse($periodStart)->diffInDays(\Illuminate\Support\Carbon::parse($periodEnd)) + 1]) }}</b></p>
     <p>{{ __('backoffice.challenges.period_recap_closure') }} : <b>{{ $awardMode === AwardMode::SingleWinner->value || $type === ChallengeType::Surprise->value ? __('backoffice.challenges.closure_draw') : __('backoffice.challenges.closure_payout') }}</b></p>

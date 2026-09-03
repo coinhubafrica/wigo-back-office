@@ -10,13 +10,14 @@
     ];
 @endphp
 
-<div class="flex items-center gap-1 border-b border-line">
+<nav class="flex items-center gap-1 border-b border-line" aria-label="{{ __('backoffice.challenges.tab_challenges') }}">
     @foreach ($tabs as $tab)
         <a href="{{ route($tab['route']) }}" wire:navigate
+           @if ($tab['active']) aria-current="page" @endif
            @class([
-               '-mb-px border-b-2 px-4 py-2.5 text-[13.5px] font-bold transition-colors',
+               '-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors',
                'border-primary text-primary-text' => $tab['active'],
                'border-transparent text-muted hover:border-line hover:text-ink' => ! $tab['active'],
            ])>{{ $tab['label'] }}</a>
     @endforeach
-</div>
+</nav>

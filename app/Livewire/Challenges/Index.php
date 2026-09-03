@@ -55,13 +55,13 @@ class Index extends Component
     private function filters(): array
     {
         return [
-            'tous' => ['label' => 'Tous', 'apply' => fn (Builder $q) => $q],
-            'actif' => ['label' => 'En cours', 'apply' => fn (Builder $q) => $q->whereIn('status', ChallengeStatus::running())],
-            'action' => ['label' => 'Action requise', 'apply' => fn (Builder $q) => $q->whereIn('status', ChallengeStatus::requiringAction())],
-            'classement' => ['label' => 'Classement', 'apply' => fn (Builder $q) => $q->where('type', ChallengeType::Leaderboard)],
-            'tirage' => ['label' => 'Tirage au sort', 'apply' => fn (Builder $q) => $q->where('type', ChallengeType::Raffle)],
-            'surprise' => ['label' => 'Bonus surprise', 'apply' => fn (Builder $q) => $q->where('type', ChallengeType::Surprise)],
-            'termine' => ['label' => 'Terminés', 'apply' => fn (Builder $q) => $q->whereIn('status', ChallengeStatus::finished())],
+            'tous' => ['label' => __('backoffice.challenges.filter_tous'), 'apply' => fn (Builder $q) => $q],
+            'actif' => ['label' => __('backoffice.challenges.filter_actif'), 'apply' => fn (Builder $q) => $q->whereIn('status', ChallengeStatus::running())],
+            'action' => ['label' => __('backoffice.challenges.filter_action'), 'apply' => fn (Builder $q) => $q->whereIn('status', ChallengeStatus::requiringAction())],
+            'classement' => ['label' => __('backoffice.challenges.filter_classement'), 'apply' => fn (Builder $q) => $q->where('type', ChallengeType::Leaderboard)],
+            'tirage' => ['label' => __('backoffice.challenges.filter_tirage'), 'apply' => fn (Builder $q) => $q->where('type', ChallengeType::Raffle)],
+            'surprise' => ['label' => __('backoffice.challenges.filter_surprise'), 'apply' => fn (Builder $q) => $q->where('type', ChallengeType::Surprise)],
+            'termine' => ['label' => __('backoffice.challenges.filter_termine'), 'apply' => fn (Builder $q) => $q->whereIn('status', ChallengeStatus::finished())],
         ];
     }
 
@@ -94,6 +94,8 @@ class Index extends Component
     /**
      * KPI de tête (source : prototype, `chKpis`).
      *
+     * `tone` est une teinte nommée du composant `x-kpi-card`, jamais une classe.
+     *
      * @return list<array{value: string, label: string, detail: string, tone: string}>
      */
     private function kpis(): array
@@ -110,25 +112,25 @@ class Index extends Component
                 'value' => (string) $running,
                 'label' => __('backoffice.challenges.kpi_running'),
                 'detail' => trans_choice('backoffice.challenges.kpi_running_detail', $total, ['count' => $total]),
-                'tone' => 'text-ink',
+                'tone' => 'primary',
             ],
             [
                 'value' => (string) $actionRequired,
                 'label' => __('backoffice.challenges.kpi_action_required'),
                 'detail' => __('backoffice.challenges.kpi_action_required_detail'),
-                'tone' => $actionRequired > 0 ? 'text-primary-text' : 'text-ink',
+                'tone' => $actionRequired > 0 ? 'warn' : 'neutral',
             ],
             [
                 'value' => (string) $toDeposit,
                 'label' => __('backoffice.challenges.kpi_to_deposit'),
                 'detail' => __('backoffice.challenges.kpi_to_deposit_detail'),
-                'tone' => $toDeposit > 0 ? 'text-warn-text' : 'text-ok-text',
+                'tone' => $toDeposit > 0 ? 'warn' : 'ok',
             ],
             [
                 'value' => number_format($rewarded, 0, ',', ' '),
                 'label' => __('backoffice.challenges.kpi_rewarded'),
                 'detail' => __('backoffice.challenges.kpi_rewarded_detail', ['amount' => number_format($budget, 0, ',', ' ')]),
-                'tone' => 'text-ok-text',
+                'tone' => 'ok',
             ],
         ];
     }

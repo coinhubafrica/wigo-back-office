@@ -768,6 +768,13 @@ return [
         'rewards_rejected' => 'Challenge rejeté — aucune gratification ne sera versée.',
         'rewards_after_draw' => "Les gratifications apparaîtront après l'exécution du tirage.",
         'rewards_after_close' => 'Les gratifications apparaîtront à la clôture de la période, le :date.',
+        'filter_tous' => 'Tous',
+        'filter_actif' => 'En cours',
+        'filter_action' => 'Action requise',
+        'filter_classement' => 'Classement',
+        'filter_tirage' => 'Tirage au sort',
+        'filter_surprise' => 'Bonus surprise',
+        'filter_termine' => 'Terminés',
     ],
     'prizes' => [
         'title' => 'Lots physiques',

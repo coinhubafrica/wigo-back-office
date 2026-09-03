@@ -31,11 +31,9 @@
                         </p>
                         <h2 id="wizard-title" class="mt-1.5 text-2xl font-bold tracking-tight text-ink">{{ $this->stepTitle() }}</h2>
                     </div>
-                    <button type="button" wire:click="close"
-                            class="flex size-8 shrink-0 items-center justify-center rounded border border-line bg-card text-muted transition-colors hover:border-input hover:text-ink"
-                            aria-label="{{ __('backoffice.challenges.cancel') }}">
+                    <x-button icon size="sm" variant="secondary" wire:click="close" :aria-label="__('backoffice.common.close')">
                         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-                    </button>
+                    </x-button>
                 </div>
 
                 {{-- Onglets d'étape : l'étape courante est pleine, les étapes
@@ -99,11 +97,10 @@
                     @include('livewire.challenges.wizard.recap')
                 </div>
 
-                <div class="flex items-center justify-between gap-4 border-t border-line bg-surface px-7 py-4">
+                {{-- Même barre d'actions que le pied de `<x-modal>` (cf. .ai/rules/components.md). --}}
+                <div class="flex flex-wrap items-center justify-between gap-4 border-t border-line bg-surface px-5 py-3.5">
                     @if ($step > 1)
-                        <button type="button" wire:click="previousStep" class="rounded border border-input bg-card px-4 py-2.5 text-[13.5px] font-bold text-ink transition-colors hover:bg-line">
-                            {{ __('backoffice.challenges.previous') }}
-                        </button>
+                        <x-button variant="secondary" wire:click="previousStep" target="previousStep">{{ __('backoffice.challenges.previous') }}</x-button>
                     @else
                         <span></span>
                     @endif
@@ -118,19 +115,18 @@
                     @enderror
 
                     @if ($step < \App\Livewire\Challenges\Wizard::LAST_STEP)
-                        <button type="button" wire:click="nextStep" wire:loading.attr="disabled"
-                                class="flex shrink-0 items-center gap-2.5 rounded bg-ink px-5 py-3 text-[13.5px] font-bold text-white transition-colors hover:bg-sidebar-line disabled:opacity-60">
-                            {{ __('backoffice.challenges.continue') }} <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                        </button>
-                    @else
-                        <button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save"
-                                class="flex shrink-0 items-center gap-2.5 rounded bg-primary px-5 py-3 text-[13.5px] font-bold text-white transition-colors hover:bg-primary-hover disabled:opacity-60">
-                            <span wire:loading.remove wire:target="save">
-                                {{ auth()->user()?->hasRole('direction') ? __('backoffice.challenges.create_and_schedule') : __('backoffice.challenges.submit_to_direction') }}
-                            </span>
-                            <span wire:loading wire:target="save">{{ __('backoffice.challenges.saving') }}</span>
+                        {{-- `target` obligatoire : sans lui, le bouton se grisait à
+                             chaque frappe dans les champs `.live` de l'étape. --}}
+                        <x-button wire:click="nextStep" target="nextStep">
+                            {{ __('backoffice.challenges.continue') }}
                             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                        </button>
+                        </x-button>
+                    @else
+                        <x-button wire:click="save" target="save">
+                            {{ auth()->user()?->hasRole('direction') ? __('backoffice.challenges.create_and_schedule') : __('backoffice.challenges.submit_to_direction') }}
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                            <x-slot:loading>{{ __('backoffice.challenges.saving') }}</x-slot:loading>
+                        </x-button>
                     @endif
                 </div>
             </div>
