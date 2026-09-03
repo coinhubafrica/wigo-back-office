@@ -31,7 +31,7 @@ enum CampaignAudience: string
         return match ($this) {
             self::All => 'bg-warn-bg text-warn-text',
             self::Segment => 'bg-primary-tint text-primary-text',
-            self::Individual => 'bg-zinc-100 text-zinc-500',
+            self::Individual => 'bg-neutral-bg text-neutral-text',
         };
     }
 }

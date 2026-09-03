@@ -35,7 +35,7 @@ enum TransactionStatus: string
     public function badgeClasses(): string
     {
         return match ($this) {
-            self::Initiated => 'bg-zinc-100 text-zinc-500',
+            self::Initiated => 'bg-neutral-bg text-neutral-text',
             self::Paid, self::ToReview => 'bg-warn-bg text-warn-text',
             self::Credited => 'bg-ok-bg text-ok-text',
             self::Failed => 'bg-err-bg text-err-text',

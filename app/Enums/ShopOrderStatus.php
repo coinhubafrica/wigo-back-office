@@ -26,7 +26,7 @@ enum ShopOrderStatus: string
     public function badgeClasses(): string
     {
         return match ($this) {
-            self::Ordered => 'bg-zinc-100 text-zinc-500',
+            self::Ordered => 'bg-neutral-bg text-neutral-text',
             self::Ready, self::OutForDelivery => 'bg-warn-bg text-warn-text',
             self::Collected, self::Delivered => 'bg-ok-bg text-ok-text',
             self::Cancelled => 'bg-err-bg text-err-text',

@@ -35,7 +35,7 @@ enum ChallengeStatus: string
     {
         return match ($this) {
             self::PendingApproval, self::DrawPending, self::PayoutPending => 'bg-warn-bg text-warn-text',
-            self::Scheduled => 'bg-zinc-100 text-zinc-500',
+            self::Scheduled => 'bg-neutral-bg text-neutral-text',
             self::Active => 'bg-primary-tint text-primary-text',
             self::Completed => 'bg-ok-bg text-ok-text',
             self::Rejected => 'bg-err-bg text-err-text',

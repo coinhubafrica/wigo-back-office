@@ -54,7 +54,7 @@ enum SupportRequestStatus: string
             self::Open => 'bg-primary-tint text-primary-text',
             self::Pending => 'bg-warn-bg text-warn-text',
             self::Resolved => 'bg-ok-bg text-ok-text',
-            self::Closed => 'bg-zinc-100 text-zinc-500',
+            self::Closed => 'bg-neutral-bg text-neutral-text',
         };
     }
 

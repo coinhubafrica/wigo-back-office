@@ -28,7 +28,7 @@ enum DriverStatus: string
         return match ($this) {
             self::Active => 'bg-ok-bg text-ok-text',
             self::Suspended => 'bg-err-bg text-err-text',
-            self::Dormant => 'bg-zinc-100 text-zinc-500',
+            self::Dormant => 'bg-neutral-bg text-neutral-text',
         };
     }
 }

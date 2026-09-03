@@ -126,7 +126,7 @@ class Product extends Model
         return match (true) {
             $this->isOutOfStock() => 'bg-err-bg text-err-text',
             $this->isLowStock() => 'bg-warn-bg text-warn-text',
-            default => 'bg-surface text-ink',
+            default => 'bg-neutral-bg text-neutral-text',
         };
     }
 }

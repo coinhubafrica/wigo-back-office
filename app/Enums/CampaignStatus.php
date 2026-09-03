@@ -28,7 +28,7 @@ enum CampaignStatus: string
     public function badgeClasses(): string
     {
         return match ($this) {
-            self::Draft => 'bg-zinc-100 text-zinc-500',
+            self::Draft => 'bg-neutral-bg text-neutral-text',
             self::Scheduled => 'bg-warn-bg text-warn-text',
             self::Sending => 'bg-warn-bg text-warn-text',
             self::Sent => 'bg-ok-bg text-ok-text',

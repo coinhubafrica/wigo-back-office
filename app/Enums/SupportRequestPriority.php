@@ -27,7 +27,7 @@ enum SupportRequestPriority: string
         return match ($this) {
             self::High => 'bg-err-bg text-err-text',
             self::Normal => 'bg-warn-bg text-warn-text',
-            self::Low => 'bg-zinc-100 text-zinc-500',
+            self::Low => 'bg-neutral-bg text-neutral-text',
         };
     }
 }
