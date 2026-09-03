@@ -21,7 +21,10 @@ it('a permitted user reaches the announcements page', function (): void {
     $this->actingAs(announcementsUser('bonus'))
         ->get(route(BackOfficeModule::Announcements->route()))
         ->assertOk()
-        ->assertSee('Vente de pièces auto');
+        ->assertSee('Vente de pièces auto')
+        // Le bouton de création est dans l'en-tête du layout et parle à la racine par évènement.
+        ->assertSee("\$dispatch('open-announcement-form')", false)
+        ->assertSee('x-on:open-announcement-form.window', false);
 });
 
 it('a user without the permission gets 403', function (): void {

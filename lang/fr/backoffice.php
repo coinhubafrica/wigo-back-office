@@ -309,6 +309,7 @@ return [
         'deleted' => 'Annonce supprimée.',
         'copy_suffix' => 'copie',
         'drag_to_reorder' => 'Glisser pour réordonner',
+        'aria_delete' => "Supprimer l'annonce :title",
     ],
 
     'cnps' => [
