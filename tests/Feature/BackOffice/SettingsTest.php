@@ -21,7 +21,11 @@ it('lets an authorised user reach the settings', function (): void {
     $this->actingAs(settingsUser('admin'))
         ->get(route(BackOfficeModule::Settings->route()))
         ->assertOk()
-        ->assertSee(__('backoffice.settings.otp_title'));
+        ->assertSee(__('backoffice.settings.otp_title'))
+        // Les deux enregistrements sont gardés pendant l'aller-retour.
+        ->assertSee('wire:target="saveOtp"', false)
+        ->assertSee('wire:target="saveRecharge"', false)
+        ->assertSee('for="field-otplength"', false);
 });
 
 it('refuses a user without the permission', function (): void {
