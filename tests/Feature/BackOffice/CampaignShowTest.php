@@ -160,6 +160,7 @@ it('sends a draft from its own page', function (): void {
         ->test(Show::class, ['campaign' => $campaign])
         ->call('confirmSend')
         ->assertSet('confirmingSend', true)
+        ->assertSeeHtml('wire:target="send"')
         ->call('send')
         ->assertSet('confirmingSend', false);
 

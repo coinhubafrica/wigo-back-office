@@ -94,6 +94,8 @@ it('asks for confirmation before sending', function (): void {
         ->assertSet('confirmingSendId', null)
         ->call('confirmSend')
         ->assertSet('confirmingSendId', 'new')
+        // Le bouton d'envoi est gardé : une campagne ne part pas deux fois sur un double clic.
+        ->assertSeeHtml('wire:target="send"')
         ->call('send')
         ->assertSet('confirmingSendId', null);
 
