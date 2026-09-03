@@ -26,6 +26,9 @@
 
     --color-sidebar: #18181B;
     --color-sidebar-line: #27272A;
+    /* Texte secondaire sur la barre latérale sombre (libellés de groupe,
+     * e-mail, icônes) : un jeton plutôt que `text-zinc-400` semé dans le layout. */
+    --color-sidebar-muted: #A1A1AA;
 
     --color-ok-bg: #E9F7EF;
     --color-ok-text: #15803D;

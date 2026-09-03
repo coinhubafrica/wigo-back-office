@@ -7,7 +7,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/Announcements/** | .ai/rules/announcements.md |
 | app/Services/Auth/** | .ai/rules/auth.md |
 | app/Services/Cnps/** | .ai/rules/cnps.md |
-| resources/views/components/modal.blade.php, resources/views/components/chip-filter.blade.php, resources/views/components/button.blade.php | .ai/rules/components.md |
+| resources/views/components/**, resources/views/layouts/**, resources/views/vendor/** | .ai/rules/components.md |
 | docs/api/**, app/Support/Docs/**, app/Http/Controllers/Docs/**, resources/views/docs/** | .ai/rules/docs.md |
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
 | app/Http/** | .ai/rules/http.md |

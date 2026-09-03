@@ -22,8 +22,18 @@ document.addEventListener('alpine:init', () => {
         /** Position de cet élément dans l'ordre de tabulation du document. */
         previousIndex: -1,
 
+        /**
+         * Livewire insère la modale déjà « ouverte » : sans ce drapeau basculé
+         * après l'insertion, `x-transition` n'a rien à animer à l'entrée.
+         */
+        show: false,
+
         init() {
             this.previouslyFocused = document.activeElement
+
+            // Basculé au tick suivant, sinon `x-show` voit déjà `true` au
+            // premier rendu et l'entrée n'est pas animée.
+            this.$nextTick(() => { this.show = true })
 
             // Livewire re-rend souvent la liste en fermant la modale, et le
             // déclencheur d'origine est alors remplacé par un noeud neuf. On
@@ -167,6 +177,71 @@ document.addEventListener('alpine:init', () => {
                 window.Echo?.leave(`conversation.${this.followed}`)
                 this.followed = null
             }
+        },
+    }))
+})
+
+/**
+ * Coquille de l'application : barre latérale escamotable sous `lg`.
+ *
+ * Fermée par la navigation, par Échap et par le passage au format large, pour
+ * qu'un volet ouvert sur mobile ne survive pas à un redimensionnement.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('appShell', () => ({
+        sidebarOpen: false,
+
+        init() {
+            this.onNavigated = () => this.close()
+            window.addEventListener('livewire:navigated', this.onNavigated)
+
+            this.media = window.matchMedia('(min-width: 1024px)')
+            this.onResize = (event) => {
+                if (event.matches) {
+                    this.close()
+                }
+            }
+            this.media.addEventListener('change', this.onResize)
+        },
+
+        destroy() {
+            window.removeEventListener('livewire:navigated', this.onNavigated)
+            this.media?.removeEventListener('change', this.onResize)
+        },
+
+        toggle() {
+            this.sidebarOpen = ! this.sidebarOpen
+        },
+
+        close() {
+            this.sidebarOpen = false
+        },
+    }))
+})
+
+/**
+ * Notifications éphémères.
+ *
+ * Reçoit `toast` sur `window`, avec soit une chaîne (succès), soit
+ * `{ message, tone }` où `tone` vaut `success`, `error` ou `info`. Une erreur
+ * reste affichée plus longtemps et peut toujours être fermée à la main.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('toasts', () => ({
+        messages: [],
+
+        push(detail) {
+            const payload = typeof detail === 'string' ? { message: detail } : (detail ?? {})
+            const tone = ['success', 'error', 'info'].includes(payload.tone) ? payload.tone : 'success'
+            const id = Date.now() + Math.random()
+
+            this.messages.push({ id, text: payload.message ?? '', tone })
+
+            setTimeout(() => this.dismiss(id), tone === 'error' ? 8000 : 5000)
+        },
+
+        dismiss(id) {
+            this.messages = this.messages.filter((message) => message.id !== id)
         },
     }))
 })

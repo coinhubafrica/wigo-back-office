@@ -6,6 +6,7 @@
  */
 
 use Illuminate\Support\Facades\Blade;
+use Illuminate\View\ViewException;
 
 it('renders a primary medium button by default', function (): void {
     $html = Blade::render('<x-button>Envoyer</x-button>');
@@ -58,3 +59,35 @@ it('forwards a submit type and arbitrary attributes', function (): void {
         ->toContain('form="ticket"')
         ->not->toContain('type="button"');
 });
+
+it('renders the danger variants', function (): void {
+    $filled = Blade::render('<x-button variant="danger">Supprimer</x-button>');
+    $outline = Blade::render('<x-button variant="danger-outline">Suspendre</x-button>');
+
+    expect($filled)->toContain('bg-err-text text-white')
+        ->and($outline)->toContain('border border-err-text')
+        ->toContain('text-err-text');
+});
+
+it('merges a passed class into the single class attribute', function (): void {
+    // Avant : `$attributes->merge()` puis `@class` produisaient deux attributs
+    // `class`, et le navigateur ne gardait que le premier — le bouton perdait
+    // tout son style dès qu'on lui passait `w-full`.
+    $html = Blade::render('<x-button class="w-full">Se connecter</x-button>');
+
+    expect($html)->toContain('w-full')
+        ->toContain('bg-primary')
+        ->not->toMatch('/class="[^"]*"[^>]*class="/');
+});
+
+it('renders a square icon button when labelled', function (): void {
+    $html = Blade::render('<x-button icon aria-label="Supprimer"><svg></svg></x-button>');
+
+    expect($html)->toContain('size-9 p-0')
+        ->toContain('aria-label="Supprimer"');
+});
+
+it('refuses an icon button without an accessible name', function (): void {
+    // Blade enveloppe l'exception du composant dans une `ViewException`.
+    Blade::render('<x-button icon><svg></svg></x-button>');
+})->throws(ViewException::class, 'requires an aria-label');
