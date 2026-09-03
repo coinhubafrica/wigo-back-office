@@ -25,7 +25,6 @@ use App\Models\Prize;
 use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Models\ShopOrderItem;
-use App\Models\StockMovement;
 use App\Models\SupportRequest;
 use App\Models\Transaction;
 use App\Models\User;
@@ -137,7 +136,6 @@ class AppServiceProvider extends ServiceProvider
             'product' => Product::class,
             'shop_order' => ShopOrder::class,
             'shop_order_item' => ShopOrderItem::class,
-            'stock_movement' => StockMovement::class,
             'support_request' => SupportRequest::class,
             'transaction' => Transaction::class,
             'user' => User::class,
@@ -216,9 +214,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('reconcileRecharges', fn (User $user): bool => $user->hasAnyRole(['bonus', 'direction']));
 
         // La permission `module.shop` ouvre le catalogue en lecture à tous les
-        // profils qui suivent la boutique ; écrire dans le stock reste au
-        // magasinier et à la direction.
-        Gate::define('manageStock', fn (User $user): bool => $user->hasAnyRole(['stock', 'direction']));
+        // profils qui suivent la boutique ; écrire — créer une référence, la
+        // fermer à la commande, déplacer une commande — reste au magasinier et
+        // à la direction.
+        Gate::define('manageCatalogue', fn (User $user): bool => $user->hasAnyRole(['stock', 'direction']));
 
         /*
          * Redistribuer un ticket : un agent reprend le sien à son compte

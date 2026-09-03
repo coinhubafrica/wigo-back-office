@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\ProductStatus;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * il est nul (huile, ampoules). Voir la migration `products` pour le choix de
  * la hiérarchie plutôt que la table de compatibilité du MCD.
  *
+ * Le catalogue ne suit pas de stock : `is_active` dit seulement si la
+ * référence est ouverte à la commande.
+ *
  * @property string $id
  * @property string|null $part_category_id
  * @property string|null $vehicle_model_id
@@ -25,9 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $description
  * @property int $unit_price
  * @property string|null $photo_url
- * @property int $stock_quantity
- * @property int $low_stock_threshold
- * @property ProductStatus $status
+ * @property bool $is_active
  * @property-read PartCategory|null $partCategory
  * @property-read VehicleModel|null $vehicleModel
  */
@@ -44,10 +44,8 @@ class Product extends Model
     protected function casts(): array
     {
         return [
-            'status' => ProductStatus::class,
             'unit_price' => 'integer',
-            'stock_quantity' => 'integer',
-            'low_stock_threshold' => 'integer',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -68,14 +66,6 @@ class Product extends Model
     }
 
     /**
-     * @return HasMany<StockMovement, $this>
-     */
-    public function stockMovements(): HasMany
-    {
-        return $this->hasMany(StockMovement::class);
-    }
-
-    /**
      * @return HasMany<ShopOrderItem, $this>
      */
     public function orderItems(): HasMany
@@ -91,42 +81,21 @@ class Product extends Model
         return $this->vehicle_model_id === null;
     }
 
-    public function isOutOfStock(): bool
+    /**
+     * Libellé de la pastille de disponibilité du catalogue.
+     */
+    public function availabilityLabel(): string
     {
-        return $this->stock_quantity <= 0;
-    }
-
-    public function isLowStock(): bool
-    {
-        return $this->stock_quantity > 0 && $this->stock_quantity <= $this->low_stock_threshold;
+        return $this->is_active
+            ? __('backoffice.shop.available')
+            : __('backoffice.shop.unavailable');
     }
 
     /**
-     * Texte de la pastille de stock du catalogue (source : prototype) :
-     * « Rupture », « 2 — faible », ou le nombre seul.
+     * Classes Tailwind de la pastille de disponibilité.
      */
-    public function stockLabel(): string
+    public function availabilityBadgeClasses(): string
     {
-        if ($this->isOutOfStock()) {
-            return __('backoffice.shop.stock_out');
-        }
-
-        if ($this->isLowStock()) {
-            return __('backoffice.shop.stock_low', ['count' => $this->stock_quantity]);
-        }
-
-        return (string) $this->stock_quantity;
-    }
-
-    /**
-     * Classes Tailwind de la pastille de stock (source : prototype).
-     */
-    public function stockBadgeClasses(): string
-    {
-        return match (true) {
-            $this->isOutOfStock() => 'bg-err-bg text-err-text',
-            $this->isLowStock() => 'bg-warn-bg text-warn-text',
-            default => 'bg-neutral-bg text-neutral-text',
-        };
+        return $this->is_active ? 'bg-ok-bg text-ok-text' : 'bg-err-bg text-err-text';
     }
 }

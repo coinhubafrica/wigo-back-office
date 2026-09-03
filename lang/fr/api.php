@@ -17,7 +17,7 @@ return [
 
     'shop' => [
         'order_placed' => 'Votre commande a été enregistrée.',
-        'insufficient_stock' => 'Stock insuffisant pour « :product » : il n\'en reste que :stock.',
+        'product_inactive' => '« :product » n\'est plus disponible à la commande.',
         'product_unavailable' => "Une des pièces commandées n'est plus disponible.",
         'no_pickup_point' => "Aucune agence de retrait n'est disponible pour le moment.",
     ],

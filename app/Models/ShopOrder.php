@@ -82,14 +82,6 @@ class ShopOrder extends Model
         return $this->hasOne(Delivery::class);
     }
 
-    /**
-     * @return HasMany<StockMovement, $this>
-     */
-    public function stockMovements(): HasMany
-    {
-        return $this->hasMany(StockMovement::class);
-    }
-
     public function canTransitionTo(ShopOrderStatus $status): bool
     {
         return $this->status->allows($status);

@@ -7,7 +7,7 @@
            class="inline-flex items-center gap-2 rounded border border-line bg-card px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface">
             {{ __('backoffice.shop.kpi_orders') }}
         </a>
-        @if ($canManageStock)
+        @if ($canManageCatalogue)
             <x-button variant="secondary" x-on:click="$dispatch('open-shop-referential')">{{ __('backoffice.shop.manage_brands') }}</x-button>
             <x-button x-on:click="$dispatch('open-shop-product')">
                 <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -22,14 +22,14 @@
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             </x-slot:icon>
         </x-kpi-card>
-        <x-kpi-card :label="__('backoffice.shop.kpi_stock_value')" :value="number_format($stockValue, 0, ',', ' ')" unit="FCFA" tone="ok">
+        <x-kpi-card :label="__('backoffice.shop.kpi_active')" :value="$activeCount" tone="ok">
             <x-slot:icon>
-                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
             </x-slot:icon>
         </x-kpi-card>
-        <x-kpi-card :label="__('backoffice.shop.kpi_alerts')" :value="$alertCount" :alert="$alertCount > 0" tone="ok">
+        <x-kpi-card :label="__('backoffice.shop.kpi_inactive')" :value="$inactiveCount" :alert="$inactiveCount > 0" tone="ok">
             <x-slot:icon>
-                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
             </x-slot:icon>
         </x-kpi-card>
         <x-kpi-card :label="__('backoffice.shop.kpi_orders')" :value="$orderCount" :href="route('bo.shop.orders')" tone="warn">
@@ -63,8 +63,8 @@
                     <x-th>{{ __('backoffice.shop.col_part') }}</x-th>
                     <x-th>{{ __('backoffice.shop.col_model') }}</x-th>
                     <x-th align="right">{{ __('backoffice.shop.col_price') }}</x-th>
-                    <x-th>{{ __('backoffice.shop.col_stock') }}</x-th>
-                    @if ($canManageStock)
+                    <x-th>{{ __('backoffice.shop.col_availability') }}</x-th>
+                    @if ($canManageCatalogue)
                         <x-th><span class="sr-only">{{ __('backoffice.announcements.modify') }}</span></x-th>
                     @endif
                 </x-slot:head>
@@ -90,14 +90,10 @@
                             @endif
                         </x-td>
                         <x-td align="right" nowrap class="font-semibold tabular-nums">{{ number_format($product->unit_price, 0, ',', ' ') }} FCFA</x-td>
-                        <x-td><x-badge :classes="$product->stockBadgeClasses()">{{ $product->stockLabel() }}</x-badge></x-td>
-                        @if ($canManageStock)
+                        <x-td><x-badge :classes="$product->availabilityBadgeClasses()">{{ $product->availabilityLabel() }}</x-badge></x-td>
+                        @if ($canManageCatalogue)
                             <x-td align="right" nowrap>
                                 <div class="flex items-center justify-end gap-2">
-                                    <x-button size="sm" wire:click="startRestock('{{ $product->id }}')" target="startRestock">
-                                        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                                        {{ __('backoffice.shop.restock') }}
-                                    </x-button>
                                     <x-button variant="secondary" size="sm" wire:click="edit('{{ $product->id }}')" target="edit">{{ __('backoffice.announcements.modify') }}</x-button>
                                     <x-button variant="danger-outline" size="sm" icon wire:click="confirmDelete('{{ $product->id }}')" target="confirmDelete"
                                               :aria-label="__('backoffice.shop.aria_delete_product', ['product' => $product->name])"
@@ -146,7 +142,6 @@
         </x-panel>
     </div>
 
-    @include('livewire.shop.partials.restock-modal')
     @include('livewire.shop.partials.product-form')
     @include('livewire.shop.partials.referential-modal')
 

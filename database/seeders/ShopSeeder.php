@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Enums\FulfilmentMode;
-use App\Enums\ProductStatus;
 use App\Enums\ShopOrderStatus;
 use App\Models\Driver;
 use App\Models\PartCategory;
@@ -18,11 +17,11 @@ use Illuminate\Database\Seeder;
 /**
  * Catalogue et commandes de développement.
  *
- * Les six pièces du prototype sont reprises telles quelles, stocks compris :
- * leurs valeurs couvrent exprès les trois pastilles (normal, faible, rupture).
- * S'y ajoute une pièce universelle, sans modèle, pour que cette branche du
- * catalogue soit atteignable, et une commande par statut pour que chaque
- * bouton du back-office ait un cas à exercer.
+ * Les six pièces du prototype sont reprises telles quelles, dont une fermée à
+ * la commande (`is_active` faux) pour que les deux pastilles de disponibilité
+ * soient atteignables. S'y ajoute une pièce universelle, sans modèle, pour que
+ * cette branche du catalogue soit atteignable, et une commande par statut pour
+ * que chaque bouton du back-office ait un cas à exercer.
  *
  * Idempotent : les pièces sont clés sur leur référence, les commandes sur leur
  * référence CMD. Rejouable sans doublon.
@@ -127,30 +126,29 @@ class ShopSeeder extends Seeder
         $dzire = $models['Dzire']->id;
 
         $catalogue = [
-            ['AM-DZ-AR1', 'Amortisseur arrière – unité', 20000, 8, 'Suspension', $dzire],
-            ['AM-DZ-AV1', 'Amortisseur avant – unité', 45000, 6, 'Suspension', $dzire],
-            ['DF-DZ-400', 'Disques de frein avant – paire', 40000, 6, 'Freinage', $dzire],
-            ['PC-DZ-AV1', 'Parechoc avant', 60000, 2, 'Carrosserie', $dzire],
-            ['PL-DZ-118', 'Plaquettes frein avant – jeu', 20000, 7, 'Freinage', $dzire],
-            ['RA-DZ-320', 'Radiateur', 40000, 0, 'Refroidissement', $dzire],
+            ['AM-DZ-AR1', 'Amortisseur arrière – unité', 20000, true, 'Suspension', $dzire],
+            ['AM-DZ-AV1', 'Amortisseur avant – unité', 45000, true, 'Suspension', $dzire],
+            ['DF-DZ-400', 'Disques de frein avant – paire', 40000, true, 'Freinage', $dzire],
+            ['PC-DZ-AV1', 'Parechoc avant', 60000, true, 'Carrosserie', $dzire],
+            ['PL-DZ-118', 'Plaquettes frein avant – jeu', 20000, true, 'Freinage', $dzire],
+            // Référence fermée à la commande : l'écran a un cas à exercer.
+            ['RA-DZ-320', 'Radiateur', 40000, false, 'Refroidissement', $dzire],
             // Pièce universelle : aucun modèle, visible quel que soit le
             // véhicule du conducteur.
-            ['AM-UNI-001', 'Ampoules feux – paire', 6000, 40, 'Éclairage', null],
+            ['AM-UNI-001', 'Ampoules feux – paire', 6000, true, 'Éclairage', null],
         ];
 
         $products = [];
 
-        foreach ($catalogue as [$reference, $name, $price, $stock, $category, $vehicleModelId]) {
+        foreach ($catalogue as [$reference, $name, $price, $isActive, $category, $vehicleModelId]) {
             $products[$reference] = Product::query()->updateOrCreate(
                 ['reference' => $reference],
                 [
                     'name' => $name,
                     'unit_price' => $price,
-                    'stock_quantity' => $stock,
-                    'low_stock_threshold' => 5,
                     'part_category_id' => $categories[$category]->id,
                     'vehicle_model_id' => $vehicleModelId,
-                    'status' => $stock > 0 ? ProductStatus::Active : ProductStatus::OutOfStock,
+                    'is_active' => $isActive,
                     'photo_url' => null,
                 ],
             );

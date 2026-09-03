@@ -133,7 +133,7 @@ class Orders extends Component
      */
     private function apply(callable $action, ?string $message = null): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         if ($this->selected === null) {
             return;
@@ -171,7 +171,7 @@ class Orders extends Component
             'selectedOrder' => $selected,
             'statuses' => ShopOrderStatus::cases(),
             'transitions' => $selected?->status->allowedTransitions() ?? [],
-            'canManageStock' => Gate::allows('manageStock'),
+            'canManageCatalogue' => Gate::allows('manageCatalogue'),
             'pickupMode' => FulfilmentMode::Pickup,
         ]);
     }

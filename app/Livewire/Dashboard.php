@@ -74,8 +74,8 @@ class Dashboard extends Component
 
         if ($user->can(BackOfficeModule::Shop->permission())) {
             $cards[] = [
-                'label' => (string) __('backoffice.dashboard.stock_alerts'),
-                'value' => Product::query()->whereColumn('stock_quantity', '<=', 'low_stock_threshold')->count(),
+                'label' => (string) __('backoffice.dashboard.inactive_products'),
+                'value' => Product::query()->where('is_active', false)->count(),
                 'alert' => true,
                 'route' => BackOfficeModule::Shop->route(),
                 'icon' => BackOfficeModule::Shop->icon(),

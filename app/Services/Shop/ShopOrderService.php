@@ -22,20 +22,16 @@ use Illuminate\Validation\ValidationException;
  */
 class ShopOrderService
 {
-    public function __construct(private StockService $stock) {}
-
     /**
-     * Passe une commande et décrémente le stock dans la même transaction.
-     *
-     * Les pièces sont verrouillées par ordre d'identifiant : deux commandes
-     * simultanées portant sur les mêmes références prennent les verrous dans
-     * le même ordre et ne peuvent pas s'interbloquer. Une seule ligne en stock
-     * insuffisant annule toute la commande.
+     * Passe une commande : les lignes figent le nom et le prix de chaque pièce
+     * au moment de l'achat. Le catalogue ne suit pas de stock, donc aucune
+     * quantité n'est décrémentée ; une seule ligne fermée à la commande annule
+     * toute la commande.
      *
      * @param  list<array{product_id: string, qty: int}>  $lines
      * @param  array{pickup_point_id?: string|null, latitude?: float|string|null, longitude?: float|string|null, address_hint?: string|null, contact_phone?: string|null}  $fulfilment
      *
-     * @throws ValidationException Stock insuffisant.
+     * @throws ValidationException Pièce inconnue ou fermée à la commande.
      */
     public function place(Driver $driver, array $lines, FulfilmentMode $mode, array $fulfilment = []): ShopOrder
     {
@@ -46,11 +42,10 @@ class ShopOrderService
             $products = Product::query()
                 ->whereIn('id', array_keys($quantities))
                 ->orderBy('id')
-                ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
 
-            $this->assertAvailable($products, $quantities);
+            $this->assertAvailable($products, array_keys($quantities));
 
             $total = 0;
 
@@ -78,8 +73,6 @@ class ShopOrderService
                     'quantity' => $quantity,
                     'line_total' => $product->unit_price * $quantity,
                 ]);
-
-                $this->stock->consume($product, $quantity, $order);
             }
 
             $order->delivery()->create([
@@ -141,28 +134,17 @@ class ShopOrderService
     }
 
     /**
-     * Annule et rend le stock au catalogue.
+     * Annule la commande. Rien ne revient au catalogue : il ne suit pas de
+     * stock.
      */
     public function cancel(ShopOrder $order, string $reason, ?User $by = null): ShopOrder
     {
-        return DB::transaction(function () use ($order, $reason, $by): ShopOrder {
-            $order = $this->transition($order, ShopOrderStatus::Cancelled, [
-                'cancelled_at' => now(),
-                'cancellation_reason' => $reason,
-            ]);
+        unset($by);
 
-            $order->loadMissing('items.product');
-
-            foreach ($order->items as $item) {
-                if ($item->product !== null) {
-                    $this->stock->release($item->product, $item->quantity, $order);
-                }
-            }
-
-            unset($by);
-
-            return $order;
-        });
+        return $this->transition($order, ShopOrderStatus::Cancelled, [
+            'cancelled_at' => now(),
+            'cancellation_reason' => $reason,
+        ]);
     }
 
     /**
@@ -188,7 +170,7 @@ class ShopOrderService
 
     /**
      * Additionne les quantités d'une même pièce commandée sur plusieurs
-     * lignes : le stock se vérifie une fois, sur le total réel.
+     * lignes : une référence ne fait qu'une ligne de commande.
      *
      * @param  list<array{product_id: string, qty: int}>  $lines
      * @return array<string, int>
@@ -206,16 +188,18 @@ class ShopOrderService
     }
 
     /**
+     * Une référence inconnue ou fermée à la commande refuse toute la commande.
+     *
      * @param  Collection<string, Product>  $products
-     * @param  array<string, int>  $quantities
+     * @param  list<string>  $productIds
      *
      * @throws ValidationException
      */
-    private function assertAvailable(Collection $products, array $quantities): void
+    private function assertAvailable(Collection $products, array $productIds): void
     {
         $errors = [];
 
-        foreach ($quantities as $productId => $quantity) {
+        foreach ($productIds as $productId) {
             $product = $products->get($productId);
 
             if ($product === null) {
@@ -224,11 +208,8 @@ class ShopOrderService
                 continue;
             }
 
-            if (! $product->status->isOrderable() || $product->stock_quantity < $quantity) {
-                $errors['lines'][] = __('api.shop.insufficient_stock', [
-                    'product' => $product->name,
-                    'stock' => $product->stock_quantity,
-                ]);
+            if (! $product->is_active) {
+                $errors['lines'][] = __('api.shop.product_inactive', ['product' => $product->name]);
             }
         }
 

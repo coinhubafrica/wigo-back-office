@@ -25,14 +25,13 @@
                 @endforeach
             </x-field>
 
-            <x-field :label="__('backoffice.shop.field_stock')" name="stockQuantity" type="number" min="0" wire:model="stockQuantity" />
-            <x-field :label="__('backoffice.shop.field_threshold')" name="lowStockThreshold" type="number" min="0" wire:model="lowStockThreshold" />
-
-            <x-field :label="__('backoffice.shop.field_status')" name="status" type="select" wire:model="status">
-                @foreach (\App\Enums\ProductStatus::cases() as $productStatus)
-                    <option value="{{ $productStatus->value }}">{{ $productStatus->label() }}</option>
-                @endforeach
-            </x-field>
+            <div class="sm:col-span-2">
+                <label for="product-active" class="flex items-center gap-2.5 text-sm text-ink">
+                    <input wire:model="isActive" id="product-active" type="checkbox" class="size-4 rounded border-input text-primary">
+                    {{ __('backoffice.shop.field_active') }}
+                </label>
+                <p class="mt-1 text-xs text-muted">{{ __('backoffice.shop.field_active_hint') }}</p>
+            </div>
 
             <div>
                 <x-field :label="__('backoffice.shop.field_photo')" name="photo" type="file" wire:model="photo" accept="image/*" />

@@ -3,14 +3,11 @@
 namespace App\Livewire\Shop;
 
 use App\Enums\BackOfficeModule;
-use App\Enums\ProductStatus;
 use App\Models\PartCategory;
 use App\Models\Product;
 use App\Models\ShopOrder;
-use App\Models\User;
 use App\Models\VehicleBrand;
 use App\Models\VehicleModel;
-use App\Services\Shop\StockService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
@@ -21,10 +18,11 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
- * Catalogue des pièces : recherche, stock, approvisionnement, fiche produit.
+ * Catalogue des pièces : recherche, fiche produit, référentiel des modèles.
  *
- * Lire le catalogue suit la permission du module ; l'écrire demande en plus
- * `manageStock` — un gestionnaire suit la boutique sans toucher au stock.
+ * Le catalogue ne suit pas de stock : une pièce porte une référence, un prix
+ * et un booléen d'ouverture à la commande. Lire suit la permission du module ;
+ * écrire demande en plus `manageCatalogue`.
  */
 #[Layout('layouts.app', ['module' => BackOfficeModule::Shop])]
 class Catalogue extends Component
@@ -40,13 +38,6 @@ class Catalogue extends Component
     #[Url]
     public ?string $vehicleModel = null;
 
-    // Approvisionnement.
-    public ?string $restockingId = null;
-
-    public int $restockQuantity = 10;
-
-    public string $restockReason = '';
-
     // Fiche produit.
     public bool $formOpen = false;
 
@@ -60,15 +51,11 @@ class Catalogue extends Component
 
     public int $unitPrice = 0;
 
-    public int $stockQuantity = 0;
-
-    public int $lowStockThreshold = 5;
-
     public ?string $partCategoryId = null;
 
     public ?string $productVehicleModelId = null;
 
-    public string $status = 'active';
+    public bool $isActive = true;
 
     public mixed $photo = null;
 
@@ -108,52 +95,9 @@ class Catalogue extends Component
         $this->resetPage();
     }
 
-    public function startRestock(string $id): void
-    {
-        Gate::authorize('manageStock');
-
-        $this->restockingId = $id;
-        $this->restockQuantity = 10;
-        $this->restockReason = '';
-        $this->resetValidation();
-    }
-
-    public function cancelRestock(): void
-    {
-        $this->restockingId = null;
-        $this->resetValidation();
-    }
-
-    public function restock(StockService $stock): void
-    {
-        Gate::authorize('manageStock');
-
-        if ($this->restockingId === null) {
-            return;
-        }
-
-        $this->validate([
-            'restockQuantity' => 'required|integer|min:1|max:1000',
-            'restockReason' => 'required|string|max:255',
-        ]);
-
-        /** @var User $user */
-        $user = auth()->user();
-
-        $stock->restock(
-            Product::query()->findOrFail($this->restockingId),
-            $this->restockQuantity,
-            $this->restockReason,
-            $user,
-        );
-
-        $this->restockingId = null;
-        $this->dispatch('toast', message: __('backoffice.shop.restocked'));
-    }
-
     public function newProduct(): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         $this->resetForm();
         $this->formOpen = true;
@@ -161,7 +105,7 @@ class Catalogue extends Component
 
     public function edit(string $id): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         $product = Product::query()->findOrFail($id);
 
@@ -170,29 +114,25 @@ class Catalogue extends Component
         $this->name = $product->name;
         $this->description = $product->description ?? '';
         $this->unitPrice = $product->unit_price;
-        $this->stockQuantity = $product->stock_quantity;
-        $this->lowStockThreshold = $product->low_stock_threshold;
         $this->partCategoryId = $product->part_category_id;
         $this->productVehicleModelId = $product->vehicle_model_id;
-        $this->status = $product->status->value;
+        $this->isActive = $product->is_active;
         $this->photo = null;
         $this->formOpen = true;
     }
 
-    public function save(StockService $stock): void
+    public function save(): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         $validated = $this->validate([
             'reference' => 'required|string|max:64|unique:products,reference'.($this->editingId === null ? '' : ",{$this->editingId}"),
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'unitPrice' => 'required|integer|min:0',
-            'stockQuantity' => 'required|integer|min:0',
-            'lowStockThreshold' => 'required|integer|min:0',
             'partCategoryId' => 'nullable|exists:part_categories,id',
             'productVehicleModelId' => 'nullable|exists:vehicle_models,id',
-            'status' => 'required|in:active,out_of_stock,backorder',
+            'isActive' => 'boolean',
             'photo' => 'nullable|image|max:5120',
         ]);
 
@@ -201,11 +141,9 @@ class Catalogue extends Component
             'name' => $validated['name'],
             'description' => $validated['description'] === '' ? null : $validated['description'],
             'unit_price' => $validated['unitPrice'],
-            'stock_quantity' => $validated['stockQuantity'],
-            'low_stock_threshold' => $validated['lowStockThreshold'],
             'part_category_id' => $validated['partCategoryId'],
             'vehicle_model_id' => $validated['productVehicleModelId'],
-            'status' => ProductStatus::from($validated['status']),
+            'is_active' => $this->isActive,
         ];
 
         if ($this->photo !== null) {
@@ -214,7 +152,7 @@ class Catalogue extends Component
         }
 
         if ($this->editingId === null) {
-            $product = Product::query()->create($attributes);
+            Product::query()->create($attributes);
             $this->dispatch('toast', message: __('backoffice.shop.product_created'));
         } else {
             $product = Product::query()->findOrFail($this->editingId);
@@ -222,15 +160,13 @@ class Catalogue extends Component
             $this->dispatch('toast', message: __('backoffice.shop.product_updated'));
         }
 
-        $stock->syncStatus($product);
-
         $this->formOpen = false;
         $this->resetForm();
     }
 
     public function confirmDelete(string $id): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         $this->confirmingDeleteId = $id;
     }
@@ -242,7 +178,7 @@ class Catalogue extends Component
 
     public function delete(): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         if ($this->confirmingDeleteId === null) {
             return;
@@ -273,7 +209,7 @@ class Catalogue extends Component
 
     public function openReferential(): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         $this->referentialOpen = true;
         $this->resetValidation();
@@ -290,7 +226,7 @@ class Catalogue extends Component
 
     public function addBrand(): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         $this->validate(['newBrandName' => 'required|string|max:64|unique:vehicle_brands,name']);
 
@@ -302,7 +238,7 @@ class Catalogue extends Component
 
     public function addModel(): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         $this->validate([
             'newModelBrandId' => 'required|exists:vehicle_brands,id',
@@ -320,7 +256,7 @@ class Catalogue extends Component
 
     public function deleteModel(string $id): void
     {
-        Gate::authorize('manageStock');
+        Gate::authorize('manageCatalogue');
 
         $model = VehicleModel::query()->findOrFail($id);
 
@@ -337,11 +273,9 @@ class Catalogue extends Component
     {
         $this->reset([
             'editingId', 'reference', 'name', 'description', 'unitPrice',
-            'stockQuantity', 'lowStockThreshold', 'partCategoryId',
-            'productVehicleModelId', 'photo',
+            'partCategoryId', 'productVehicleModelId', 'photo',
         ]);
-        $this->lowStockThreshold = 5;
-        $this->status = 'active';
+        $this->isActive = true;
         $this->resetValidation();
     }
 
@@ -365,10 +299,10 @@ class Catalogue extends Component
             'categories' => PartCategory::query()->orderBy('order')->get(),
             'brands' => VehicleBrand::query()->with('vehicleModels')->orderBy('name')->get(),
             'vehicleModels' => VehicleModel::query()->with('vehicleBrand')->orderBy('name')->get(),
-            'canManageStock' => Gate::allows('manageStock'),
+            'canManageCatalogue' => Gate::allows('manageCatalogue'),
             'referenceCount' => Product::query()->count(),
-            'stockValue' => (int) Product::query()->selectRaw('coalesce(sum(unit_price * stock_quantity), 0) as total')->value('total'),
-            'alertCount' => Product::query()->whereColumn('stock_quantity', '<=', 'low_stock_threshold')->count(),
+            'activeCount' => Product::query()->where('is_active', true)->count(),
+            'inactiveCount' => Product::query()->where('is_active', false)->count(),
             'orderCount' => ShopOrder::query()->count(),
         ]);
     }

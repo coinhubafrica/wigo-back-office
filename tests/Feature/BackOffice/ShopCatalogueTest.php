@@ -1,14 +1,11 @@
 <?php
 
 use App\Enums\BackOfficeModule;
-use App\Enums\ProductStatus;
-use App\Enums\StockMovementType;
 use App\Livewire\Shop\Catalogue;
 use App\Models\PartCategory;
 use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Models\ShopOrderItem;
-use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\VehicleBrand;
 use App\Models\VehicleModel;
@@ -62,46 +59,38 @@ it('the model filter keeps only that models parts', function (): void {
         ->assertDontSee('Amortisseur Corolla');
 });
 
-it('restocking writes a movement and lifts the out of stock status', function (): void {
-    $product = Product::factory()->outOfStock()->create();
-    $user = shopCatalogueUser('stock');
-
-    Livewire::actingAs($user)
-        ->test(Catalogue::class)
-        ->call('startRestock', $product->id)
-        ->set('restockQuantity', 20)
-        ->set('restockReason', 'Réassort fournisseur')
-        ->call('restock')
-        ->assertHasNoErrors();
-
-    $product->refresh();
-    $this->assertSame(20, $product->stock_quantity);
-    $this->assertSame(ProductStatus::Active, $product->status);
-
-    $movement = StockMovement::query()->where('product_id', $product->id)->sole();
-    $this->assertSame(StockMovementType::In, $movement->movement_type);
-    $this->assertSame(20, $movement->quantity);
-    $this->assertSame($user->id, $movement->user_id);
-});
-
-it('restocking requires a quantity and a reason', function (): void {
+it('a product can be closed to ordering from its form', function (): void {
     $product = Product::factory()->create();
 
     Livewire::actingAs(shopCatalogueUser('stock'))
         ->test(Catalogue::class)
-        ->call('startRestock', $product->id)
-        ->set('restockQuantity', 0)
-        ->set('restockReason', '')
-        ->call('restock')
-        ->assertHasErrors(['restockQuantity', 'restockReason']);
+        ->call('edit', $product->id)
+        ->set('isActive', false)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $this->assertFalse($product->fresh()->is_active);
 });
 
-it('a manager reads the catalogue but cannot restock', function (): void {
+it('a closed product is reopened from its form', function (): void {
+    $product = Product::factory()->inactive()->create();
+
+    Livewire::actingAs(shopCatalogueUser('stock'))
+        ->test(Catalogue::class)
+        ->call('edit', $product->id)
+        ->set('isActive', true)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $this->assertTrue($product->fresh()->is_active);
+});
+
+it('a manager reads the catalogue but cannot edit it', function (): void {
     $product = Product::factory()->create();
 
     Livewire::actingAs(shopCatalogueUser('gestionnaire'))
         ->test(Catalogue::class)
-        ->call('startRestock', $product->id)
+        ->call('edit', $product->id)
         ->assertForbidden();
 });
 
@@ -115,7 +104,6 @@ it('creating a product stores its photo', function (): void {
         ->set('reference', 'PL-DZ-118')
         ->set('name', 'Plaquettes frein avant – jeu')
         ->set('unitPrice', 20000)
-        ->set('stockQuantity', 7)
         ->set('partCategoryId', $category->id)
         ->set('productVehicleModelId', $model->id)
         ->set('photo', UploadedFile::fake()->image('piece.jpg'))
@@ -135,7 +123,6 @@ it('a product can be universal', function (): void {
         ->set('reference', 'AM-UNI-001')
         ->set('name', 'Ampoules feux – paire')
         ->set('unitPrice', 6000)
-        ->set('stockQuantity', 40)
         ->set('productVehicleModelId', null)
         ->call('save')
         ->assertHasNoErrors();

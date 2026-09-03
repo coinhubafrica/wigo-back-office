@@ -14,7 +14,7 @@ beforeEach(function (): void {
     $this->driver = Driver::factory()->create();
     Sanctum::actingAs($this->driver, ['mobile:*']);
 
-    $this->product = Product::factory()->create(['unit_price' => 45000, 'stock_quantity' => 6]);
+    $this->product = Product::factory()->create(['unit_price' => 45000]);
     $this->pickupPoint = PickupPoint::factory()->create();
 });
 
@@ -27,9 +27,8 @@ it('returns the stored response when replaying the same key and body', function 
     $this->assertSame($first->json('data.id'), $replay->json('data.id'));
     $this->assertSame($first->json('data.pickup_code'), $replay->json('data.pickup_code'));
 
-    // Une seule commande, un seul décrément : le rejeu n'a rien réexécuté.
+    // Une seule commande : le rejeu n'a rien réexécuté.
     $this->assertSame(1, ShopOrder::query()->count());
-    $this->assertSame(5, $this->product->fresh()->stock_quantity);
 });
 
 it('conflicts on the same key with a different body', function (): void {
@@ -39,7 +38,6 @@ it('conflicts on the same key with a different body', function (): void {
     order($key, quantity: 2)->assertConflict();
 
     $this->assertSame(1, ShopOrder::query()->count());
-    $this->assertSame(5, $this->product->fresh()->stock_quantity);
 });
 
 it('refuses a missing key', function (): void {
@@ -63,7 +61,6 @@ it('places a second order with a new key', function (): void {
     order((string) Str::uuid())->assertCreated();
 
     $this->assertSame(2, ShopOrder::query()->count());
-    $this->assertSame(4, $this->product->fresh()->stock_quantity);
 });
 
 it('processes an expired key again', function (): void {
@@ -81,8 +78,13 @@ it('processes an expired key again', function (): void {
 it('does not claim the key on a failed request', function (): void {
     $key = (string) Str::uuid();
 
-    // Quantité au-delà du stock : la commande échoue, la clé reste libre.
-    order($key, quantity: 99)->assertUnprocessable();
+    // Référence inconnue : la commande échoue, la clé reste libre.
+    test()->withHeader('Idempotency-Key', $key)
+        ->postJson(route('api.v1.shop.orders.store'), [
+            ...payload(),
+            'lines' => [['product_id' => (string) Str::ulid(), 'qty' => 1]],
+        ])
+        ->assertUnprocessable();
 
     $this->assertSame(0, IdempotencyKey::query()->count());
 

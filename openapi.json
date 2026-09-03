@@ -1283,7 +1283,7 @@
                     "Shop"
                 ],
                 "operationId": "v1.shop.orders.store",
-                "description": "Décrémente le stock et rend la commande créée. En retrait, la réponse\nporte le code à six chiffres à présenter au comptoir.\n\nL'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois\nla même requête ne crée qu'une commande.",
+                "description": "Rend la commande créée. En retrait, la réponse porte le code à six\nchiffres à présenter au comptoir.\n\nL'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois\nla même requête ne crée qu'une commande.",
                 "summary": "Passer commande",
                 "parameters": [
                     {
@@ -3356,18 +3356,11 @@
                             45000
                         ]
                     },
-                    "stock": {
-                        "type": "integer",
+                    "is_active": {
+                        "type": "boolean",
+                        "description": "Référence ouverte à la commande. Le catalogue ne suit pas de stock : une pièce fermée est masquée du catalogue mobile.",
                         "examples": [
-                            12
-                        ]
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "active",
-                            "out_of_stock",
-                            "backorder"
+                            true
                         ]
                     },
                     "image_url": {
@@ -3386,8 +3379,7 @@
                     "name",
                     "description",
                     "price",
-                    "stock",
-                    "status",
+                    "is_active",
                     "image_url"
                 ],
                 "title": "ProductResource"

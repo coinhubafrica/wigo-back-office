@@ -28,7 +28,7 @@ Both are nullable: a driver or vehicle not yet reconciled with the park simply y
 
 ## Le schéma est en ULID de bout en bout, `users` compris
 
-`users.id` a longtemps été la seule clé auto-incrémentée du schéma ; elle est passée en ULID (`HasUlids` sur le modèle). Toute colonne qui référence un agent est donc un `foreignUlid` : `stock_movements.user_id`, `audit_logs.user_id`, `challenges.approved_by` / `created_by`, `challenge_winners.credited_by`, ainsi que `sessions.user_id`.
+`users.id` a longtemps été la seule clé auto-incrémentée du schéma ; elle est passée en ULID (`HasUlids` sur le modèle). Toute colonne qui référence un agent est donc un `foreignUlid` : `audit_logs.user_id`, `challenges.approved_by` / `created_by`, `challenge_winners.credited_by`, ainsi que `sessions.user_id`.
 
 Deux exceptions volontaires demeurent, à ne pas « corriger » :
 

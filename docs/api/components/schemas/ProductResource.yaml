@@ -36,16 +36,11 @@ properties:
     description: 'Prix unitaire en FCFA.'
     examples:
       - 45000
-  stock:
-    type: integer
+  is_active:
+    type: boolean
+    description: "Référence ouverte à la commande. Le catalogue ne suit pas de stock : une pièce fermée est masquée du catalogue mobile."
     examples:
-      - 12
-  status:
-    type: string
-    enum:
-      - active
-      - out_of_stock
-      - backorder
+      - true
   image_url:
     type:
       - string
@@ -58,7 +53,6 @@ required:
   - name
   - description
   - price
-  - stock
-  - status
+  - is_active
   - image_url
 title: ProductResource

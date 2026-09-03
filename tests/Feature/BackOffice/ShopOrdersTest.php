@@ -99,8 +99,8 @@ it('a delivery is dispatched then delivered', function (): void {
     $this->assertNotNull($order->delivery->delivered_at);
 });
 
-it('cancelling returns the stock to the catalogue', function (): void {
-    $product = Product::factory()->create(['stock_quantity' => 4]);
+it('cancelling records the reason', function (): void {
+    $product = Product::factory()->create();
     $order = ShopOrder::factory()->create();
     ShopOrderItem::factory()->for($order, 'shopOrder')->create([
         'product_id' => $product->id,
@@ -118,7 +118,6 @@ it('cancelling returns the stock to the catalogue', function (): void {
     $order->refresh();
     $this->assertSame(ShopOrderStatus::Cancelled, $order->status);
     $this->assertSame('Pièce indisponible', $order->cancellation_reason);
-    $this->assertSame(6, $product->fresh()->stock_quantity);
 });
 
 it('a completed order offers no transition', function (): void {

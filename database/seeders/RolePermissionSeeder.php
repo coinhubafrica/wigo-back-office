@@ -83,7 +83,7 @@ class RolePermissionSeeder extends Seeder
                 ],
             ],
             'stock' => [
-                'label' => 'Gestionnaire stock',
+                'label' => 'Gestionnaire catalogue',
                 'description' => 'Requêtes et boutique uniquement.',
                 'modules' => [
                     BackOfficeModule::SupportRequests,

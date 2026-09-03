@@ -27,6 +27,6 @@ Both tables carry their own `last_sync_at` (nullable), stamped on each successfu
 ## Compatibilité pièce/véhicule : hiérarchie, pas de table de compatibilité
 Le MCD prévoit `product_compatibility` (n-n pièce ↔ marque/modèle) avec son propre `model_price`. On a retenu la hiérarchie `vehicle_brands > vehicle_models > products` : une pièce appartient à au plus un modèle et porte un seul `unit_price`. Le prototype le disait déjà — `AM-DZ-AV1`, `DF-DZ-400` : le modèle est dans la référence.
 
-`products.vehicle_model_id` est nullable = pièce universelle (huile, ampoules), visible quel que soit le véhicule. Conséquence assumée : une même pièce montée sur deux modèles fait deux lignes, deux références, deux stocks.
+`products.vehicle_model_id` est nullable = pièce universelle (huile, ampoules), visible quel que soit le véhicule. Conséquence assumée : une même pièce montée sur deux modèles fait deux lignes et deux références.
 
 Ne pas réintroduire la table pivot ni `model_price`. La carte « Marques & modèles » du prototype se dérive de `VehicleBrand::with('vehicleModels')`.

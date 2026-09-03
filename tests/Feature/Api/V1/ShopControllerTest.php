@@ -23,11 +23,11 @@ it('returns the envelope and only active parts in the catalogue', function (): v
     Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
 
     Product::factory()->create(['name' => 'Radiateur']);
-    Product::factory()->outOfStock()->create(['name' => 'Parechoc avant']);
+    Product::factory()->inactive()->create(['name' => 'Parechoc avant']);
 
     $response = $this->getJson(route('api.v1.shop.products'))
         ->assertOk()
-        ->assertJsonStructure(['message', 'data' => [['id', 'reference', 'name', 'price', 'stock', 'status']], 'meta']);
+        ->assertJsonStructure(['message', 'data' => [['id', 'reference', 'name', 'price', 'is_active']], 'meta']);
 
     $this->assertSame(['Radiateur'], array_column($response->json('data'), 'name'));
 });
@@ -76,7 +76,7 @@ it('lets a driver place a pickup order', function (): void {
     $driver = Driver::factory()->create();
     Sanctum::actingAs($driver, ['mobile:*']);
 
-    $product = Product::factory()->create(['unit_price' => 45000, 'stock_quantity' => 6]);
+    $product = Product::factory()->create(['unit_price' => 45000]);
     $pickupPoint = PickupPoint::factory()->create();
 
     $response = $this->withHeader('Idempotency-Key', (string) Str::uuid())
@@ -89,7 +89,6 @@ it('lets a driver place a pickup order', function (): void {
 
     $response->assertJsonPath('data.total', 45000);
     $this->assertMatchesRegularExpression('/^\d{6}$/', $response->json('data.pickup_code'));
-    $this->assertSame(5, $product->fresh()->stock_quantity);
 });
 
 it('uses the default pickup point for a pickup order without an agency', function (): void {
@@ -114,7 +113,7 @@ it('refuses a pickup order when no agency is active', function (): void {
     $driver = Driver::factory()->create();
     Sanctum::actingAs($driver, ['mobile:*']);
 
-    $product = Product::factory()->create(['stock_quantity' => 3]);
+    $product = Product::factory()->create();
     PickupPoint::factory()->create(['is_active' => false]);
 
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
@@ -125,7 +124,7 @@ it('refuses a pickup order when no agency is active', function (): void {
         ->assertUnprocessable()
         ->assertJsonValidationErrors('pickup_point_id');
 
-    $this->assertSame(3, $product->fresh()->stock_quantity);
+    $this->assertSame(0, ShopOrder::query()->count());
 });
 
 it('requires a position and a contact for a delivery order', function (): void {
@@ -172,7 +171,7 @@ it('falls back to the only active point for a pickup order', function (): void {
     $driver = Driver::factory()->create();
     Sanctum::actingAs($driver, ['mobile:*']);
 
-    $product = Product::factory()->create(['stock_quantity' => 3]);
+    $product = Product::factory()->create();
     $point = PickupPoint::factory()->create();
     PickupPoint::factory()->create(['is_active' => false]);
 
@@ -207,22 +206,22 @@ it('still requires a point for a pickup order when several are active', function
         ->assertJsonValidationErrors('pickup_point_id');
 });
 
-it('refuses ordering more than the stock', function (): void {
+it('refuses ordering a reference closed to ordering', function (): void {
     $driver = Driver::factory()->create();
     Sanctum::actingAs($driver, ['mobile:*']);
 
-    $product = Product::factory()->create(['stock_quantity' => 1]);
+    $product = Product::factory()->inactive()->create();
 
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
         ->postJson(route('api.v1.shop.orders.store'), [
-            'lines' => [['product_id' => $product->id, 'qty' => 5]],
+            'lines' => [['product_id' => $product->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Pickup->value,
             'pickup_point_id' => PickupPoint::factory()->create()->id,
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('lines');
 
-    $this->assertSame(1, $product->fresh()->stock_quantity);
+    $this->assertSame(0, ShopOrder::query()->count());
 });
 
 it('prevents a suspended driver from ordering', function (): void {

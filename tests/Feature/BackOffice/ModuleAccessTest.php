@@ -51,7 +51,7 @@ it('only shows dashboard cards for modules the user can reach', function (): voi
         ->get(route(BackOfficeModule::Dashboard->route()))
         ->assertOk()
         ->assertSee(__('backoffice.dashboard.active_drivers'))
-        ->assertSee(__('backoffice.dashboard.stock_alerts'))
+        ->assertSee(__('backoffice.dashboard.inactive_products'))
         ->assertDontSee(__('backoffice.dashboard.recharges_to_replay'));
 });
 
@@ -62,7 +62,7 @@ it('shows no dashboard cards when no source module is permitted', function (): v
         ->get(route(BackOfficeModule::Dashboard->route()))
         ->assertOk()
         ->assertDontSee(__('backoffice.dashboard.active_drivers'))
-        ->assertDontSee(__('backoffice.dashboard.stock_alerts'))
+        ->assertDontSee(__('backoffice.dashboard.inactive_products'))
         ->assertDontSee(__('backoffice.dashboard.recharges_to_replay'));
 });
 

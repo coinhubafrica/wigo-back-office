@@ -62,13 +62,4 @@ enum ShopOrderStatus: string
     {
         return $this->allowedTransitions() === [];
     }
-
-    /**
-     * Statuts pour lesquels le stock est encore réservé : une annulation doit
-     * le rendre au catalogue.
-     */
-    public function holdsStock(): bool
-    {
-        return ! $this->isFinal();
-    }
 }

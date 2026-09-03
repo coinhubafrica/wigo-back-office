@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\FulfilmentMode;
-use App\Enums\ProductStatus;
 use App\Http\Controllers\Concerns\ResolvesDriver;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreShopOrderRequest;
@@ -43,7 +42,7 @@ class ShopController extends Controller
     {
         $products = Product::query()
             ->with(['partCategory', 'vehicleModel.vehicleBrand'])
-            ->where('status', ProductStatus::Active)
+            ->where('is_active', true)
             ->when(
                 $request->filled('vehicle_model_id'),
                 fn (Builder $query) => $this->restrictToModel($query, (string) $request->string('vehicle_model_id')),
@@ -99,8 +98,8 @@ class ShopController extends Controller
     /**
      * Passer commande
      *
-     * Décrémente le stock et rend la commande créée. En retrait, la réponse
-     * porte le code à six chiffres à présenter au comptoir.
+     * Rend la commande créée. En retrait, la réponse porte le code à six
+     * chiffres à présenter au comptoir.
      *
      * L'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois
      * la même requête ne crée qu'une commande.

@@ -110,8 +110,8 @@
   post:
     operationId: v1.shop.orders.store
     description: |-
-      Décrémente le stock et rend la commande créée. En retrait, la réponse
-      porte le code à six chiffres à présenter au comptoir.
+      Rend la commande créée. En retrait, la réponse porte le code à six
+      chiffres à présenter au comptoir.
 
       L'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois
       la même requête ne crée qu'une commande.

@@ -124,7 +124,7 @@
                         <x-banner tone="err">{{ $selectedOrder->cancellation_reason }}</x-banner>
                     @endif
 
-                    @if ($canManageStock && $transitions !== [])
+                    @if ($canManageCatalogue && $transitions !== [])
                         <div class="space-y-2 border-t border-line pt-4">
                             @foreach ($transitions as $transition)
                                 @if ($transition === \App\Enums\ShopOrderStatus::Ready)

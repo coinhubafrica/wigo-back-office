@@ -39,11 +39,13 @@ class ProductResource extends JsonResource
              * @example 45000
              */
             'price' => $this->unit_price,
-            'stock' => $this->stock_quantity,
             /**
-             * @var 'active'|'out_of_stock'|'backorder'
+             * Référence ouverte à la commande. Le catalogue ne suit pas de
+             * stock : une pièce fermée est masquée du catalogue mobile.
+             *
+             * @example true
              */
-            'status' => $this->status->value,
+            'is_active' => $this->is_active,
             'image_url' => $this->photo_url === null ? null : Storage::url($this->photo_url),
         ];
     }

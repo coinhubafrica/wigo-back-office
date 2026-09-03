@@ -74,7 +74,7 @@ enum BackOfficeModule: string
             self::Challenges => 'La base de toute gratification : des critères, une période, un prix — classement, tirage au sort ou bonus surprise',
             self::Recharges => 'Journal des transactions Wave, réconciliation, rejeux',
             self::Cnps => 'Suivi des cotisations déclarées par les conducteurs, mois par mois',
-            self::Shop => 'Catalogue, stock, commandes, livraisons',
+            self::Shop => 'Catalogue des pièces et de leurs prix, commandes, livraisons',
             self::Announcements => "Bannières de l'accueil : image ou vidéo 15–30 s",
             self::Campaigns => 'Un message déposé dans le fil des conducteurs visés : tous, un segment ou un conducteur nommé',
             self::Settings => 'Utilisateurs et rôles, seuils, clés API',
@@ -91,7 +91,7 @@ enum BackOfficeModule: string
             self::Dashboard => 'Pilotage',
             self::SupportRequests, self::Drivers => 'Support',
             self::Challenges, self::Announcements, self::Campaigns => 'Marketing',
-            self::Shop => 'Boutique / Stock',
+            self::Shop => 'Boutique',
             self::Recharges, self::Cnps => 'Finance',
             self::Settings, self::Audit => 'Système',
         };
@@ -126,7 +126,7 @@ enum BackOfficeModule: string
             self::Dashboard => null,
             self::SupportRequests, self::Drivers => 'Support',
             self::Challenges, self::Announcements, self::Campaigns => 'Marketing',
-            self::Shop => 'Boutique / Stock',
+            self::Shop => 'Boutique',
             self::Recharges, self::Cnps => 'Finance',
             self::Settings, self::Audit => 'Système',
         };
