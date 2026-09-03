@@ -320,6 +320,7 @@ return [
         'search_placeholder' => 'Rechercher un conducteur, un téléphone, un compte YAN-CI…',
         'period' => 'Mois',
         'column_driver' => 'Conducteur',
+        'column_month' => 'Mois',
         'column_declared' => 'Déclaré / référence',
         'column_state' => 'État',
         'column_payments' => 'Versements',
