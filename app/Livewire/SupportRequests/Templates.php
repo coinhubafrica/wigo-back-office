@@ -86,6 +86,12 @@ class Templates extends Component
         $this->dispatch('toast', message: __('backoffice.support_requests.template_saved'));
     }
 
+    /** Ferme le formulaire sans enregistrer (bouton, Échap, fond). */
+    public function closeForm(): void
+    {
+        $this->formOpen = false;
+    }
+
     public function toggle(string $id): void
     {
         $template = MessageTemplate::query()->findOrFail($id);

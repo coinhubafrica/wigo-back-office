@@ -142,3 +142,15 @@ function templatesUser(string $role, array $attributes = []): User
 
     return $user;
 }
+
+it('closes the form from its own method so Escape and the backdrop work', function (): void {
+    // `close="$set('formOpen', false)"` donnait `$wire.$set(…)()` : Échap était mort.
+    Livewire::actingAs(templatesUser('gestionnaire'))
+        ->test(Templates::class)
+        ->call('newTemplate')
+        ->assertSet('formOpen', true)
+        ->assertSeeHtml('$wire.closeForm()')
+        ->assertSeeHtml('wire:target="save"')
+        ->call('closeForm')
+        ->assertSet('formOpen', false);
+});
