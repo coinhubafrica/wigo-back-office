@@ -54,6 +54,8 @@ return [
         'stock_alerts' => 'Alertes de stock',
         'recharges_to_replay' => 'Recharges à relancer',
         'see_module' => 'Ouvrir le module',
+        'no_cards' => 'Aucun indicateur à afficher',
+        'no_cards_hint' => 'Les modules qui alimentent le tableau de bord ne font pas partie de vos droits.',
         'pending_modules_notice' => "Les indicateurs d'activité, les escalades SLA et la performance du support seront alimentés par les modules correspondants.",
     ],
 

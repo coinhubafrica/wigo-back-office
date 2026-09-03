@@ -40,7 +40,10 @@ class Dashboard extends Component
      * Le compteur n'est évalué qu'après le filtre par permission, pour ne pas
      * interroger la base au nom d'une carte qui ne sera pas affichée.
      *
-     * @return list<array{label: string, value: int, tone: string, route: string}>
+     * `alert` marque un compteur qui devrait être à zéro : la carte ne passe
+     * au rouge que si la valeur est non nulle.
+     *
+     * @return list<array{label: string, value: int, alert: bool, route: string, icon: string}>
      */
     private function cards(): array
     {
@@ -55,15 +58,17 @@ class Dashboard extends Component
             $cards[] = [
                 'label' => (string) __('backoffice.dashboard.active_drivers'),
                 'value' => Driver::query()->where('status', DriverStatus::Active)->count(),
-                'tone' => 'text-ink',
+                'alert' => false,
                 'route' => $route,
+                'icon' => BackOfficeModule::Drivers->icon(),
             ];
 
             $cards[] = [
                 'label' => (string) __('backoffice.dashboard.suspended_drivers'),
                 'value' => Driver::query()->where('status', DriverStatus::Suspended)->count(),
-                'tone' => 'text-ink',
+                'alert' => false,
                 'route' => $route,
+                'icon' => BackOfficeModule::Drivers->icon(),
             ];
         }
 
@@ -71,8 +76,9 @@ class Dashboard extends Component
             $cards[] = [
                 'label' => (string) __('backoffice.dashboard.stock_alerts'),
                 'value' => Product::query()->whereColumn('stock_quantity', '<=', 'low_stock_threshold')->count(),
-                'tone' => 'text-err-text',
+                'alert' => true,
                 'route' => BackOfficeModule::Shop->route(),
+                'icon' => BackOfficeModule::Shop->icon(),
             ];
         }
 
@@ -83,8 +89,9 @@ class Dashboard extends Component
                     ->recharges()
                     ->whereIn('status', [TransactionStatus::Failed, TransactionStatus::ToReview])
                     ->count(),
-                'tone' => 'text-err-text',
+                'alert' => true,
                 'route' => BackOfficeModule::Recharges->route(),
+                'icon' => BackOfficeModule::Recharges->icon(),
             ];
         }
 
