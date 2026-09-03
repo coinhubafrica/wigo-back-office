@@ -636,3 +636,20 @@ function supportUser(string $role, array $attributes = []): User
 
     return $user;
 }
+
+it('guards the send button and closes the templates list from its own method', function (): void {
+    $driver = Driver::factory()->create();
+    $conversation = Conversation::factory()->for($driver)->create();
+    $request = SupportRequest::factory()->for($conversation)->create([
+        'status' => SupportRequestStatus::Open,
+    ]);
+
+    Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->assertSeeHtml('wire:target="send"')
+        ->set('templatesOpen', true)
+        ->assertSeeHtml('$wire.closeTemplates()')
+        ->call('closeTemplates')
+        ->assertSet('templatesOpen', false);
+});

@@ -18,82 +18,58 @@
 <div wire:poll.60s
      x-data="supportRealtime(@js($selected))">
 
+    {{-- Rendu dans l'en-tête du layout, hors de la racine Livewire : lien seulement. --}}
+    <x-slot:actions>
+        <a href="{{ route('bo.support-requests.templates') }}" wire:navigate
+           class="inline-flex items-center gap-2 rounded border border-line bg-card px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+            {{ __('backoffice.support_requests.templates') }}
+        </a>
+    </x-slot:actions>
+
     {{-- ------------------------------------------------------------ --}}
     {{-- Santé de la file, avant d'ouvrir quoi que ce soit.            --}}
     {{-- ------------------------------------------------------------ --}}
     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="flex items-start gap-3.5 rounded border border-line bg-card p-4 shadow-sm">
-            <span class="flex size-10 shrink-0 items-center justify-center rounded bg-warn-bg text-warn-text">
+        <x-kpi-card :label="__('backoffice.support_requests.kpi_triage')" :value="number_format($triageCount)" tone="warn">
+            <x-slot:icon>
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-            </span>
-            <div class="min-w-0">
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.support_requests.kpi_triage') }}</p>
-                <p class="mt-1 text-3xl font-semibold tracking-tight text-ink">{{ number_format($triageCount) }}</p>
-            </div>
-        </div>
+            </x-slot:icon>
+        </x-kpi-card>
 
-        <div class="flex items-start gap-3.5 rounded border border-line bg-card p-4 shadow-sm">
-            <span class="flex size-10 shrink-0 items-center justify-center rounded bg-primary-tint text-primary-text">
+        <x-kpi-card :label="__('backoffice.support_requests.kpi_tickets')" :value="number_format($ticketCount)" tone="primary"
+                    :hint="array_sum($openedPerDay).' '.__('backoffice.support_requests.kpi_opened_7d')">
+            <x-slot:icon>
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
-            </span>
-            <div class="min-w-0 flex-1">
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.support_requests.kpi_tickets') }}</p>
-                <div class="mt-1 flex items-end justify-between gap-3">
-                    <p class="text-3xl font-semibold tracking-tight text-ink">{{ number_format($ticketCount) }}</p>
-                    {{-- Sept barres, sept jours, la dernière étant aujourd'hui :
-                         la tendance se lit sans légende. --}}
-                    @php $peak = max(1, max($openedPerDay)); @endphp
-                    <div class="flex h-8 items-end gap-1" aria-hidden="true">
-                        @foreach ($openedPerDay as $i => $n)
-                            <span @class(['w-1.5 rounded-sm', 'bg-primary' => $loop->last, 'bg-primary/35' => ! $loop->last])
-                                  style="height: {{ max(12, (int) round($n / $peak * 100)) }}%"></span>
-                        @endforeach
-                    </div>
+            </x-slot:icon>
+            {{-- Sept barres, sept jours, la dernière étant aujourd'hui :
+                 la tendance se lit sans légende. --}}
+            <x-slot:chart>
+                @php $peak = max(1, max($openedPerDay)); @endphp
+                <div class="flex h-8 items-end gap-1" aria-hidden="true">
+                    @foreach ($openedPerDay as $i => $n)
+                        <span @class(['w-1.5 rounded-sm', 'bg-primary' => $loop->last, 'bg-primary/35' => ! $loop->last])
+                              style="height: {{ max(12, (int) round($n / $peak * 100)) }}%"></span>
+                    @endforeach
                 </div>
-                <p class="mt-0.5 text-[11px] text-muted">{{ array_sum($openedPerDay) }} {{ __('backoffice.support_requests.kpi_opened_7d') }}</p>
-            </div>
-        </div>
+            </x-slot:chart>
+        </x-kpi-card>
 
         {{-- Le rouge signale le manquement, jamais un simple décompte : à
              zéro la carte reste neutre. --}}
-        <div @class([
-            'relative flex items-start gap-3.5 overflow-hidden rounded border bg-card p-4 shadow-sm',
-            'border-err-text/30' => $breachedCount > 0,
-            'border-line' => $breachedCount === 0,
-        ])>
-            @if ($breachedCount > 0)
-                <span class="absolute inset-y-0 left-0 w-1 bg-err-text" aria-hidden="true"></span>
-            @endif
-            <span @class([
-                'flex size-10 shrink-0 items-center justify-center rounded',
-                'bg-err-bg text-err-text' => $breachedCount > 0,
-                'bg-ok-bg text-ok-text' => $breachedCount === 0,
-            ])>
+        <x-kpi-card :label="__('backoffice.support_requests.kpi_breached')" :value="number_format($breachedCount)" tone="ok"
+                    :alert="$breachedCount > 0"
+                    :hint="$breachedCount > 0 ? __('backoffice.support_requests.kpi_breached_hint') : __('backoffice.support_requests.kpi_all_good')">
+            <x-slot:icon>
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg>
-            </span>
-            <div class="min-w-0">
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.support_requests.kpi_breached') }}</p>
-                <p class="mt-1 flex items-center gap-2 text-3xl font-semibold tracking-tight {{ $breachedCount > 0 ? 'text-err-text' : 'text-ink' }}">
-                    {{ number_format($breachedCount) }}
-                    @if ($breachedCount > 0)
-                        <span class="size-2.5 rounded-full bg-err-text animate-pulse-soft" aria-hidden="true"></span>
-                    @endif
-                </p>
-                <p class="mt-0.5 text-[11px] text-muted">
-                    {{ $breachedCount > 0 ? __('backoffice.support_requests.kpi_breached_hint') : __('backoffice.support_requests.kpi_all_good') }}
-                </p>
-            </div>
-        </div>
+            </x-slot:icon>
+        </x-kpi-card>
 
-        <div class="flex items-start gap-3.5 rounded border border-line bg-card p-4 shadow-sm">
-            <span class="flex size-10 shrink-0 items-center justify-center rounded bg-neutral-bg text-neutral-text">
+        <x-kpi-card :label="__('backoffice.support_requests.kpi_mine')" :value="number_format($mineCount)">
+            <x-slot:icon>
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </span>
-            <div class="min-w-0">
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.support_requests.kpi_mine') }}</p>
-                <p class="mt-1 text-3xl font-semibold tracking-tight text-ink">{{ number_format($mineCount) }}</p>
-            </div>
-        </div>
+            </x-slot:icon>
+        </x-kpi-card>
     </div>
 
     <div class="mt-5 flex flex-wrap items-center gap-1.5">
@@ -145,8 +121,7 @@
                                 {{ $case->label() }}
                             </x-chip-filter>
                         @endforeach
-                        <span class="flex-1"></span>
-                        <x-chip-filter wire:click="toggleAssignedToMe" :active="$assigned === 'me'">
+                        <x-chip-filter wire:click="toggleAssignedToMe" :active="$assigned === 'me'" class="ml-auto">
                             {{ __('backoffice.support_requests.assigned_to_me') }}
                         </x-chip-filter>
                         <x-chip-filter wire:click="toggleBreachedOnly" :active="$breachedOnly" tone="danger">
@@ -172,16 +147,9 @@
                  wire:loading.class="opacity-50"
                  wire:target="filterByStatus,toggleAssignedToMe,toggleBreachedOnly,search,gotoPage,previousPage,nextPage">
                 @if ($rows->isEmpty())
-                    <div class="flex flex-col items-center px-4 py-14 text-center">
-                        <span class="flex size-11 items-center justify-center rounded-full bg-ok-bg text-ok-text">
-                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-                        </span>
-                        <p class="mt-3 text-sm text-muted">
-                            {{ $tab === 'triage'
-                                ? __('backoffice.support_requests.empty_triage')
-                                : __('backoffice.support_requests.empty_tickets') }}
-                        </p>
-                    </div>
+                    <x-empty-state class="py-14" :hint="$tab === 'triage'
+                        ? __('backoffice.support_requests.empty_triage')
+                        : __('backoffice.support_requests.empty_tickets')" />
                 @else
                     <ul class="divide-y divide-line">
                         @foreach ($rows as $row)
@@ -216,9 +184,7 @@
                                          priorité sur les tickets. --}}
                                     <span class="absolute inset-y-2 left-0 w-[3px] rounded-r {{ $stripe }}" aria-hidden="true"></span>
 
-                                    <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-tint text-xs font-semibold text-primary-text">
-                                        {{ $row->driver?->initials() ?? '—' }}
-                                    </span>
+                                    <x-avatar :initials="$row->driver?->initials() ?? '—'" />
 
                                     <span class="min-w-0 flex-1">
                                         @if ($tab === 'triage')
@@ -246,24 +212,16 @@
                                                 <b class="truncate text-[13px] text-ink">{{ $row->driver?->fullName() }}</b>
                                                 <span class="flex-1"></span>
                                                 @if ($row->staff_unread_count > 0)
-                                                    <span class="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10.5px] font-bold text-white">
-                                                        {{ $row->staff_unread_count }}
-                                                    </span>
+                                                    <x-badge tone="solid" class="shrink-0 font-bold">{{ $row->staff_unread_count }}</x-badge>
                                                 @endif
                                             </span>
                                             <span class="mt-0.5 block truncate text-xs text-muted">
                                                 {{ $row->subject ?: __('backoffice.support_requests.no_subject') }}
                                             </span>
                                             <span class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                                <span class="rounded-full px-2 py-0.5 text-[10.5px] font-semibold {{ $row->status->badgeClasses() }}">
-                                                    {{ $row->status->label() }}
-                                                </span>
-                                                <span class="rounded-full px-2 py-0.5 text-[10.5px] font-semibold {{ $row->priority->badgeClasses() }}">
-                                                    {{ $row->priority->label() }}
-                                                </span>
-                                                <span class="rounded-full bg-neutral-bg px-2 py-0.5 text-[10.5px] font-semibold text-neutral-text">
-                                                    {{ $row->category->label() }}
-                                                </span>
+                                                <x-badge :classes="$row->status->badgeClasses()">{{ $row->status->label() }}</x-badge>
+                                                <x-badge :classes="$row->priority->badgeClasses()">{{ $row->priority->label() }}</x-badge>
+                                                <x-badge>{{ $row->category->label() }}</x-badge>
                                                 <span class="flex-1"></span>
                                                 <span class="truncate text-[11px] text-muted">
                                                     {{ $row->assignedUser?->name ?? __('backoffice.support_requests.unassigned') }}
@@ -318,38 +276,25 @@
         {{-- ------------------------------------------------------------ --}}
         <section class="flex min-h-0 flex-col overflow-hidden rounded border border-line bg-card shadow-sm">
             @if ($conversation === null)
-                <div class="flex flex-1 flex-col items-center justify-center px-5 py-16 text-center">
-                    <span class="flex size-14 items-center justify-center rounded-full bg-primary-tint text-primary-text">
-                        <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    </span>
-                    <p class="mt-4 text-sm font-semibold text-ink">{{ __('backoffice.support_requests.pick_conversation') }}</p>
-                    <p class="mt-1 max-w-xs text-xs text-muted">{{ __('backoffice.support_requests.pick_conversation_hint') }}</p>
-                </div>
+                <x-empty-state tone="primary" size="lg" class="flex-1"
+                               :title="__('backoffice.support_requests.pick_conversation')"
+                               :hint="__('backoffice.support_requests.pick_conversation_hint')" />
             @else
                 <div class="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-line px-5 py-3.5">
-                    @if ($conversation->driver?->photo_url)
-                        <img src="{{ route('bo.drivers.photo', $conversation->driver) }}" alt=""
-                             class="size-11 shrink-0 rounded-full object-cover">
-                    @else
-                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-tint text-sm font-semibold text-primary-text">
-                            {{ $conversation->driver?->initials() ?? '—' }}
-                        </span>
-                    @endif
+                    <x-avatar size="lg" :initials="$conversation->driver?->initials() ?? '—'"
+                              :src="$conversation->driver?->photo_url ? route('bo.drivers.photo', $conversation->driver) : null" />
                     <div class="min-w-0">
                         <p class="flex items-center gap-2 text-[15px] font-bold text-ink">
                             <span class="truncate">{{ $conversation->driver?->fullName() }}</span>
                             @if ($conversation->driver !== null)
-                                <span class="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold {{ $conversation->driver->status->badgeClasses() }}">
-                                    {{ $conversation->driver->status->label() }}
-                                </span>
+                                <x-badge :classes="$conversation->driver->status->badgeClasses()" class="shrink-0">{{ $conversation->driver->status->label() }}</x-badge>
                             @endif
                         </p>
                         <p class="font-mono text-xs text-muted">{{ $conversation->driver?->phone }}</p>
                     </div>
-                    <span class="flex-1"></span>
                     @if ($conversation->driver !== null)
                         <a href="{{ route('bo.drivers.show', $conversation->driver) }}" wire:navigate
-                           class="inline-flex items-center gap-1 text-xs font-semibold text-primary-text hover:underline">
+                           class="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-primary-text hover:underline">
                             {{ __('backoffice.support_requests.view_driver') }}
                             <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                         </a>
@@ -357,44 +302,34 @@
                 </div>
 
                 @if ($untriagedCount > 0)
-                    <div class="flex shrink-0 flex-wrap items-center gap-3 border-b border-warn-text/20 bg-warn-bg px-5 py-2.5">
-                        <span class="size-2 rounded-full bg-warn-text animate-pulse-soft" aria-hidden="true"></span>
-                        <p class="text-xs font-semibold text-warn-text">
-                            {{ trans_choice('backoffice.support_requests.untriaged_banner', $untriagedCount, ['count' => $untriagedCount]) }}
-                        </p>
-                        <span class="flex-1"></span>
-                        <x-button size="sm" wire:click="openTicketForm" target="openTicketForm">
-                            {{ __('backoffice.support_requests.create_ticket') }}
-                        </x-button>
-                        {{-- Ce geste n'envoie rien : il clôt le tri. Répondre se
-                             fait dans le compositeur en bas du fil, et laisse
-                             la conversation ici jusqu'à ce que l'agent tranche. --}}
-                        <x-button variant="secondary" size="sm"
-                                  wire:click="confirmDismiss('{{ $conversation->id }}')"
-                                  target="confirmDismiss">
-                            {{ __('backoffice.support_requests.dismiss') }}
-                        </x-button>
-                    </div>
+                    <x-banner tone="warn" pulse flush>
+                        {{ trans_choice('backoffice.support_requests.untriaged_banner', $untriagedCount, ['count' => $untriagedCount]) }}
+                        <x-slot:actions>
+                            <x-button size="sm" wire:click="openTicketForm" target="openTicketForm">
+                                {{ __('backoffice.support_requests.create_ticket') }}
+                            </x-button>
+                            {{-- Ce geste n'envoie rien : il clôt le tri. Répondre se
+                                 fait dans le compositeur en bas du fil, et laisse
+                                 la conversation ici jusqu'à ce que l'agent tranche. --}}
+                            <x-button variant="secondary" size="sm"
+                                      wire:click="confirmDismiss('{{ $conversation->id }}')"
+                                      target="confirmDismiss">
+                                {{ __('backoffice.support_requests.dismiss') }}
+                            </x-button>
+                        </x-slot:actions>
+                    </x-banner>
                 @endif
 
                 @if ($liveRequest !== null)
                     <div class="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-surface px-5 py-2.5">
                         <span class="font-mono text-[11px] font-semibold text-muted">#{{ $liveRequest->number }}</span>
-                        <span class="rounded-full px-2 py-0.5 text-[10.5px] font-semibold {{ $liveRequest->status->badgeClasses() }}">
-                            {{ $liveRequest->status->label() }}
-                        </span>
-                        <span class="rounded-full px-2 py-0.5 text-[10.5px] font-semibold {{ $liveRequest->priority->badgeClasses() }}">
-                            {{ $liveRequest->priority->label() }}
-                        </span>
+                        <x-badge :classes="$liveRequest->status->badgeClasses()">{{ $liveRequest->status->label() }}</x-badge>
+                        <x-badge :classes="$liveRequest->priority->badgeClasses()">{{ $liveRequest->priority->label() }}</x-badge>
                         @if ($sla->isBreached($liveRequest))
-                            <span class="inline-flex items-center gap-1 rounded-full bg-err-bg px-2 py-0.5 text-[10.5px] font-semibold text-err-text">
-                                <span class="size-1.5 rounded-full bg-err-text animate-pulse-soft" aria-hidden="true"></span>
-                                {{ __('backoffice.support_requests.late') }}
-                            </span>
+                            <x-badge tone="err" pulse>{{ __('backoffice.support_requests.late') }}</x-badge>
                         @endif
 
-                        <span class="flex-1"></span>
-
+                        <div class="ml-auto flex flex-wrap items-center gap-2">
                         <label class="sr-only" for="recategorise">{{ __('backoffice.support_requests.category') }}</label>
                         <select id="recategorise" wire:change="recategorise($event.target.value)"
                                 wire:loading.attr="disabled" wire:target="recategorise"
@@ -430,6 +365,7 @@
                         <x-button size="sm" wire:click="confirmResolve('{{ $liveRequest->id }}')" target="confirmResolve">
                             {{ __('backoffice.support_requests.resolve') }}
                         </x-button>
+                        </div>
                     </div>
                 @endif
 
@@ -445,8 +381,7 @@
                                   class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-[11px]"
                                   title="{{ $past->subject ?: __('backoffice.support_requests.no_subject') }} — {{ $past->created_at?->format('d/m/Y') }}">
                                 <span class="font-mono font-semibold text-muted">#{{ $past->number }}</span>
-                                <span class="size-1.5 rounded-full {{ $past->status->badgeClasses() }}" aria-hidden="true"></span>
-                                <span class="text-muted">{{ $past->status->label() }}</span>
+                                <x-badge :classes="$past->status->badgeClasses()">{{ $past->status->label() }}</x-badge>
                                 <span class="hidden truncate text-ink sm:inline">· {{ \Illuminate\Support\Str::limit($past->subject ?: __('backoffice.support_requests.no_subject'), 36) }}</span>
                             </span>
                         @endforeach
@@ -610,12 +545,13 @@
                             <x-button variant="secondary" size="sm" wire:click="$toggle('templatesOpen')">
                                 {{ __('backoffice.support_requests.templates') }}
                             </x-button>
-                            <span class="flex-1"></span>
-                            <kbd class="hidden font-sans text-[10.5px] text-muted sm:inline">{{ __('backoffice.support_requests.shortcut_send') }}</kbd>
-                            <x-button wire:click="sendTriageReply" target="sendTriageReply">
-                                {{ __('backoffice.support_requests.reply_without_ticket') }}
-                                <x-slot:loading>{{ __('backoffice.support_requests.sending') }}</x-slot:loading>
-                            </x-button>
+                            <div class="ml-auto flex items-center gap-2.5">
+                                <kbd class="hidden font-sans text-[10.5px] text-muted sm:inline">{{ __('backoffice.support_requests.shortcut_send') }}</kbd>
+                                <x-button wire:click="sendTriageReply" target="sendTriageReply">
+                                    {{ __('backoffice.support_requests.reply_without_ticket') }}
+                                    <x-slot:loading>{{ __('backoffice.support_requests.sending') }}</x-slot:loading>
+                                </x-button>
+                            </div>
                         </div>
                     @elseif ($liveRequest === null)
                         <p class="text-xs text-muted">{{ __('backoffice.support_requests.no_live_request') }}</p>
@@ -631,12 +567,13 @@
                             <x-button variant="secondary" size="sm" wire:click="$toggle('templatesOpen')">
                                 {{ __('backoffice.support_requests.templates') }}
                             </x-button>
-                            <span class="flex-1"></span>
-                            <kbd class="hidden font-sans text-[10.5px] text-muted sm:inline">{{ __('backoffice.support_requests.shortcut_send') }}</kbd>
-                            <x-button wire:click="send" target="send">
-                                {{ __('backoffice.support_requests.send') }}
-                                <x-slot:loading>{{ __('backoffice.support_requests.sending') }}</x-slot:loading>
-                            </x-button>
+                            <div class="ml-auto flex items-center gap-2.5">
+                                <kbd class="hidden font-sans text-[10.5px] text-muted sm:inline">{{ __('backoffice.support_requests.shortcut_send') }}</kbd>
+                                <x-button wire:click="send" target="send">
+                                    {{ __('backoffice.support_requests.send') }}
+                                    <x-slot:loading>{{ __('backoffice.support_requests.sending') }}</x-slot:loading>
+                                </x-button>
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -646,82 +583,51 @@
 
     @if ($creatingTicket)
         <x-modal close="cancelTicketForm" align="start" :title="__('backoffice.support_requests.ticket_form_title')">
-            <form wire:submit="createTicket" class="space-y-4 px-5 py-4">
+            <form id="support-ticket-form" wire:submit="createTicket" class="space-y-4">
                 {{-- Pas de champ « priorité » : elle découle de la catégorie
                      via `SlaCalculator`, l'agent ne la choisit jamais. --}}
                 <p class="text-xs text-muted">{{ __('backoffice.support_requests.ticket_form_hint') }}</p>
 
-                <div>
-                    <label for="ticketCategory" class="mb-1.5 block text-xs font-semibold text-muted">{{ __('backoffice.support_requests.field_category') }}</label>
-                    <select wire:model="ticketCategory" id="ticketCategory"
-                            class="block w-full rounded border border-input px-3 py-2 text-sm focus:border-primary">
-                        @foreach (\App\Enums\SupportRequestCategory::cases() as $case)
-                            <option value="{{ $case->value }}">{{ $case->label() }}</option>
-                        @endforeach
-                    </select>
-                    @error('ticketCategory') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
-                </div>
+                <x-field :label="__('backoffice.support_requests.field_category')" name="ticketCategory" type="select" wire:model="ticketCategory">
+                    @foreach (\App\Enums\SupportRequestCategory::cases() as $case)
+                        <option value="{{ $case->value }}">{{ $case->label() }}</option>
+                    @endforeach
+                </x-field>
 
-                <div>
-                    <label for="ticketSubject" class="mb-1.5 block text-xs font-semibold text-muted">{{ __('backoffice.support_requests.field_subject') }}</label>
-                    <input wire:model="ticketSubject" id="ticketSubject" type="text"
-                           placeholder="{{ __('backoffice.support_requests.subject_placeholder') }}"
-                           class="block w-full rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary">
-                    @error('ticketSubject') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
-                </div>
+                <x-field :label="__('backoffice.support_requests.field_subject')" name="ticketSubject" wire:model="ticketSubject"
+                         :placeholder="__('backoffice.support_requests.subject_placeholder')" />
             </form>
 
-            <div class="flex justify-end gap-2.5 border-t border-line px-5 py-4">
+            <x-slot:footer>
                 <x-button variant="secondary" wire:click="cancelTicketForm">
                     {{ __('backoffice.support_requests.cancel') }}
                 </x-button>
-                <x-button wire:click="createTicket" target="createTicket">
+                <x-button type="submit" form="support-ticket-form" target="createTicket">
                     {{ __('backoffice.support_requests.create') }}
                     <x-slot:loading>{{ __('backoffice.support_requests.working') }}</x-slot:loading>
                 </x-button>
-            </div>
+            </x-slot:footer>
         </x-modal>
     @endif
 
     @if ($confirmingResolve !== null)
-        <x-modal close="cancelResolve" max-width="max-w-sm" :label="__('backoffice.support_requests.resolve_title')">
-            <div class="px-5 pb-4 pt-5">
-                <p class="text-sm font-semibold text-ink">{{ __('backoffice.support_requests.resolve_title') }}</p>
-                <p class="mt-1.5 text-sm text-muted">{{ __('backoffice.support_requests.resolve_body') }}</p>
-            </div>
-            <div class="flex justify-end gap-2.5 border-t border-line px-5 py-4">
-                <x-button variant="secondary" wire:click="cancelResolve">
-                    {{ __('backoffice.support_requests.cancel') }}
-                </x-button>
-                <x-button wire:click="resolve" target="resolve">
-                    {{ __('backoffice.support_requests.resolve') }}
-                    <x-slot:loading>{{ __('backoffice.support_requests.working') }}</x-slot:loading>
-                </x-button>
-            </div>
-        </x-modal>
+        <x-confirm close="cancelResolve" action="resolve"
+                   :title="__('backoffice.support_requests.resolve_title')"
+                   :body="__('backoffice.support_requests.resolve_body')"
+                   :confirm-label="__('backoffice.support_requests.resolve')" />
     @endif
 
     @if ($confirmingDismiss !== null)
-        <x-modal close="cancelDismiss" max-width="max-w-sm" :label="__('backoffice.support_requests.dismiss_title')">
-            <div class="px-5 pb-4 pt-5">
-                <p class="text-sm font-semibold text-ink">{{ __('backoffice.support_requests.dismiss_title') }}</p>
-                <p class="mt-1.5 text-sm text-muted">{{ __('backoffice.support_requests.dismiss_body') }}</p>
-            </div>
-            <div class="flex justify-end gap-2.5 border-t border-line px-5 py-4">
-                <x-button variant="secondary" wire:click="cancelDismiss">
-                    {{ __('backoffice.support_requests.cancel') }}
-                </x-button>
-                <x-button wire:click="dismiss" target="dismiss">
-                    {{ __('backoffice.support_requests.confirm') }}
-                    <x-slot:loading>{{ __('backoffice.support_requests.working') }}</x-slot:loading>
-                </x-button>
-            </div>
-        </x-modal>
+        <x-confirm close="cancelDismiss" action="dismiss"
+                   :title="__('backoffice.support_requests.dismiss_title')"
+                   :body="__('backoffice.support_requests.dismiss_body')"
+                   :confirm-label="__('backoffice.support_requests.confirm')" />
     @endif
 
     @if ($templatesOpen)
-        <x-modal close="$toggle('templatesOpen')" align="start" :title="__('backoffice.support_requests.templates_title')">
-            <div class="max-h-[26rem] overflow-y-auto px-5 py-4">
+        {{-- `close` est un nom de méthode : `$toggle('templatesOpen')` en
+             ligne cassait Échap, le composant écrivant `$wire.{close}()`. --}}
+        <x-modal close="closeTemplates" align="start" :title="__('backoffice.support_requests.templates_title')">
                 @forelse ($templates as $template)
                     <button type="button" wire:key="template-{{ $template->id }}"
                             wire:click="useTemplate('{{ $template->id }}')"
@@ -735,9 +641,8 @@
                         <span class="mt-1 block text-xs text-muted">{{ \Illuminate\Support\Str::limit($template->body, 120) }}</span>
                     </button>
                 @empty
-                    <p class="py-6 text-center text-sm text-muted">{{ __('backoffice.support_requests.templates_empty') }}</p>
+                    <x-empty-state tone="neutral" :hint="__('backoffice.support_requests.templates_empty')" />
                 @endforelse
-            </div>
         </x-modal>
     @endif
 </div>

@@ -4,6 +4,8 @@
     'title' => null,
     /** Point pulsant : la situation évolue (file en attente). */
     'pulse' => false,
+    /** Bande pleine largeur dans un panneau : sans arrondi, séparée par un filet bas. */
+    'flush' => false,
 ])
 
 {{--
@@ -19,7 +21,7 @@
         default => ['border-primary/20 bg-primary-tint text-primary-text', 'bg-primary'],
     };
 @endphp
-<div {{ $attributes->class(['flex flex-wrap items-center gap-3 rounded border px-4 py-2.5', $box]) }}
+<div {{ $attributes->class(['flex flex-wrap items-center gap-3 py-2.5', $box, 'rounded border px-4' => ! $flush, 'shrink-0 border-b px-5' => $flush]) }}
      @if ($tone === 'err') role="alert" @endif>
     @if ($pulse)
         <span class="size-2 shrink-0 rounded-full {{ $dot }} animate-pulse-soft" aria-hidden="true"></span>

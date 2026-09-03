@@ -209,6 +209,12 @@ class Index extends Component
         $this->confirmingDismiss = $conversationId;
     }
 
+    /** Ferme la liste des modèles sans en choisir (bouton ×, Échap, fond). */
+    public function closeTemplates(): void
+    {
+        $this->templatesOpen = false;
+    }
+
     public function cancelDismiss(): void
     {
         $this->confirmingDismiss = null;
