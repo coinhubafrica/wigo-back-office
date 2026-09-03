@@ -1,159 +1,149 @@
-<div>
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded border border-line bg-card p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.kpi_references') }}</p>
-            <p class="mt-1.5 text-2xl font-semibold text-ink">{{ $referenceCount }}</p>
-        </div>
-        <div class="rounded border border-line bg-card p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.kpi_stock_value') }}</p>
-            <p class="mt-1.5 text-2xl font-semibold text-ok-text">{{ number_format($stockValue, 0, ',', ' ') }} FCFA</p>
-        </div>
-        <div class="rounded border border-line bg-card p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.kpi_alerts') }}</p>
-            <p class="mt-1.5 text-2xl font-semibold text-err-text">{{ $alertCount }}</p>
-        </div>
-        <div class="rounded border border-line bg-card p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.kpi_orders') }}</p>
-            <p class="mt-1.5 text-2xl font-semibold text-ink">
-                <a href="{{ route('bo.shop.orders') }}" class="hover:text-primary">{{ $orderCount }}</a>
-            </p>
-        </div>
-    </div>
-
-    <div class="mt-5 flex flex-wrap items-center gap-2">
-        {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
-             invisible pour un lecteur d'écran sans cet état. --}}
-        <button wire:click="filterByCategory(null)"
-                aria-pressed="{{ $category === null ? 'true' : 'false' }}"
-                @class(['rounded-full border px-3.5 py-1.5 text-xs font-semibold', 'border-primary bg-primary-tint text-primary-text' => $category === null, 'border-line text-muted hover:bg-surface' => $category !== null])>
-            {{ __('backoffice.shop.all_categories') }}
-        </button>
-        @foreach ($categories as $partCategory)
-            <button wire:key="cat-{{ $partCategory->id }}" wire:click="filterByCategory('{{ $partCategory->id }}')"
-                    aria-pressed="{{ $category === $partCategory->id ? 'true' : 'false' }}"
-                    @class(['rounded-full border px-3.5 py-1.5 text-xs font-semibold', 'border-primary bg-primary-tint text-primary-text' => $category === $partCategory->id, 'border-line text-muted hover:bg-surface' => $category !== $partCategory->id])>
-                {{ $partCategory->name }}
-            </button>
-        @endforeach
-
-        <span class="flex-1"></span>
-
-        {{-- L'anneau de focus est porté par l'enveloppe : le champ est sans
-             bordure, un anneau sur le champ seul serait collé à l'icône. --}}
-        <div class="flex items-center gap-2 rounded border border-line bg-card px-3 py-1.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
-            <svg class="size-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input wire:model.live.debounce.400ms="search" type="search" placeholder="{{ __('backoffice.shop.search_placeholder') }}"
-                   class="w-48 border-0 p-0 text-sm focus:outline-none">
-        </div>
-
+{{-- Les actions de module vivent dans l'en-tête du layout et parlent à la
+     racine par évènement Alpine (cf. .ai/rules/components.md). --}}
+<div x-on:open-shop-product.window="$wire.newProduct()"
+     x-on:open-shop-referential.window="$wire.openReferential()">
+    <x-slot:actions>
+        <a href="{{ route('bo.shop.orders') }}" wire:navigate
+           class="inline-flex items-center gap-2 rounded border border-line bg-card px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface">
+            {{ __('backoffice.shop.kpi_orders') }}
+        </a>
         @if ($canManageStock)
-            <button wire:click="openReferential" class="rounded border border-line px-3 py-2 text-xs font-semibold text-muted hover:bg-surface">
-                {{ __('backoffice.shop.manage_brands') }}
-            </button>
-            <button wire:click="newProduct" class="flex items-center gap-1.5 rounded bg-primary px-3.5 py-2 text-sm font-semibold text-white hover:bg-primary-hover">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            <x-button variant="secondary" x-on:click="$dispatch('open-shop-referential')">{{ __('backoffice.shop.manage_brands') }}</x-button>
+            <x-button x-on:click="$dispatch('open-shop-product')">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                 {{ __('backoffice.shop.new_product') }}
-            </button>
+            </x-button>
         @endif
+    </x-slot:actions>
+
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <x-kpi-card :label="__('backoffice.shop.kpi_references')" :value="$referenceCount" tone="primary">
+            <x-slot:icon>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </x-slot:icon>
+        </x-kpi-card>
+        <x-kpi-card :label="__('backoffice.shop.kpi_stock_value')" :value="number_format($stockValue, 0, ',', ' ')" unit="FCFA" tone="ok">
+            <x-slot:icon>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            </x-slot:icon>
+        </x-kpi-card>
+        <x-kpi-card :label="__('backoffice.shop.kpi_alerts')" :value="$alertCount" :alert="$alertCount > 0" tone="ok">
+            <x-slot:icon>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            </x-slot:icon>
+        </x-kpi-card>
+        <x-kpi-card :label="__('backoffice.shop.kpi_orders')" :value="$orderCount" :href="route('bo.shop.orders')" tone="warn">
+            <x-slot:icon>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            </x-slot:icon>
+        </x-kpi-card>
     </div>
+
+    <x-toolbar class="mt-5">
+        <div class="flex flex-wrap gap-1.5">
+            <x-chip-filter wire:click="filterByCategory(null)" :active="$category === null">{{ __('backoffice.shop.all_categories') }}</x-chip-filter>
+            @foreach ($categories as $partCategory)
+                <x-chip-filter wire:key="cat-{{ $partCategory->id }}" wire:click="filterByCategory('{{ $partCategory->id }}')" :active="$category === $partCategory->id">
+                    {{ $partCategory->name }}
+                </x-chip-filter>
+            @endforeach
+        </div>
+        <x-slot:end>
+            <x-field :label="__('backoffice.shop.search_placeholder')" name="search" type="search" label-hidden
+                     wire:model.live.debounce.400ms="search"
+                     :placeholder="__('backoffice.shop.search_placeholder')" class="w-64" />
+        </x-slot:end>
+    </x-toolbar>
 
     <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-        <div class="overflow-hidden rounded border border-line bg-card">
-            <div class="border-b border-line px-4 py-3">
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.catalogue') }}</p>
-            </div>
+        <x-panel :title="__('backoffice.shop.catalogue')" :count="$products->total()" flush>
+            <x-table loading="filterByCategory,filterByVehicleModel,resetFilters,search,gotoPage,previousPage,nextPage">
+                <x-slot:head>
+                    <x-th class="w-[70px]"><span class="sr-only">{{ __('backoffice.shop.field_photo') }}</span></x-th>
+                    <x-th>{{ __('backoffice.shop.col_part') }}</x-th>
+                    <x-th>{{ __('backoffice.shop.col_model') }}</x-th>
+                    <x-th align="right">{{ __('backoffice.shop.col_price') }}</x-th>
+                    <x-th>{{ __('backoffice.shop.col_stock') }}</x-th>
+                    @if ($canManageStock)
+                        <x-th><span class="sr-only">{{ __('backoffice.announcements.modify') }}</span></x-th>
+                    @endif
+                </x-slot:head>
 
-            @if ($products->isEmpty())
-                <p class="px-6 py-12 text-center text-sm text-muted">{{ __('backoffice.shop.none') }}</p>
-            @else
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse">
-                        <thead>
-                            <tr class="bg-surface">
-                                <th class="w-[70px] border-b border-line px-4 py-2.5"></th>
-                                <th class="border-b border-line px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.col_part') }}</th>
-                                <th class="border-b border-line px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.col_model') }}</th>
-                                <th class="border-b border-line px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.col_price') }}</th>
-                                <th class="border-b border-line px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.col_stock') }}</th>
-                                <th class="border-b border-line px-4 py-2.5"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($products as $product)
-                                <tr wire:key="product-{{ $product->id }}" class="border-b border-line last:border-0">
-                                    <td class="px-4 py-3">
-                                        @if ($product->photo_url !== null)
-                                            <img src="{{ \Illuminate\Support\Facades\Storage::url($product->photo_url) }}" alt="{{ $product->name }}" class="size-[46px] rounded border border-line object-cover">
-                                        @else
-                                            <div class="size-[46px] rounded border border-line bg-surface"></div>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <p class="text-sm font-semibold text-ink">{{ $product->name }}</p>
-                                        <p class="font-mono text-xs text-muted">{{ $product->reference }}</p>
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-muted">
-                                        @if ($product->isUniversal())
-                                            <span class="rounded-full bg-neutral-bg px-2.5 py-1 text-xs font-semibold text-neutral-text">{{ __('backoffice.shop.universal') }}</span>
-                                        @else
-                                            {{ $product->vehicleModel->fullName() }}
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3 text-sm font-semibold text-ink">{{ number_format($product->unit_price, 0, ',', ' ') }} FCFA</td>
-                                    <td class="px-4 py-3">
-                                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $product->stockBadgeClasses() }}">{{ $product->stockLabel() }}</span>
-                                    </td>
-                                    <td class="px-4 py-3 text-right">
-                                        @if ($canManageStock)
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button wire:click="startRestock('{{ $product->id }}')" class="flex items-center gap-1.5 rounded bg-ok-text px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90">
-                                                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                                                    {{ __('backoffice.shop.restock') }}
-                                                </button>
-                                                <button wire:click="edit('{{ $product->id }}')" class="rounded border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:bg-line">
-                                                    {{ __('backoffice.announcements.modify') }}
-                                                </button>
-                                                <button wire:click="confirmDelete('{{ $product->id }}')" title="{{ __('backoffice.announcements.delete') }}"
-                                                        class="flex items-center justify-center rounded border border-line p-2 text-err-text hover:border-err-text hover:bg-err-bg">
-                                                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V4.8h6V7M6.5 7l.9 12.2A1.5 1.5 0 0 0 8.9 20.6h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/></svg>
-                                                </button>
-                                            </div>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                @foreach ($products as $product)
+                    <tr wire:key="product-{{ $product->id }}" class="transition-colors hover:bg-surface">
+                        <x-td>
+                            @if ($product->photo_url !== null)
+                                <img src="{{ \Illuminate\Support\Facades\Storage::url($product->photo_url) }}" alt="{{ $product->name }}" class="size-[46px] rounded border border-line object-cover">
+                            @else
+                                <div class="size-[46px] rounded border border-line bg-surface" aria-hidden="true"></div>
+                            @endif
+                        </x-td>
+                        <x-td>
+                            <p class="text-sm font-semibold text-ink">{{ $product->name }}</p>
+                            <p class="font-mono text-xs text-muted">{{ $product->reference }}</p>
+                        </x-td>
+                        <x-td muted>
+                            @if ($product->isUniversal())
+                                <x-badge>{{ __('backoffice.shop.universal') }}</x-badge>
+                            @else
+                                {{ $product->vehicleModel->fullName() }}
+                            @endif
+                        </x-td>
+                        <x-td align="right" nowrap class="font-semibold tabular-nums">{{ number_format($product->unit_price, 0, ',', ' ') }} FCFA</x-td>
+                        <x-td><x-badge :classes="$product->stockBadgeClasses()">{{ $product->stockLabel() }}</x-badge></x-td>
+                        @if ($canManageStock)
+                            <x-td align="right" nowrap>
+                                <div class="flex items-center justify-end gap-2">
+                                    <x-button size="sm" wire:click="startRestock('{{ $product->id }}')" target="startRestock">
+                                        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                                        {{ __('backoffice.shop.restock') }}
+                                    </x-button>
+                                    <x-button variant="secondary" size="sm" wire:click="edit('{{ $product->id }}')" target="edit">{{ __('backoffice.announcements.modify') }}</x-button>
+                                    <x-button variant="danger-outline" size="sm" icon wire:click="confirmDelete('{{ $product->id }}')" target="confirmDelete"
+                                              :aria-label="__('backoffice.shop.aria_delete_product', ['product' => $product->name])"
+                                              :title="__('backoffice.announcements.delete')">
+                                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M9 7V4.8h6V7M6.5 7l.9 12.2A1.5 1.5 0 0 0 8.9 20.6h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/></svg>
+                                    </x-button>
+                                </div>
+                            </x-td>
+                        @endif
+                    </tr>
+                @endforeach
 
-                <div class="border-t border-line px-4 py-3">{{ $products->links() }}</div>
-            @endif
-        </div>
+                @if ($products->isEmpty())
+                    <x-slot:empty>
+                        <x-empty-state tone="neutral" :hint="__('backoffice.shop.none')">
+                            <x-slot:action>
+                                <x-button variant="secondary" size="sm" wire:click="resetFilters" target="resetFilters">{{ __('backoffice.common.reset_filters') }}</x-button>
+                            </x-slot:action>
+                        </x-empty-state>
+                    </x-slot:empty>
+                @endif
 
-        <div class="rounded border border-line bg-card">
-            <div class="border-b border-line px-4 py-3">
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.brands_models') }}</p>
-            </div>
-            <div class="space-y-3 px-4 py-4">
+                @if ($products->hasPages())
+                    <x-slot:footer>{{ $products->links() }}</x-slot:footer>
+                @endif
+            </x-table>
+        </x-panel>
+
+        <x-panel :title="__('backoffice.shop.brands_models')">
+            <div class="space-y-3">
                 @foreach ($brands as $brand)
-                    <div wire:key="brand-{{ $brand->id }}" class="flex flex-wrap items-center gap-2">
+                    <div wire:key="brand-{{ $brand->id }}" class="flex flex-wrap items-center gap-1.5">
                         <b class="min-w-[88px] text-sm text-ink">{{ $brand->name }}</b>
                         @foreach ($brand->vehicleModels as $model)
-                            <button wire:key="model-chip-{{ $model->id }}" wire:click="filterByVehicleModel('{{ $model->id }}')"
-                                    @class(['rounded-full px-2.5 py-1 text-xs font-semibold', 'bg-primary-tint text-primary-text' => $vehicleModel === $model->id, 'bg-surface text-muted hover:bg-line' => $vehicleModel !== $model->id])>
+                            <x-chip-filter wire:key="model-chip-{{ $model->id }}" wire:click="filterByVehicleModel('{{ $model->id }}')" :active="$vehicleModel === $model->id">
                                 {{ $model->name }}
-                            </button>
+                            </x-chip-filter>
                         @endforeach
                     </div>
                 @endforeach
 
                 @if ($vehicleModel !== null)
-                    <button wire:click="filterByVehicleModel(null)" class="text-xs font-semibold text-primary-text hover:underline">
-                        {{ __('backoffice.shop.all_models') }}
-                    </button>
+                    <x-button variant="secondary" size="sm" wire:click="filterByVehicleModel(null)">{{ __('backoffice.shop.all_models') }}</x-button>
                 @endif
             </div>
-        </div>
+        </x-panel>
     </div>
 
     @include('livewire.shop.partials.restock-modal')
@@ -161,19 +151,9 @@
     @include('livewire.shop.partials.referential-modal')
 
     @if ($confirmingDeleteId !== null)
-        <x-modal close="cancelDelete" max-width="max-w-sm"
-                 :label="__('backoffice.shop.confirm_delete_product')">
-            <div class="p-5">
-                <p class="text-sm font-semibold text-ink">{{ __('backoffice.shop.confirm_delete_product') }}</p>
-                <div class="mt-4 flex justify-end gap-2">
-                    <button wire:click="cancelDelete" class="rounded border border-line px-3 py-2 text-sm font-semibold text-muted hover:bg-surface">
-                        {{ __('backoffice.announcements.cancel') }}
-                    </button>
-                    <button wire:click="delete" class="rounded bg-err-text px-3 py-2 text-sm font-semibold text-white hover:opacity-90">
-                        {{ __('backoffice.announcements.delete') }}
-                    </button>
-                </div>
-            </div>
-        </x-modal>
+        <x-confirm close="cancelDelete" action="delete" variant="danger"
+                   :title="__('backoffice.shop.confirm_delete_product')"
+                   :confirm-label="__('backoffice.announcements.delete')"
+                   :loading="__('backoffice.common.deleting')" />
     @endif
 </div>

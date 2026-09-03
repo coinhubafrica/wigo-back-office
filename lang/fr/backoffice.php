@@ -179,6 +179,7 @@ return [
         'order_updated' => 'Commande mise à jour.',
         'order_cancelled' => 'Commande annulée — stock rendu au catalogue.',
         'select_order' => 'Sélectionnez une commande pour en voir le détail.',
+        'aria_delete_product' => 'Supprimer le produit :product',
     ],
 
     'campaigns' => [
