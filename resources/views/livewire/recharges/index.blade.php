@@ -1,134 +1,98 @@
 <div>
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded border border-line bg-card p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.recharges.kpi_collected_today') }}</p>
-            <p class="mt-1.5 text-2xl font-semibold text-ink">{{ number_format($kpis['collected_today'], 0, ',', ' ') }} <span class="text-sm font-medium text-muted">FCFA</span></p>
-        </div>
-        <div class="rounded border border-line bg-card p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.recharges.kpi_pending') }}</p>
-            <p class="mt-1.5 text-2xl font-semibold text-ink">{{ number_format($kpis['pending'], 0, ',', ' ') }}</p>
-        </div>
-        <div class="rounded border border-line bg-card p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.recharges.kpi_to_replay') }}</p>
-            <p @class([
-                'mt-1.5 text-2xl font-semibold',
-                'text-err-text' => $kpis['to_replay'] > 0,
-                'text-ink' => $kpis['to_replay'] === 0,
-            ])>{{ number_format($kpis['to_replay'], 0, ',', ' ') }}</p>
-        </div>
-        <div class="rounded border border-line bg-card p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.recharges.kpi_wave_balance') }}</p>
-            <p class="mt-1.5 text-2xl font-semibold text-ink">
-                @if ($kpis['wave_balance'] === null)
-                    {{ __('backoffice.recharges.unknown_balance') }}
-                @else
-                    {{ number_format($kpis['wave_balance'], 0, ',', ' ') }} <span class="text-sm font-medium text-muted">FCFA</span>
-                @endif
-            </p>
-        </div>
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <x-kpi-card :label="__('backoffice.recharges.kpi_collected_today')" :value="number_format($kpis['collected_today'], 0, ',', ' ')" unit="FCFA" tone="ok">
+            <x-slot:icon>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            </x-slot:icon>
+        </x-kpi-card>
+        <x-kpi-card :label="__('backoffice.recharges.kpi_pending')" :value="number_format($kpis['pending'], 0, ',', ' ')" tone="warn">
+            <x-slot:icon>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </x-slot:icon>
+        </x-kpi-card>
+        <x-kpi-card :label="__('backoffice.recharges.kpi_to_replay')" :value="number_format($kpis['to_replay'], 0, ',', ' ')" :alert="$kpis['to_replay'] > 0" tone="ok">
+            <x-slot:icon>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </x-slot:icon>
+        </x-kpi-card>
+        <x-kpi-card :label="__('backoffice.recharges.kpi_wave_balance')"
+                    :value="$kpis['wave_balance'] === null ? __('backoffice.recharges.unknown_balance') : number_format($kpis['wave_balance'], 0, ',', ' ')"
+                    :unit="$kpis['wave_balance'] === null ? null : 'FCFA'" tone="primary">
+            <x-slot:icon>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+            </x-slot:icon>
+        </x-kpi-card>
     </div>
 
-    <div class="mt-5 flex flex-wrap items-center gap-3">
+    <x-toolbar class="mt-5">
         <div class="flex flex-wrap gap-1.5">
-            {{-- `aria-pressed` : la sélection est signalée par la couleur seule,
-                 invisible pour un lecteur d'écran sans cet état. --}}
-            <button wire:click="filterByStatus(null)"
-                    aria-pressed="{{ $status === null ? 'true' : 'false' }}"
-                    @class([
-                        'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                        'border-primary bg-primary-tint text-primary-text' => $status === null,
-                        'border-line bg-card text-muted hover:border-primary' => $status !== null,
-                    ])>
-                {{ __('backoffice.recharges.all') }}
-            </button>
+            <x-chip-filter wire:click="filterByStatus(null)" :active="$status === null">{{ __('backoffice.recharges.all') }}</x-chip-filter>
             @foreach (\App\Enums\TransactionStatus::cases() as $case)
-                <button wire:click="filterByStatus('{{ $case->value }}')"
-                        aria-pressed="{{ $status === $case->value ? 'true' : 'false' }}"
-                        @class([
-                            'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                            'border-primary bg-primary-tint text-primary-text' => $status === $case->value,
-                            'border-line bg-card text-muted hover:border-primary' => $status !== $case->value,
-                        ])>
+                <x-chip-filter wire:key="status-{{ $case->value }}" wire:click="filterByStatus('{{ $case->value }}')" :active="$status === $case->value">
                     {{ $case->label() }}
-                </button>
+                </x-chip-filter>
             @endforeach
         </div>
+        <x-slot:end>
+            <x-field :label="__('backoffice.recharges.search_placeholder')" name="search" type="search" label-hidden
+                     wire:model.live.debounce.400ms="search"
+                     :placeholder="__('backoffice.recharges.search_placeholder')" class="w-80" />
+        </x-slot:end>
+    </x-toolbar>
 
-        <span class="flex-1"></span>
+    <x-panel class="mt-4" :title="__('backoffice.recharges.journal_title')" :count="$rows->total()" flush>
+        <x-table loading="filterByStatus,resetFilters,search,gotoPage,previousPage,nextPage">
+            <x-slot:head>
+                <x-th>{{ __('backoffice.recharges.column_transaction') }}</x-th>
+                <x-th align="right">{{ __('backoffice.recharges.column_amount') }}</x-th>
+                <x-th>{{ __('backoffice.recharges.column_status') }}</x-th>
+                <x-th><span class="sr-only">{{ __('backoffice.common.confirm') }}</span></x-th>
+            </x-slot:head>
 
-        <input wire:model.live.debounce.400ms="search" type="search"
-               placeholder="{{ __('backoffice.recharges.search_placeholder') }}"
-               class="w-80 rounded border border-input px-3 py-2 text-sm placeholder:text-muted focus:border-primary">
-    </div>
+            @foreach ($rows as $row)
+                <tr wire:key="rch-{{ $row->id }}" class="transition-colors hover:bg-surface">
+                    <x-td>
+                        <b class="block max-w-[260px] truncate text-[13px] text-ink">{{ $row->driver?->fullName() ?? '—' }}</b>
+                        <span class="mt-0.5 block max-w-[260px] truncate text-xs text-muted">
+                            <span class="font-mono text-[11px]">{{ $row->reference }}</span>
+                            — {{ $row->initiated_at->diffForHumans() }}
+                        </span>
+                    </x-td>
+                    <x-td align="right" nowrap class="text-[13px] font-semibold tabular-nums">{{ number_format($row->amount, 0, ',', ' ') }} FCFA</x-td>
+                    <x-td><x-badge :classes="$row->status->badgeClasses()">{{ $row->status->label() }}</x-badge></x-td>
+                    <x-td align="right" nowrap>
+                        @if ($canReconcile && $row->status->isReplayable())
+                            <x-button variant="secondary" size="sm" wire:click="confirmReplay('{{ $row->id }}')" target="confirmReplay">
+                                {{ __('backoffice.recharges.replay') }}
+                            </x-button>
+                        @elseif ($canReconcile && $row->status->awaitsCredit())
+                            <x-button size="sm" wire:click="confirmMarkCredited('{{ $row->id }}')" target="confirmMarkCredited">
+                                {{ __('backoffice.recharges.mark_credited') }}
+                            </x-button>
+                        @endif
+                    </x-td>
+                </tr>
+            @endforeach
 
-    <div class="mt-4 overflow-hidden rounded border border-line bg-card">
-        <div class="border-b border-line px-5 py-4 text-xs font-extrabold uppercase tracking-wide text-zinc-600">
-            {{ __('backoffice.recharges.journal_title') }}
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-surface">
-                        <th class="border-b border-line px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.recharges.column_transaction') }}</th>
-                        <th class="border-b border-line px-4 py-2.5 text-right text-[10.5px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.recharges.column_amount') }}</th>
-                        <th class="border-b border-line px-4 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.recharges.column_status') }}</th>
-                        <th class="border-b border-line px-4 py-2.5"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($rows as $row)
-                        <tr wire:key="rch-{{ $row->id }}">
-                            <td class="border-b border-line px-4 py-3">
-                                <b class="block max-w-[220px] truncate text-[13px] text-ink">{{ $row->driver?->fullName() ?? '—' }}</b>
-                                <div class="mt-0.5 max-w-[220px] truncate text-xs text-muted">
-                                    <span class="font-mono text-[11px]">{{ $row->reference }}</span>
-                                    — {{ $row->initiated_at->diffForHumans() }}
-                                </div>
-                            </td>
-                            <td class="whitespace-nowrap border-b border-line px-4 py-3 text-right text-[13px] font-extrabold text-ok-text">
-                                {{ number_format($row->amount, 0, ',', ' ') }} FCFA
-                            </td>
-                            <td class="border-b border-line px-4 py-3">
-                                <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $row->status->badgeClasses() }}">
-                                    {{ $row->status->label() }}
-                                </span>
-                            </td>
-                            <td class="whitespace-nowrap border-b border-line px-4 py-3 text-right">
-                                @if ($canReconcile && $row->status->isReplayable())
-                                    <button wire:click="confirmReplay('{{ $row->id }}')"
-                                            class="rounded border border-line bg-card px-3 py-1.5 text-xs font-bold text-ink hover:bg-surface">
-                                        {{ __('backoffice.recharges.replay') }}
-                                    </button>
-                                @elseif ($canReconcile && $row->status->awaitsCredit())
-                                    <button wire:click="confirmMarkCredited('{{ $row->id }}')"
-                                            class="rounded bg-ok-text px-3 py-1.5 text-xs font-bold text-white hover:opacity-90">
-                                        {{ __('backoffice.recharges.mark_credited') }}
-                                    </button>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="px-4 py-10 text-center">
-                                <p class="text-sm font-semibold text-ink">{{ __('backoffice.recharges.no_rows') }}</p>
-                                <p class="mt-1 text-xs text-muted">{{ __('backoffice.recharges.no_rows_hint') }}</p>
-                                <button wire:click="resetFilters" class="mt-3 rounded border border-line bg-card px-3.5 py-2 text-xs font-semibold text-ink hover:bg-surface">
-                                    {{ __('backoffice.recharges.reset_filters') }}
-                                </button>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
+            @if ($rows->isEmpty())
+                <x-slot:empty>
+                    <x-empty-state tone="neutral" :title="__('backoffice.recharges.no_rows')" :hint="__('backoffice.recharges.no_rows_hint')">
+                        <x-slot:action>
+                            <x-button variant="secondary" size="sm" wire:click="resetFilters" target="resetFilters">{{ __('backoffice.recharges.reset_filters') }}</x-button>
+                        </x-slot:action>
+                    </x-empty-state>
+                </x-slot:empty>
+            @endif
 
-    <div class="mt-4">
-        {{ $rows->links() }}
-    </div>
+            @if ($rows->hasPages())
+                <x-slot:footer>{{ $rows->links() }}</x-slot:footer>
+            @endif
+        </x-table>
+    </x-panel>
 
-    {{-- Modale plutôt que `wire:confirm` : le dialogue natif bloque
-         l'automatisation navigateur. --}}
+    {{-- Confirmation en modale plutôt que `wire:confirm` : le dialogue natif
+         bloque l'automatisation navigateur. Le bouton est gardé : rejouer
+         deux fois un crédit n'est pas une option. --}}
     @if ($pendingConfirmation !== null)
         @php
             $isReplay = $confirmingReplayId !== null;
@@ -137,26 +101,10 @@
                 'amount' => number_format($pendingConfirmation->amount, 0, ',', ' '),
             ];
         @endphp
-        <x-modal close="cancelConfirmation" max-width="max-w-sm"
-                 :label="$isReplay ? __('backoffice.recharges.confirm_replay_title') : __('backoffice.recharges.confirm_mark_credited_title')">
-                <div class="px-5 pb-4 pt-5">
-                    <p class="text-sm font-semibold text-ink">
-                        {{ $isReplay ? __('backoffice.recharges.confirm_replay_title') : __('backoffice.recharges.confirm_mark_credited_title') }}
-                    </p>
-                    <p class="mt-1.5 text-sm text-muted">
-                        {{ $isReplay
-                            ? __('backoffice.recharges.confirm_replay_body', $placeholders)
-                            : __('backoffice.recharges.confirm_mark_credited_body', $placeholders) }}
-                    </p>
-                </div>
-                <div class="flex justify-end gap-2.5 border-t border-line px-5 py-4">
-                    <button wire:click="cancelConfirmation" class="rounded border border-line bg-card px-3.5 py-2 text-sm font-semibold text-muted hover:bg-surface">
-                        {{ __('backoffice.recharges.cancel') }}
-                    </button>
-                    <button wire:click="{{ $isReplay ? 'replay' : 'markCredited' }}" class="rounded bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover">
-                        {{ __('backoffice.recharges.confirm') }}
-                    </button>
-                </div>
-        </x-modal>
+        <x-confirm close="cancelConfirmation"
+                   :action="$isReplay ? 'replay' : 'markCredited'"
+                   :title="$isReplay ? __('backoffice.recharges.confirm_replay_title') : __('backoffice.recharges.confirm_mark_credited_title')"
+                   :body="$isReplay ? __('backoffice.recharges.confirm_replay_body', $placeholders) : __('backoffice.recharges.confirm_mark_credited_body', $placeholders)"
+                   :confirm-label="__('backoffice.recharges.confirm')" />
     @endif
 </div>

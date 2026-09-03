@@ -120,6 +120,8 @@ it('replaying a transaction to review credits it', function (): void {
     Livewire::actingAs($agent)
         ->test(Index::class)
         ->call('confirmReplay', $recharge->id)
+        // Le bouton de confirmation est gardé : un double clic ne rejoue pas deux fois.
+        ->assertSeeHtml('wire:target="replay"')
         ->call('replay')
         ->assertDispatched('toast');
 
@@ -142,6 +144,7 @@ it('marking a pending transaction credited records the agent', function (): void
     Livewire::actingAs($agent)
         ->test(Index::class)
         ->call('confirmMarkCredited', $recharge->id)
+        ->assertSeeHtml('wire:target="markCredited"')
         ->call('markCredited')
         ->assertDispatched('toast');
 
