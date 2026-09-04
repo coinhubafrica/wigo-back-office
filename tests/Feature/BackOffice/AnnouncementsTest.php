@@ -40,16 +40,85 @@ it('creating an announcement stores the uploaded image', function (): void {
         ->test(Index::class)
         ->call('newAnnouncement')
         ->set('title', 'JCBL 2026')
-        ->set('mediaType', 'image')
         ->set('media', $file)
+        ->set('duration', 8)
         ->call('save')
         ->assertHasNoErrors();
 
     $announcement = Announcement::query()->where('title', 'JCBL 2026')->firstOrFail();
 
     $this->assertSame(AnnouncementMediaType::Image, $announcement->media_type);
+    $this->assertSame(8, $announcement->duration);
     $this->assertTrue($announcement->is_active);
     Storage::disk('public')->assertExists($announcement->media_url);
+});
+
+it('the media type is read from the uploaded file, not asked for', function (): void {
+    Livewire::actingAs(announcementsUser('bonus'))
+        ->test(Index::class)
+        ->call('newAnnouncement')
+        ->set('title', 'Spot vidéo')
+        ->set('media', UploadedFile::fake()->create('spot.mp4', 100, 'video/mp4'))
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $this->assertSame(
+        AnnouncementMediaType::Video,
+        Announcement::query()->where('title', 'Spot vidéo')->value('media_type'),
+    );
+});
+
+it('the media type follows the mime type, not the file name', function (): void {
+    // Une vidéo nommée « .jpg » reste une vidéo : le MIME est reniflé sur le
+    // contenu, l'extension n'est qu'un bout du nom.
+    Livewire::actingAs(announcementsUser('bonus'))
+        ->test(Index::class)
+        ->call('newAnnouncement')
+        ->set('title', 'Vidéo mal nommée')
+        ->set('media', UploadedFile::fake()->create('trompeur.jpg', 100, 'video/mp4'))
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $this->assertSame(
+        AnnouncementMediaType::Video,
+        Announcement::query()->where('title', 'Vidéo mal nommée')->value('media_type'),
+    );
+});
+
+it('a new announcement defaults to a five second slide', function (): void {
+    Livewire::actingAs(announcementsUser('bonus'))
+        ->test(Index::class)
+        ->call('newAnnouncement')
+        ->set('title', 'Défaut')
+        ->set('media', UploadedFile::fake()->image('b.jpg'))
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $this->assertSame(5, Announcement::query()->where('title', 'Défaut')->value('duration'));
+});
+
+it('the duration must stay within one and sixty seconds', function (): void {
+    Livewire::actingAs(announcementsUser('bonus'))
+        ->test(Index::class)
+        ->call('newAnnouncement')
+        ->set('title', 'Trop longue')
+        ->set('media', UploadedFile::fake()->image('b.jpg'))
+        ->set('duration', 61)
+        ->call('save')
+        ->assertHasErrors(['duration' => 'max']);
+});
+
+it('editing without a new file keeps the recorded media type', function (): void {
+    $announcement = Announcement::factory()->video()->create(['media_url' => 'announcements/spot.mp4']);
+
+    Livewire::actingAs(announcementsUser('bonus'))
+        ->test(Index::class)
+        ->call('edit', $announcement->id)
+        ->set('title', 'Titre modifié')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $this->assertSame(AnnouncementMediaType::Video, $announcement->fresh()->media_type);
 });
 
 it('creating an announcement requires a media file', function (): void {

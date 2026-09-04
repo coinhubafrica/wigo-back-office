@@ -25,6 +25,11 @@ class Index extends Component
 {
     use InteractsWithCurrentUser, WithFileUploads;
 
+    /**
+     * Défaut du carrousel de l'accueil, en secondes.
+     */
+    private const DEFAULT_DURATION = 5;
+
     public bool $formOpen = false;
 
     public ?string $editingId = null;
@@ -32,14 +37,14 @@ class Index extends Component
     #[Validate('required|string|max:255')]
     public string $title = '';
 
-    /**
-     * @var 'image'|'video'
-     */
-    #[Validate('required|in:image,video')]
-    public string $mediaType = 'image';
-
     #[Validate('nullable|file|mimes:jpg,jpeg,png,webp,mp4,webm|max:20480')]
     public mixed $media = null;
+
+    /**
+     * Durée d'affichage de la diapositive sur l'accueil mobile, en secondes.
+     */
+    #[Validate('required|integer|min:1|max:60')]
+    public int $duration = self::DEFAULT_DURATION;
 
     public bool $active = true;
 
@@ -57,7 +62,7 @@ class Index extends Component
 
         $this->editingId = $announcement->id;
         $this->title = $announcement->title;
-        $this->mediaType = $announcement->media_type->value;
+        $this->duration = $announcement->duration;
         $this->active = $announcement->is_active;
         $this->media = null;
         $this->formOpen = true;
@@ -73,16 +78,20 @@ class Index extends Component
 
         $this->validate(array_merge([
             'title' => 'required|string|max:255',
-            'mediaType' => 'required|in:image,video',
+            'duration' => 'required|integer|min:1|max:60',
         ], $rules));
 
         $attributes = [
             'title' => $this->title,
-            'media_type' => AnnouncementMediaType::from($this->mediaType),
+            'duration' => $this->duration,
             'is_active' => $this->active,
         ];
 
+        // Le type se lit sur le type MIME du fichier : le demander en plus du
+        // média laissait les deux se contredire. À la modification sans nouveau
+        // fichier, le type déjà enregistré reste le bon.
         if ($this->media !== null) {
+            $attributes['media_type'] = AnnouncementMediaType::fromMimeType($this->media->getMimeType());
             $attributes['media_url'] = $this->media->store(path: 'announcements');
         }
 
@@ -195,8 +204,8 @@ class Index extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['editingId', 'title', 'mediaType', 'media', 'active']);
-        $this->mediaType = 'image';
+        $this->reset(['editingId', 'title', 'media', 'active']);
+        $this->duration = self::DEFAULT_DURATION;
         $this->active = true;
         $this->resetValidation();
     }

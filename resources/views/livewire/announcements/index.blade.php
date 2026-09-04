@@ -99,15 +99,16 @@
             <form id="announcement-form" wire:submit="save" class="space-y-4">
                 <x-field :label="__('backoffice.announcements.field_title')" name="title" wire:model="title" required />
 
-                <x-field :label="__('backoffice.announcements.field_media_type')" name="mediaType" type="select" wire:model="mediaType">
-                    <option value="image">{{ __('backoffice.announcements.image_badge') }}</option>
-                    <option value="video">{{ __('backoffice.announcements.video_badge') }}</option>
-                </x-field>
-
+                {{-- Pas de choix « image ou vidéo » : le type se lit sur le
+                     fichier téléversé. --}}
                 <div>
                     <x-field :label="__('backoffice.announcements.field_media')" name="media" type="file" wire:model="media" accept="image/*,video/*" />
                     <p wire:loading wire:target="media" class="mt-1.5 text-xs text-muted">{{ __('backoffice.announcements.uploading') }}</p>
                 </div>
+
+                <x-field :label="__('backoffice.announcements.field_duration')" name="duration" type="number"
+                         wire:model="duration" min="1" max="60" required
+                         :hint="__('backoffice.announcements.field_duration_hint')" />
 
                 <label for="announcement-active" class="flex items-center gap-2.5 text-sm text-ink">
                     <input wire:model="active" id="announcement-active" type="checkbox" class="size-4 rounded border-input text-primary">

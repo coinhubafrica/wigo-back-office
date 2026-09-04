@@ -2737,6 +2737,15 @@
                             "https://cdn.wigopro.example/announcements/bonus-surprise.jpg"
                         ]
                     },
+                    "duration": {
+                        "type": "integer",
+                        "description": "Durée d'affichage de la diapositive sur l'accueil, en secondes. Vaut pour les deux types de média : faire défiler au bout de ce délai, sans lire les métadonnées de la vidéo.",
+                        "minimum": 1,
+                        "maximum": 60,
+                        "examples": [
+                            5
+                        ]
+                    },
                     "order": {
                         "type": "integer",
                         "examples": [
@@ -2749,6 +2758,7 @@
                     "title",
                     "media_type",
                     "media_url",
+                    "duration",
                     "order"
                 ],
                 "title": "AnnouncementResource"

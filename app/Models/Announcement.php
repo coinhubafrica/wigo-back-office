@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $title
  * @property AnnouncementMediaType $media_type
  * @property string $media_url
+ * @property int $duration
  * @property int $order
  * @property CarbonImmutable|null $starts_at
  * @property CarbonImmutable|null $ends_at
@@ -33,6 +34,7 @@ class Announcement extends Model
     {
         return [
             'media_type' => AnnouncementMediaType::class,
+            'duration' => 'integer',
             'order' => 'integer',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',

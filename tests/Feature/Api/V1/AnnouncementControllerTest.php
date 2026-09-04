@@ -72,13 +72,16 @@ it('exposes the expected fields', function (): void {
     Announcement::factory()->create([
         'title' => 'JCBL 2026',
         'media_url' => 'announcements/banniere.jpg',
+        'duration' => 8,
         'order' => 1,
     ]);
 
     $this->getJson(route('api.v1.announcements.index'))
         ->assertOk()
         ->assertJsonStructure([
-            'data' => ['*' => ['id', 'title', 'media_type', 'media_url', 'order']],
+            'data' => ['*' => ['id', 'title', 'media_type', 'media_url', 'duration', 'order']],
         ])
-        ->assertJsonPath('data.0.title', 'JCBL 2026');
+        ->assertJsonPath('data.0.title', 'JCBL 2026')
+        // Le carrousel mobile fait défiler la diapositive au bout de ce délai.
+        ->assertJsonPath('data.0.duration', 8);
 });

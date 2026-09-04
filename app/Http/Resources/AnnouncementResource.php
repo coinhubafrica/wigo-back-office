@@ -29,6 +29,7 @@ class AnnouncementResource extends JsonResource
              */
             'media_type' => $this->media_type->value,
             'media_url' => Storage::url($this->media_url),
+            'duration' => $this->duration,
             'order' => $this->order,
         ];
     }

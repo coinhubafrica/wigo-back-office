@@ -20,6 +20,7 @@ class AnnouncementFactory extends Factory
             'title' => fake()->sentence(),
             'media_type' => AnnouncementMediaType::Image,
             'media_url' => fake()->imageUrl(),
+            'duration' => 5,
             'order' => fake()->numberBetween(0, 10),
             'starts_at' => null,
             'ends_at' => null,
