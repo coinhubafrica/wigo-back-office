@@ -122,6 +122,7 @@ class Orders extends Component
         $this->apply(
             fn (ShopOrder $order) => $orders->cancel($order, $this->cancelReason, $user),
             message: __('backoffice.shop.order_cancelled'),
+            ability: 'cancelShopOrder',
         );
 
         $this->cancelling = false;
@@ -129,11 +130,17 @@ class Orders extends Component
     }
 
     /**
+     * Applique une transition à la commande sélectionnée.
+     *
+     * L'autorisation est passée par l'appelant : faire avancer une commande et
+     * l'annuler ne sont pas le même droit — une annulation peut déclencher un
+     * remboursement. Le défaut couvre la préparation, le geste courant.
+     *
      * @param  callable(ShopOrder): ShopOrder  $action
      */
-    private function apply(callable $action, ?string $message = null): void
+    private function apply(callable $action, ?string $message = null, string $ability = 'fulfilShopOrder'): void
     {
-        Gate::authorize('manageCatalogue');
+        Gate::authorize($ability);
 
         if ($this->selected === null) {
             return;

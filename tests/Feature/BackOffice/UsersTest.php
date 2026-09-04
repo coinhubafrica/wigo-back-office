@@ -13,6 +13,7 @@ use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
     $this->seed(RolePermissionSeeder::class);
@@ -158,8 +159,16 @@ it('counts effective permissions once even when granted twice', function (): voi
 
     $counts = $component->instance()->effectiveCount();
 
-    // `stock` porte 4 droits ; celui coché en plus est déjà l'un d'eux.
-    expect($counts)->toBe(['total' => 4, 'inherited' => 4, 'direct' => 0]);
+    // Le droit coché en plus est déjà l'un de ceux du rôle : il ne compte
+    // qu'une fois, et reste porté par le rôle. Le total suit la matrice du
+    // seeder, on le lit plutôt que de le figer.
+    $expected = Role::query()
+        ->where('name', 'stock')
+        ->firstOrFail()
+        ->permissions()
+        ->count();
+
+    expect($counts)->toBe(['total' => $expected, 'inherited' => $expected, 'direct' => 0]);
 });
 
 it('disables an account and logs it', function (): void {

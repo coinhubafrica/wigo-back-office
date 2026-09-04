@@ -11,6 +11,7 @@ use App\Models\Challenge;
 use App\Models\Prize;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -182,6 +183,8 @@ class Wizard extends Component
 
     public function save(): void
     {
+        Gate::authorize('createChallenge');
+
         $this->validate($this->allRules());
 
         $type = ChallengeType::from($this->type);
@@ -205,13 +208,21 @@ class Wizard extends Component
             ]);
         }
 
-        $isDirection = auth('web')->user()?->hasRole('direction') ?? false;
+        /*
+        | Un challenge créé par qui peut aussi l'approuver part directement en
+        | production ; sinon il attend une approbation.
+        |
+        | C'est le *droit d'approuver* qui décide, non le nom du rôle : sinon un
+        | rôle à qui l'on accorde l'approbation depuis l'écran des rôles voyait
+        | quand même ses challenges partir en attente.
+        */
+        $canApprove = Gate::allows('approveSurpriseChallenge');
 
         $challenge = Challenge::query()->create([
             'reference' => $this->nextReference(),
             'name' => $name,
             'type' => $type,
-            'status' => $isDirection
+            'status' => $canApprove
                 ? ($type === ChallengeType::Leaderboard ? ChallengeStatus::Active : ChallengeStatus::Scheduled)
                 : ChallengeStatus::PendingApproval,
             'period_start' => $start,
@@ -243,7 +254,7 @@ class Wizard extends Component
         $this->open = false;
 
         $this->dispatch('challenge-created');
-        $this->dispatch('toast', message: $isDirection
+        $this->dispatch('toast', message: $canApprove
             ? __('backoffice.challenges.created_scheduled')
             : __('backoffice.challenges.created_pending'));
 

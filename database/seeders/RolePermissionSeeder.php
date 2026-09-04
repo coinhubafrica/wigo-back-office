@@ -67,6 +67,17 @@ class RolePermissionSeeder extends Seeder
             BackOfficePermission::ModuleShop,
             BackOfficePermission::ModuleShopOrders,
             BackOfficePermission::ModuleCampaigns,
+
+            // Le métier quotidien du profil : traiter les requêtes, faire
+            // avancer les commandes, suspendre un conducteur en faute.
+            BackOfficePermission::SupportHandle,
+            BackOfficePermission::SupportDismiss,
+            // Les réponses types sont l'outil de l'agent : il les écrit pour
+            // lui-même autant que pour l'équipe.
+            BackOfficePermission::SupportManageTemplates,
+            BackOfficePermission::DriversSuspend,
+            BackOfficePermission::ShopFulfilOrders,
+            BackOfficePermission::CampaignsManage,
         ];
 
         return [
@@ -83,6 +94,20 @@ class RolePermissionSeeder extends Seeder
                     BackOfficePermission::ModuleChallenges,
                     BackOfficePermission::ModuleRecharges,
                     BackOfficePermission::ModuleAnnouncements,
+
+                    // Le cycle de vie des gratifications, sauf l'approbation
+                    // d'un bonus surprise et la republication de la graine :
+                    // ces deux-là sont le contrôle exercé sur ce rôle.
+                    BackOfficePermission::ChallengesCreate,
+                    BackOfficePermission::ChallengesClosePeriod,
+                    BackOfficePermission::ChallengesDraw,
+                    BackOfficePermission::ChallengesCredit,
+                    BackOfficePermission::ChallengesManagePrizes,
+
+                    BackOfficePermission::AnnouncementsManage,
+                    BackOfficePermission::AnnouncementsPublish,
+                    BackOfficePermission::CampaignsSend,
+
                     // Rejouer un crédit fait partie du métier du rôle : c'est
                     // lui qui suit les recharges au quotidien.
                     BackOfficePermission::RechargesReconcile,
@@ -95,7 +120,11 @@ class RolePermissionSeeder extends Seeder
                     BackOfficePermission::ModuleSupportRequests,
                     BackOfficePermission::ModuleShop,
                     BackOfficePermission::ModuleShopOrders,
+                    BackOfficePermission::SupportHandle,
+                    BackOfficePermission::SupportManageTemplates,
                     BackOfficePermission::ShopManageCatalogue,
+                    BackOfficePermission::ShopFulfilOrders,
+                    BackOfficePermission::ShopCancelOrder,
                 ],
             ],
             'admin' => [
@@ -106,11 +135,13 @@ class RolePermissionSeeder extends Seeder
                     BackOfficePermission::ModuleUsers,
                     BackOfficePermission::ModuleSettings,
                     BackOfficePermission::ModuleAudit,
-                    // L'administrateur tient les comptes et les rôles, mais ne
-                    // relève pas les clés d'encaissement : régler un plafond et
-                    // lire le secret qui encaisse ne sont pas la même décision.
+                    // L'administrateur tient les comptes, les rôles et les
+                    // réglages, mais ne relève pas les clés d'encaissement en
+                    // clair : régler un plafond et lire le secret qui encaisse
+                    // ne sont pas la même décision.
                     BackOfficePermission::UsersManage,
                     BackOfficePermission::RolesManage,
+                    BackOfficePermission::SettingsManage,
                 ],
             ],
             'direction' => [

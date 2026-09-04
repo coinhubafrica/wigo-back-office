@@ -181,6 +181,8 @@ class Index extends Component
      */
     public function createTicket(SupportRequestService $requests): void
     {
+        Gate::authorize('handleSupportRequest');
+
         $this->validate([
             'ticketCategory' => ['required', 'string', 'in:'.implode(',', array_column(SupportRequestCategory::cases(), 'value'))],
             'ticketSubject' => ['nullable', 'string', 'max:255'],
@@ -226,6 +228,8 @@ class Index extends Component
      */
     public function dismiss(SupportRequestService $requests): void
     {
+        Gate::authorize('dismissSupportMessage');
+
         $conversation = $this->conversation();
 
         if ($conversation === null) {
@@ -247,6 +251,8 @@ class Index extends Component
      */
     public function sendTriageReply(MessageService $messages): void
     {
+        Gate::authorize('handleSupportRequest');
+
         $this->validate(['triageDraft' => ['required', 'string', 'max:4000']]);
 
         $conversation = $this->conversation();
@@ -264,6 +270,8 @@ class Index extends Component
 
     public function send(MessageService $messages): void
     {
+        Gate::authorize('handleSupportRequest');
+
         $this->validate(['draft' => ['required', 'string', 'max:4000']]);
 
         $request = $this->liveRequest();
@@ -338,6 +346,8 @@ class Index extends Component
 
     public function recategorise(string $category, SupportRequestService $requests): void
     {
+        Gate::authorize('handleSupportRequest');
+
         $request = $this->liveRequest();
         $parsed = SupportRequestCategory::tryFrom($category);
 
@@ -361,6 +371,8 @@ class Index extends Component
 
     public function resolve(SupportRequestService $requests): void
     {
+        Gate::authorize('handleSupportRequest');
+
         $request = $this->liveRequest();
 
         if ($request !== null) {

@@ -133,14 +133,47 @@ it('a completed order offers no transition', function (): void {
     $this->assertSame(ShopOrderStatus::Delivered, $order->fresh()->status);
 });
 
-it('a manager cannot move an order', function (): void {
+it('a manager moves an order, the fulfilment right following the module', function (): void {
+    // La préparation suivait `manageCatalogue`, un droit d'écriture au
+    // catalogue : le gestionnaire voyait l'écran des commandes sans pouvoir
+    // agir. Elle a désormais son propre droit, accordé avec le module.
     $order = ShopOrder::factory()->create();
 
     Livewire::actingAs(shopOrdersUser('gestionnaire'))
         ->test(Orders::class)
         ->call('select', $order->id)
         ->call('markReady')
+        ->assertOk();
+});
+
+it('a role without the orders module cannot move an order', function (): void {
+    $order = ShopOrder::factory()->create();
+
+    Livewire::actingAs(shopOrdersUser('admin'))
+        ->test(Orders::class)
+        ->call('select', $order->id)
+        ->call('markReady')
         ->assertForbidden();
+});
+
+it('only the stock keeper and direction cancel an order', function (): void {
+    // Une annulation peut déclencher un remboursement : droit distinct de la
+    // préparation.
+    $order = ShopOrder::factory()->create();
+
+    Livewire::actingAs(shopOrdersUser('gestionnaire'))
+        ->test(Orders::class)
+        ->call('select', $order->id)
+        ->set('cancelReason', 'Rupture de stock')
+        ->call('cancelOrder')
+        ->assertForbidden();
+
+    Livewire::actingAs(shopOrdersUser('stock'))
+        ->test(Orders::class)
+        ->call('select', $order->id)
+        ->set('cancelReason', 'Rupture de stock')
+        ->call('cancelOrder')
+        ->assertOk();
 });
 
 it('the detail panel shows the pickup code for a pickup', function (): void {

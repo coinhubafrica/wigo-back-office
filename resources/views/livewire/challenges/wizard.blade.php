@@ -123,7 +123,8 @@
                         </x-button>
                     @else
                         <x-button wire:click="save" target="save">
-                            {{ auth()->user()?->hasRole('direction') ? __('backoffice.challenges.create_and_schedule') : __('backoffice.challenges.submit_to_direction') }}
+                            {{-- Le libellé suit le droit d'approbation, comme le statut posé par `save()` : un rôle à qui l'on accorde l'approbation ne doit pas lire « soumettre à la direction ». --}}
+                            {{ auth()->user()?->can(\App\Enums\Permission::ChallengesApproveSurprise->value) ? __('backoffice.challenges.create_and_schedule') : __('backoffice.challenges.submit_to_direction') }}
                             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                             <x-slot:loading>{{ __('backoffice.challenges.saving') }}</x-slot:loading>
                         </x-button>

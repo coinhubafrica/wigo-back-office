@@ -41,6 +41,51 @@ it('seeds every permission of the enum', function (): void {
     }
 });
 
+it('backs every action permission with a gate', function (): void {
+    // Une permission sans portail est une case à cocher sans effet : la
+    // matrice des rôles promettrait un droit que rien ne lit.
+    $abilities = collect(Gate::abilities())->keys();
+
+    $unbacked = collect(Permission::cases())
+        ->reject(fn (Permission $permission): bool => $permission->isModuleAccess())
+        ->reject(fn (Permission $permission): bool => $abilities->contains(
+            fn (string $ability): bool => Gate::forUser(actionlessUser($permission))->allows($ability),
+        ))
+        ->map(fn (Permission $permission): string => $permission->value)
+        ->values()
+        ->all();
+
+    expect($unbacked)->toBe([], 'Ces permissions ne sont lues par aucun Gate::define().');
+});
+
+it('guards every mutating Livewire method with a gate', function (): void {
+    /*
+     * Les modules en lecture seule (Véhicules, CNPS, Tableau de bord) n'ont
+     * pas de méthode mutante ; les écrans qui écrivent doivent tous appeler
+     * `Gate::authorize`. Ce test lit le code plutôt que d'énumérer les
+     * méthodes : un écran ajouté sans garde le fait échouer.
+     */
+    $writers = [
+        'Announcements/Index', 'Campaigns/Index', 'Campaigns/Show',
+        'Challenges/Prizes', 'Challenges/Show', 'Challenges/Wizard',
+        'Drivers/Show', 'Recharges/Index', 'Settings/Index',
+        'Shop/Catalogue', 'Shop/Orders', 'SupportRequests/Index',
+        'SupportRequests/Templates', 'Users/Index', 'Users/Roles',
+    ];
+
+    $unguarded = [];
+
+    foreach ($writers as $component) {
+        $source = file_get_contents(app_path("Livewire/{$component}.php"));
+
+        if (! str_contains((string) $source, 'Gate::authorize')) {
+            $unguarded[] = $component;
+        }
+    }
+
+    expect($unguarded)->toBe([], 'Ces composants écrivent sans Gate::authorize().');
+});
+
 it('resolves each sensitive gate from a permission, not a role name', function (string $ability, Permission $permission): void {
     $granted = User::factory()->create();
     $granted->givePermissionTo($permission->value);
@@ -80,3 +125,15 @@ it('does not let a module access imply its actions', function (): void {
 
     expect(Gate::forUser($user)->allows('reconcileRecharges'))->toBeFalse();
 });
+
+/**
+ * Utilisateur ne portant que la permission donnée : sert à retrouver le
+ * portail qui la lit.
+ */
+function actionlessUser(Permission $permission): User
+{
+    $user = User::factory()->create(['is_active' => true]);
+    $user->givePermissionTo($permission->value);
+
+    return $user->fresh();
+}

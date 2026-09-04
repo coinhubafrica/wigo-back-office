@@ -217,24 +217,65 @@ class AppServiceProvider extends ServiceProvider
     protected function configureAuthorization(): void
     {
         $gates = [
+            // Chauffeurs — une suspension coupe le revenu du conducteur.
+            'suspendDriver' => Permission::DriversSuspend,
+
+            // Requêtes. Traiter (répondre, recatégoriser, résoudre) et écarter
+            // sans réponse sont deux décisions : la seconde laisse le
+            // conducteur sans réponse.
+            'handleSupportRequest' => Permission::SupportHandle,
+            'dismissSupportMessage' => Permission::SupportDismiss,
+            // Un agent reprend le sien à son compte (« M'assigner », ouvert à
+            // tous) ; désigner un *autre* destinataire est un acte
+            // d'encadrement — c'est répartir la charge de l'équipe.
+            'reassignSupportRequest' => Permission::SupportReassign,
+            'manageSupportTemplates' => Permission::SupportManageTemplates,
+
+            /*
+            | Challenges : le cycle de vie d'une gratification, geste par
+            | geste. Créer engage un budget ; clore gèle le vivier ; tirer
+            | désigne les gagnants ; créditer touche à ce qu'on leur doit.
+            | Republier la graine change le hasard après le gel — le geste le
+            | plus sensible du module.
+            */
+            'createChallenge' => Permission::ChallengesCreate,
             // Un bonus surprise attribue un prix hors classement : l'accès au
             // module (partagé avec le rôle bonus) n'ouvre pas l'approbation.
             'approveSurpriseChallenge' => Permission::ChallengesApproveSurprise,
+            'closeChallengePeriod' => Permission::ChallengesClosePeriod,
+            'drawChallenge' => Permission::ChallengesDraw,
+            'regenerateChallengeSeed' => Permission::ChallengesRegenerateSeed,
+            'creditChallengePrize' => Permission::ChallengesCredit,
+            'manageChallengePrizes' => Permission::ChallengesManagePrizes,
+
+            // Annonces — publier expose la bannière à tous les conducteurs.
+            'manageAnnouncements' => Permission::AnnouncementsManage,
+            'publishAnnouncement' => Permission::AnnouncementsPublish,
+
+            // Campagnes — rédiger un brouillon n'est pas le diffuser.
+            'manageCampaigns' => Permission::CampaignsManage,
+            'sendCampaign' => Permission::CampaignsSend,
+
+            // `module.shop` ouvre le catalogue en lecture à tous les profils qui
+            // suivent la boutique ; écrire — créer une référence, la fermer à la
+            // commande — est un droit à part. Faire avancer une commande relève
+            // du module Commandes, et l'annuler peut rembourser.
+            'manageCatalogue' => Permission::ShopManageCatalogue,
+            'fulfilShopOrder' => Permission::ShopFulfilOrders,
+            'cancelShopOrder' => Permission::ShopCancelOrder,
 
             // Rejouer un crédit ou marquer une transaction créditée touche à
             // l'argent d'un conducteur. `module.recharges` n'ouvre que la
             // lecture du journal.
             'reconcileRecharges' => Permission::RechargesReconcile,
 
-            // `module.shop` ouvre le catalogue en lecture à tous les profils qui
-            // suivent la boutique ; écrire — créer une référence, la fermer à la
-            // commande, déplacer une commande — est un droit à part.
-            'manageCatalogue' => Permission::ShopManageCatalogue,
-
-            // Un agent reprend le sien à son compte (« M'assigner », ouvert à
-            // tous) ; désigner un *autre* destinataire est un acte
-            // d'encadrement — c'est répartir la charge de l'équipe.
-            'reassignSupportRequest' => Permission::SupportReassign,
+            /*
+            | Réglages. Écraser une clé d'encaissement est au moins aussi grave
+            | que la lire : `settings.reveal-secrets` ne gardait que la lecture,
+            | et n'importe quel accès au module pouvait remplacer la clé Wave.
+            */
+            'manageSettings' => Permission::SettingsManage,
+            'revealSettingsSecrets' => Permission::SettingsRevealSecrets,
 
             // Tenir les comptes du back-office, et décider qui peut quoi.
             'manageUsers' => Permission::UsersManage,

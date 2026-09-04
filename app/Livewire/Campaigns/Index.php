@@ -7,15 +7,18 @@ use App\Enums\CampaignAudience;
 use App\Enums\CampaignStatus;
 use App\Enums\DriverStatus;
 use App\Jobs\DispatchCampaignJob;
+use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\Driver;
 use App\Models\Message;
+use App\Models\User;
 use App\Services\Support\CampaignAudienceResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -93,6 +96,8 @@ class Index extends Component
      */
     public function saveDraft(): void
     {
+        Gate::authorize('manageCampaigns');
+
         $campaign = $this->persist();
 
         $this->composerOpen = false;
@@ -116,8 +121,18 @@ class Index extends Component
         $this->confirmingSendId = null;
     }
 
+    /**
+     * Diffuse la campagne : le message tombe dans le fil de chaque conducteur
+     * visé.
+     *
+     * Droit distinct de la rédaction — un brouillon se relit, un envoi ne se
+     * rattrape pas. Journalisé avec l'audience : on doit pouvoir dire qui a
+     * écrit à toute la flotte, et à combien de conducteurs.
+     */
     public function send(): void
     {
+        Gate::authorize('sendCampaign');
+
         if ($this->confirmingSendId === null) {
             return;
         }
@@ -127,6 +142,17 @@ class Index extends Component
             : Campaign::query()->findOrFail($this->confirmingSendId);
 
         DispatchCampaignJob::dispatch($campaign->getKey());
+
+        AuditLog::record(
+            action: 'campaign.sent',
+            summary: "{$this->actor()->fullName()} a diffusé la campagne « {$campaign->title} ».",
+            subject: $campaign,
+            by: $this->actor(),
+            context: [
+                'audience' => $campaign->audience->value,
+                'recipients' => $campaign->recipients_count,
+            ],
+        );
 
         $this->confirmingSendId = null;
         $this->composerOpen = false;
@@ -226,6 +252,14 @@ class Index extends Component
                 ->orWhere('phone', 'like', $term))
             ->limit(8)
             ->get();
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user;
     }
 
     private function persist(): Campaign

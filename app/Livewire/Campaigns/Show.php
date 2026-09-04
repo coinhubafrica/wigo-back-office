@@ -7,11 +7,14 @@ use App\Enums\CampaignAudience;
 use App\Enums\CampaignStatus;
 use App\Enums\DriverStatus;
 use App\Jobs\DispatchCampaignJob;
+use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\Message;
+use App\Models\User;
 use App\Services\Support\CampaignAudienceResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -71,11 +74,32 @@ class Show extends Component
 
     public function send(): void
     {
+        Gate::authorize('sendCampaign');
+
         DispatchCampaignJob::dispatch($this->campaign->getKey());
+
+        AuditLog::record(
+            action: 'campaign.sent',
+            summary: "{$this->actor()->fullName()} a diffusé la campagne « {$this->campaign->title} ».",
+            subject: $this->campaign,
+            by: $this->actor(),
+            context: [
+                'audience' => $this->campaign->audience->value,
+                'recipients' => $this->campaign->recipients_count,
+            ],
+        );
 
         $this->confirmingSend = false;
         $this->confirmingCount = null;
         $this->dispatch('toast', message: __('backoffice.campaigns.sending'));
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user;
     }
 
     public function render(CampaignAudienceResolver $audience): View

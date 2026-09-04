@@ -5,8 +5,11 @@ namespace App\Livewire\Announcements;
 use App\Enums\AnnouncementMediaType;
 use App\Enums\BackOfficeModule;
 use App\Models\Announcement;
+use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -61,6 +64,8 @@ class Index extends Component
 
     public function save(): void
     {
+        Gate::authorize('manageAnnouncements');
+
         $rules = $this->editingId === null
             ? ['media' => 'required|file|mimes:jpg,jpeg,png,webp,mp4,webm|max:20480']
             : [];
@@ -100,6 +105,8 @@ class Index extends Component
      */
     public function reorder(string $id, int $position): void
     {
+        Gate::authorize('manageAnnouncements');
+
         $ids = Announcement::query()->orderBy('order')->pluck('id')->reject(fn (string $existingId): bool => $existingId === $id)->values();
 
         $ids->splice($position, 0, [$id]);
@@ -109,14 +116,33 @@ class Index extends Component
         }
     }
 
+    /**
+     * Publie ou retire une bannière.
+     *
+     * Droit distinct de la rédaction : préparer une annonce et décider qu'elle
+     * s'affiche à tous les conducteurs ne sont pas la même décision.
+     */
     public function toggle(string $id): void
     {
+        Gate::authorize('publishAnnouncement');
+
         $announcement = Announcement::query()->findOrFail($id);
         $announcement->update(['is_active' => ! $announcement->is_active]);
+
+        AuditLog::record(
+            action: $announcement->is_active ? 'announcement.published' : 'announcement.withdrawn',
+            summary: $announcement->is_active
+                ? "{$this->actor()->fullName()} a publié l'annonce « {$announcement->title} »."
+                : "{$this->actor()->fullName()} a retiré l'annonce « {$announcement->title} ».",
+            subject: $announcement,
+            by: $this->actor(),
+        );
     }
 
     public function duplicate(string $id): void
     {
+        Gate::authorize('manageAnnouncements');
+
         $announcement = Announcement::query()->findOrFail($id);
 
         $announcement->replicate()->fill([
@@ -139,14 +165,33 @@ class Index extends Component
 
     public function delete(): void
     {
+        Gate::authorize('manageAnnouncements');
+
         if ($this->confirmingDeleteId === null) {
             return;
         }
 
-        Announcement::query()->findOrFail($this->confirmingDeleteId)->delete();
+        $announcement = Announcement::query()->findOrFail($this->confirmingDeleteId);
+        $title = $announcement->title;
+
+        $announcement->delete();
+
+        AuditLog::record(
+            action: 'announcement.deleted',
+            summary: "{$this->actor()->fullName()} a supprimé l'annonce « {$title} ».",
+            by: $this->actor(),
+        );
 
         $this->confirmingDeleteId = null;
         $this->dispatch('toast', message: __('backoffice.announcements.deleted'));
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user;
     }
 
     public function closeForm(): void

@@ -9,10 +9,12 @@ use App\Enums\ChallengeStatus;
 use App\Enums\ChallengeType;
 use App\Enums\PrizeNature;
 use App\Enums\YangoOrderStatus;
+use App\Models\AuditLog;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
 use App\Models\Driver;
+use App\Models\User;
 use App\Services\Challenges\DrawService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -111,6 +113,8 @@ class Show extends Component
 
     public function closePeriod(): void
     {
+        Gate::authorize('closeChallengePeriod');
+
         $this->pendingAction = null;
 
         $draw = app(DrawService::class);
@@ -128,24 +132,56 @@ class Show extends Component
         $this->dispatch('toast', message: __('backoffice.challenges.period_closed'));
     }
 
+    /**
+     * Republie la graine du tirage.
+     *
+     * Le geste le plus sensible du module : il change le hasard alors que le
+     * vivier est déjà gelé. Droit à part et journalisé — la loyauté du tirage
+     * doit pouvoir se démontrer après coup.
+     */
     public function regenerateSeed(): void
     {
+        Gate::authorize('regenerateChallengeSeed');
+
         app(DrawService::class)->publishSeed($this->challenge);
         $this->challenge->refresh();
+
+        AuditLog::record(
+            action: 'challenge.seed_regenerated',
+            summary: "{$this->actor()->fullName()} a republié la graine du tirage « {$this->challenge->name} ».",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: ['seed' => $this->challenge->draw_seed],
+        );
 
         $this->dispatch('toast', message: __('backoffice.challenges.seed_published'));
     }
 
     public function executeDraw(): void
     {
+        Gate::authorize('drawChallenge');
+
         app(DrawService::class)->draw($this->challenge);
         $this->challenge->refresh();
+
+        AuditLog::record(
+            action: 'challenge.drawn',
+            summary: "{$this->actor()->fullName()} a exécuté le tirage « {$this->challenge->name} ».",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: [
+                'seed' => $this->challenge->draw_seed,
+                'winners' => $this->challenge->winners()->count(),
+            ],
+        );
 
         $this->dispatch('toast', message: __('backoffice.challenges.drawn'));
     }
 
     public function markCredited(string $winnerId): void
     {
+        Gate::authorize('creditChallengePrize');
+
         $winner = $this->challenge->winners()->findOrFail($winnerId);
 
         if ($winner->credited) {
@@ -158,6 +194,14 @@ class Show extends Component
             'credited_at' => now(),
         ]);
 
+        AuditLog::record(
+            action: 'challenge.prize_credited',
+            summary: "{$this->actor()->fullName()} a marqué un lot crédité sur « {$this->challenge->name} ».",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: ['winner' => $winnerId],
+        );
+
         $this->completeIfFullyCredited();
 
         $this->dispatch('toast', message: __('backoffice.challenges.winner_credited'));
@@ -168,13 +212,25 @@ class Show extends Component
      */
     public function creditAll(): void
     {
+        Gate::authorize('creditChallengePrize');
+
         $this->pendingAction = null;
+
+        $credited = $this->challenge->winners()->where('credited', false)->count();
 
         $this->challenge->winners()->where('credited', false)->update([
             'credited' => true,
             'credited_by' => auth()->id(),
             'credited_at' => now(),
         ]);
+
+        AuditLog::record(
+            action: 'challenge.prize_credited',
+            summary: "{$this->actor()->fullName()} a marqué tous les lots crédités sur « {$this->challenge->name} ».",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: ['winners' => $credited],
+        );
 
         $this->completeIfFullyCredited();
 
@@ -546,9 +602,29 @@ class Show extends Component
         ).' FCFA';
     }
 
+    /**
+     * Le pilotage du cycle de vie est-il ouvert à cet agent ?
+     *
+     * Lu par la vue pour montrer ou masquer les boutons. Résolu par
+     * permissions et non par nom de rôle : les rôles s'administrent à l'écran,
+     * et un `hasAnyRole` ici masquait des boutons que les portails, eux,
+     * autorisaient.
+     */
     public function canManageBonus(): bool
     {
-        return auth('web')->user()?->hasAnyRole(['bonus', 'direction']) ?? false;
+        return Gate::any([
+            'closeChallengePeriod',
+            'drawChallenge',
+            'creditChallengePrize',
+        ]);
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user;
     }
 
     public function render(): View

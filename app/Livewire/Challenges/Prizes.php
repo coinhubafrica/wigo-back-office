@@ -5,6 +5,7 @@ namespace App\Livewire\Challenges;
 use App\Enums\BackOfficeModule;
 use App\Models\Prize;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -34,12 +35,16 @@ class Prizes extends Component
 
     public function newPrize(): void
     {
+        Gate::authorize('manageChallengePrizes');
+
         $this->resetForm();
         $this->formOpen = true;
     }
 
     public function edit(string $id): void
     {
+        Gate::authorize('manageChallengePrizes');
+
         $prize = Prize::query()->findOrFail($id);
 
         $this->editingId = $prize->id;
@@ -50,6 +55,8 @@ class Prizes extends Component
 
     public function save(): void
     {
+        Gate::authorize('manageChallengePrizes');
+
         $this->validate();
 
         $attributes = ['name' => $this->name];
@@ -72,6 +79,8 @@ class Prizes extends Component
 
     public function confirmDelete(string $id): void
     {
+        Gate::authorize('manageChallengePrizes');
+
         $this->confirmingDeleteId = $id;
     }
 
@@ -82,6 +91,8 @@ class Prizes extends Component
 
     public function delete(): void
     {
+        Gate::authorize('manageChallengePrizes');
+
         if ($this->confirmingDeleteId === null) {
             return;
         }

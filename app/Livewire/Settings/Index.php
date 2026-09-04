@@ -16,6 +16,7 @@ use App\Settings\WaveTopupSettings;
 use App\Support\SecretMask;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -191,6 +192,8 @@ class Index extends Component
 
     public function saveWaveShop(WaveShopSettings $shop): void
     {
+        Gate::authorize('manageSettings');
+
         $this->validate([
             // Facultatifs : laissés vides, les secrets déjà enregistrés sont
             // conservés.
@@ -209,6 +212,8 @@ class Index extends Component
 
     public function saveWaveTopup(WaveTopupSettings $topup): void
     {
+        Gate::authorize('manageSettings');
+
         $this->validate([
             'waveTopupApiKey' => 'nullable|string|max:255',
             'waveTopupWebhookSecret' => 'nullable|string|max:255',
@@ -244,6 +249,8 @@ class Index extends Component
 
     public function saveOtp(OtpSettings $otp): void
     {
+        Gate::authorize('manageSettings');
+
         $this->validate([
             // La longueur borne un `random_int(0, 10 ** $length - 1)` : au-delà
             // de neuf chiffres le tirage déborde sur les plateformes 32 bits.
@@ -270,6 +277,8 @@ class Index extends Component
 
     public function saveRecharge(RechargeSettings $recharge): void
     {
+        Gate::authorize('manageSettings');
+
         $this->validate([
             'rechargeMinAmount' => 'required|integer|min:100',
             'rechargeMaxAmount' => 'required|integer|gt:rechargeMinAmount',
@@ -291,6 +300,8 @@ class Index extends Component
 
     public function saveFleet(FleetSettings $fleet): void
     {
+        Gate::authorize('manageSettings');
+
         $this->validate([
             'fleetBaseUrl' => 'required|url',
             'fleetParkId' => 'required|string|max:255',
@@ -321,6 +332,8 @@ class Index extends Component
      */
     public function testFleet(FleetConnectionTester $tester): void
     {
+        Gate::authorize('manageSettings');
+
         $result = $tester->test();
 
         $this->fleetTestSucceeded = $result->succeeded;

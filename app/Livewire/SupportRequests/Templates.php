@@ -7,6 +7,7 @@ use App\Enums\SupportRequestCategory;
 use App\Models\MessageTemplate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -38,12 +39,16 @@ class Templates extends Component
 
     public function newTemplate(): void
     {
+        Gate::authorize('manageSupportTemplates');
+
         $this->resetForm();
         $this->formOpen = true;
     }
 
     public function edit(string $id): void
     {
+        Gate::authorize('manageSupportTemplates');
+
         $template = MessageTemplate::query()->findOrFail($id);
 
         $this->editingId = $template->id;
@@ -57,6 +62,8 @@ class Templates extends Component
 
     public function save(): void
     {
+        Gate::authorize('manageSupportTemplates');
+
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:4000'],
@@ -94,12 +101,16 @@ class Templates extends Component
 
     public function toggle(string $id): void
     {
+        Gate::authorize('manageSupportTemplates');
+
         $template = MessageTemplate::query()->findOrFail($id);
         $template->forceFill(['is_active' => ! $template->is_active])->save();
     }
 
     public function confirmDelete(string $id): void
     {
+        Gate::authorize('manageSupportTemplates');
+
         $this->confirmingDeleteId = $id;
     }
 
@@ -110,6 +121,8 @@ class Templates extends Component
 
     public function delete(): void
     {
+        Gate::authorize('manageSupportTemplates');
+
         if ($this->confirmingDeleteId !== null) {
             MessageTemplate::query()->whereKey($this->confirmingDeleteId)->delete();
         }

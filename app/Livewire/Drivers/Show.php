@@ -5,9 +5,12 @@ namespace App\Livewire\Drivers;
 use App\Enums\BackOfficeModule;
 use App\Enums\DriverStatus;
 use App\Http\Resources\CnpsStatementPayload;
+use App\Models\AuditLog;
 use App\Models\Driver;
+use App\Models\User;
 use App\Services\Cnps\CnpsStatementService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -51,8 +54,17 @@ class Show extends Component
         $this->driver = $driver->load('vehicle');
     }
 
+    /**
+     * Suspend le conducteur : il ne reçoit plus de courses.
+     *
+     * Geste à part de l'accès au module — consulter une fiche pour répondre au
+     * téléphone n'implique pas de pouvoir couper un revenu. Journalisé avec son
+     * motif : une suspension se conteste, il faut pouvoir dire qui l'a posée.
+     */
     public function suspend(): void
     {
+        Gate::authorize('suspendDriver');
+
         $this->validate([
             'suspensionReason' => ['required', 'string', 'max:255'],
         ]);
@@ -61,6 +73,15 @@ class Show extends Component
             'status' => DriverStatus::Suspended,
             'suspension_reason' => $this->suspensionReason,
         ]);
+
+        AuditLog::record(
+            action: 'driver.suspended',
+            summary: "{$this->actor()->fullName()} a suspendu {$this->driver->fullName()}.",
+            subject: $this->driver,
+            by: $this->actor(),
+            driver: $this->driver,
+            context: ['reason' => $this->suspensionReason],
+        );
 
         $this->showSuspendForm = false;
         $this->suspensionReason = '';
@@ -80,6 +101,8 @@ class Show extends Component
 
     public function reactivate(): void
     {
+        Gate::authorize('suspendDriver');
+
         $this->confirmingReactivation = false;
 
         $this->driver->update([
@@ -87,7 +110,23 @@ class Show extends Component
             'suspension_reason' => null,
         ]);
 
+        AuditLog::record(
+            action: 'driver.reactivated',
+            summary: "{$this->actor()->fullName()} a réactivé {$this->driver->fullName()}.",
+            subject: $this->driver,
+            by: $this->actor(),
+            driver: $this->driver,
+        );
+
         $this->dispatch('toast', message: __('backoffice.drivers.reactivated'));
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user;
     }
 
     /**
