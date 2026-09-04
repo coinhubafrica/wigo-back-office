@@ -29,6 +29,25 @@ it('renders the shell with a skip link, list navigation and a menu toggle', func
         ->assertSee('id="nav-group-support"', false);
 });
 
+it('groups drivers and vehicles under Parc, apart from support', function (): void {
+    $html = $this->actingAs(layoutUser('direction'))
+        ->get(route(BackOfficeModule::Dashboard->route()))
+        ->assertOk()
+        ->assertSee('id="nav-group-parc"', false)
+        ->getContent();
+
+    // Chauffeurs a quitté Support : les deux entrées du parc se suivent, et
+    // « Parc » précède « Support » dans la barre latérale.
+    expect($html)->toContain('nav-group-parc')
+        ->and(strpos($html, 'nav-group-parc'))->toBeLessThan(strpos($html, 'nav-group-support'));
+
+    foreach ([BackOfficeModule::Drivers, BackOfficeModule::Vehicles] as $module) {
+        expect($module->group())->toBe('Parc');
+    }
+
+    expect(BackOfficeModule::SupportRequests->group())->toBe('Support');
+});
+
 it('paginates in French on the charter tokens', function (): void {
     Driver::factory()->count(25)->create();
 

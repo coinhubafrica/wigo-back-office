@@ -60,6 +60,7 @@ class RolePermissionSeeder extends Seeder
         $support = [
             BackOfficeModule::Dashboard,
             BackOfficeModule::Drivers,
+            BackOfficeModule::Vehicles,
             BackOfficeModule::SupportRequests,
             BackOfficeModule::Cnps,
             BackOfficeModule::Shop,

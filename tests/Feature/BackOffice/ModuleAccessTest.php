@@ -16,11 +16,11 @@ beforeEach(function (): void {
 it('shows each role the expected number of modules', function (string $role, int $expected): void {
     $this->assertCount($expected, moduleAccessUser($role)->visibleModules());
 })->with([
-    'gestionnaire' => ['gestionnaire', 7],
-    'bonus' => ['bonus', 10],
+    'gestionnaire' => ['gestionnaire', 8],
+    'bonus' => ['bonus', 11],
     'stock' => ['stock', 3],
     'admin' => ['admin', 3],
-    'direction' => ['direction', 12],
+    'direction' => ['direction', 13],
 ]);
 
 it('lets the bonus role reach the challenges module', function (): void {

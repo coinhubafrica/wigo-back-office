@@ -10,6 +10,7 @@ enum BackOfficeModule: string
 {
     case Dashboard = 'dashboard';
     case Drivers = 'drivers';
+    case Vehicles = 'vehicles';
     case SupportRequests = 'support-requests';
     case Challenges = 'challenges';
     case Announcements = 'announcements';
@@ -32,6 +33,7 @@ enum BackOfficeModule: string
             self::Dashboard => 'Tableau de bord',
             self::SupportRequests => 'Requêtes',
             self::Drivers => 'Chauffeurs',
+            self::Vehicles => 'Véhicules',
             self::Challenges => 'Challenges',
             self::Announcements => 'Annonces',
             self::Campaigns => 'Campagnes',
@@ -52,6 +54,7 @@ enum BackOfficeModule: string
         return match ($this) {
             self::Dashboard => 'Tableau de bord',
             self::Drivers => 'Chauffeurs',
+            self::Vehicles => 'Véhicules',
             self::SupportRequests => 'Requêtes',
             self::Challenges => 'Challenges',
             self::Recharges => 'Paiements',
@@ -73,6 +76,7 @@ enum BackOfficeModule: string
         return match ($this) {
             self::Dashboard => "Vue d'ensemble du parc, de l'activité et de la performance des équipes",
             self::Drivers => 'Liste, recherche, fiche 360°, suivi CNPS',
+            self::Vehicles => 'Parc synchronisé depuis Yango : plaque, modèle, affectation',
             self::SupportRequests => 'File de traitement — chaque requête porte son fil de messages avec le conducteur',
             self::Challenges => 'La base de toute gratification : des critères, une période, un prix — classement, tirage au sort ou bonus surprise',
             self::Recharges => 'Journal des transactions Wave, réconciliation, rejeux',
@@ -93,7 +97,8 @@ enum BackOfficeModule: string
     {
         return match ($this) {
             self::Dashboard => 'Pilotage',
-            self::SupportRequests, self::Drivers => 'Support',
+            self::Drivers, self::Vehicles => 'Parc',
+            self::SupportRequests => 'Support',
             self::Challenges, self::Announcements, self::Campaigns => 'Marketing',
             self::Shop, self::ShopOrders => 'Boutique',
             self::Recharges, self::Cnps => 'Finance',
@@ -110,6 +115,7 @@ enum BackOfficeModule: string
             self::Dashboard => 'M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z',
             self::SupportRequests => 'M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z',
             self::Drivers => 'M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
+            self::Vehicles => 'M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12',
             self::Challenges => 'M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605',
             self::Announcements => 'M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 1 1 0-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 0 1-1.44-4.282m3.102.069a18.03 18.03 0 0 1-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 0 1 8.835 2.535M10.34 6.66a23.847 23.847 0 0 0 8.835-2.535m0 0A23.74 23.74 0 0 0 18.795 3m.38 1.125a23.91 23.91 0 0 1 1.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 0 0 1.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 0 1 0 3.46',
             self::Campaigns => 'M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0',
@@ -129,7 +135,8 @@ enum BackOfficeModule: string
     {
         return match ($this) {
             self::Dashboard => null,
-            self::SupportRequests, self::Drivers => 'Support',
+            self::Drivers, self::Vehicles => 'Parc',
+            self::SupportRequests => 'Support',
             self::Challenges, self::Announcements, self::Campaigns => 'Marketing',
             self::Shop, self::ShopOrders => 'Boutique',
             self::Recharges, self::Cnps => 'Finance',

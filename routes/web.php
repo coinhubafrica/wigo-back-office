@@ -20,6 +20,8 @@ use App\Livewire\Shop\Catalogue as ShopCatalogue;
 use App\Livewire\Shop\Orders as ShopOrders;
 use App\Livewire\SupportRequests\Index as SupportRequestsIndex;
 use App\Livewire\SupportRequests\Templates as SupportRequestsTemplates;
+use App\Livewire\Vehicles\Index as VehiclesIndex;
+use App\Livewire\Vehicles\Show as VehiclesShow;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -73,6 +75,14 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::get('drivers/{driver}/photo', DriverPhotoController::class)
         ->middleware('permission:'.BackOfficeModule::Drivers->permission())
         ->name('bo.drivers.photo');
+
+    Route::livewire('vehicles', VehiclesIndex::class)
+        ->middleware('permission:'.BackOfficeModule::Vehicles->permission())
+        ->name(BackOfficeModule::Vehicles->route());
+
+    Route::livewire('vehicles/{vehicle}', VehiclesShow::class)
+        ->middleware('permission:'.BackOfficeModule::Vehicles->permission())
+        ->name('bo.vehicles.show');
 
     Route::livewire('announcements', AnnouncementsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Announcements->permission())

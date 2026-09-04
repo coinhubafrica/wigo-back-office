@@ -23,4 +23,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/Shop/** | .ai/rules/shop.md |
 | app/Services/Support/**, app/Services/Support/BroadcastDispatcher.php, app/Services/Support/CampaignDispatcher.php | .ai/rules/support.md |
 | tests/** | .ai/rules/tests.md |
+| app/Livewire/Vehicles/** | .ai/rules/vehicles.md |
 | resources/views/** | .ai/rules/views.md |
