@@ -112,17 +112,25 @@ it('lists the dashboard module in the sidebar', function (): void {
         ->assertSee(BackOfficeModule::Dashboard->label());
 });
 
-it('marks modules whose route does not exist yet as coming soon', function (): void {
-    // Le filtre par route livrée est désactivé temporairement (voir
-    // layouts/app.blade.php) : tous les modules apparaissent, ceux sans
-    // route livrée sont marqués "Bientôt" plutôt que masqués.
-    $response = $this->actingAs(moduleAccessUser('direction'))
-        ->get(route(BackOfficeModule::Dashboard->route()))
-        ->assertOk();
+it('links every visible module now that no screen is pending', function (): void {
+    /*
+     * Le journal d'audit était le dernier module sans écran : la pastille
+     * « Bientôt » n'a plus de sujet, et toute entrée de la barre latérale doit
+     * désormais mener quelque part. L'inverse de l'ancienne assertion, qui
+     * guettait la pastille.
+     */
+    $user = moduleAccessUser('direction');
 
-    $response->assertSee(BackOfficeModule::Challenges->label());
-    $response->assertSee(BackOfficeModule::Settings->label());
-    $response->assertSeeText('Bientôt');
+    $response = $this->actingAs($user)
+        ->get(route(BackOfficeModule::Dashboard->route()))
+        ->assertOk()
+        ->assertSee(BackOfficeModule::Challenges->label())
+        ->assertSee(BackOfficeModule::Settings->label())
+        ->assertDontSeeText('Bientôt');
+
+    foreach ($user->visibleModules() as $module) {
+        $response->assertSee('href="'.route($module->route()).'"', false);
+    }
 });
 
 it('hides a built module the user cannot reach', function (): void {

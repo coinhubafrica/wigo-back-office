@@ -33,6 +33,9 @@ class DatabaseSeeder extends Seeder
                 RechargeSeeder::class,
                 ShopSeeder::class,
                 SupportSeeder::class,
+                // En dernier : les lignes du journal citent des agents, des
+                // conducteurs et des transactions qui doivent déjà exister.
+                AuditLogSeeder::class,
             ]);
 
             // Gel du pool de tirage "à effectuer" : nécessite les courses

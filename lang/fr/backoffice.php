@@ -19,6 +19,8 @@ return [
     'the_back_office' => 'Le back-office.',
     'access_notice' => 'Accès nominatif et journalisé. Les droits sont attribués par la direction.',
     'common' => [
+        'yes' => 'oui',
+        'no' => 'non',
         'cancel' => 'Annuler',
         'confirm' => 'Confirmer',
         'close' => 'Fermer',
@@ -992,6 +994,102 @@ return [
         'role_in_use' => '{1} Ce rôle est porté par 1 utilisateur : réaffectez-le d\'abord.|[2,*] Ce rôle est porté par :count utilisateurs : réaffectez-les d\'abord.',
         'role_delete_title' => 'Supprimer ce rôle ?',
         'role_delete_body' => 'Le rôle « :label » sera supprimé. Aucun utilisateur ne le porte.',
+    ],
+
+    /*
+    | Journal d'audit. Les libellés des gestes eux-mêmes vivent sur
+    | `AuditAction::label()`, aux côtés du module et de la teinte de chaque
+    | action : les séparer mettrait les trois faits d'un geste dans deux
+    | fichiers. Ne reste ici que le décor de l'écran — plus la table de
+    | traduction des clés de `context`, qui viennent de charges arbitraires et
+    | n'ont donc pas d'énumération où vivre.
+    */
+    'audit' => [
+        'journal_title' => 'Journal des actions sensibles',
+        'search_placeholder' => 'Phrase, agent, adresse IP…',
+        'search' => 'Rechercher dans le journal',
+
+        'kpi_actions' => 'Actions sur la période',
+        'kpi_agents' => 'Agents actifs',
+        'kpi_system' => 'Écritures automatiques',
+
+        'all_modules' => 'Tous les modules',
+        'all_actions' => 'Toutes les actions',
+        'agent' => 'Agent',
+        'all_agents' => 'Tous les agents',
+        'system_agent' => 'Automate',
+        'system_agent_hint' => 'Webhook ou tâche planifiée, sans agent.',
+
+        'period_today' => "Aujourd'hui",
+        'period_7d' => '7 jours',
+        'period_30d' => '30 jours',
+        'period_90d' => '90 jours',
+        'period_all' => 'Tout',
+
+        'column_when' => 'Horodatage',
+        'column_action' => 'Action',
+        'column_agent' => 'Agent',
+        'column_summary' => 'Fait',
+
+        'show_detail' => 'Afficher le détail',
+        'hide_detail' => 'Masquer le détail',
+        'detail_ip' => 'Adresse IP',
+        'detail_subject' => 'Cible',
+        'detail_driver' => 'Conducteur',
+        'detail_none' => '—',
+
+        'export' => 'Exporter en CSV',
+        'export_filename' => 'journal-audit-:stamp.csv',
+        'export_truncated' => 'Export tronqué à :count lignes — resserrez la période.',
+
+        'no_rows' => 'Aucune action sur cette période.',
+        'no_rows_hint' => 'Élargissez la période ou retirez un filtre.',
+        'reset_filters' => 'Réinitialiser les filtres',
+
+        'context' => [
+            'reason' => 'Motif',
+            'field' => 'Champ',
+            'fields' => 'Champs remplacés',
+            'account' => 'Compte',
+            'amount' => 'Montant',
+            'note' => 'Note',
+            'seed' => 'Graine',
+            'winners' => 'Gagnants',
+            'pool' => 'Vivier',
+            'roles' => 'Rôles',
+            'roles_before' => 'Rôles (avant)',
+            'roles_after' => 'Rôles (après)',
+            'permissions' => 'Droits',
+            'permissions_before' => 'Droits (avant)',
+            'permissions_after' => 'Droits (après)',
+            'direct_permissions' => 'Droits directs',
+            'is_active_before' => 'Actif (avant)',
+            'is_active_after' => 'Actif (après)',
+            'password_issued' => 'Mot de passe attribué',
+            'role' => 'Rôle',
+            'to' => 'Confiée à',
+            'messages' => 'Messages',
+            'title' => 'Titre',
+            'usage_count' => 'Utilisations',
+            'sku' => 'Référence',
+            'price' => 'Prix',
+            'price_before' => 'Prix (avant)',
+            'price_after' => 'Prix (après)',
+            'value' => 'Valeur',
+            'value_before' => 'Valeur (avant)',
+            'value_after' => 'Valeur (après)',
+            'status' => 'Statut',
+            'status_before' => 'Statut (avant)',
+            'status_after' => 'Statut (après)',
+            'type' => 'Type',
+            'period_start' => 'Début',
+            'period_end' => 'Fin',
+            'base_url' => 'Adresse du service',
+            'park_id' => 'Parc',
+            'filters' => 'Filtres',
+            'rows' => 'Lignes',
+            'truncated' => 'Tronqué',
+        ],
     ],
 
 ];

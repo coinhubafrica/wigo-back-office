@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BackOfficeModule;
+use App\Enums\Permission;
 use App\Livewire\Auth\Login;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -33,18 +34,25 @@ it('valid credentials authenticate and land on the first module', function (): v
     $this->assertNotNull($user->fresh()->last_login_at);
 });
 
-it('a user is refused when none of their modules is built yet', function (): void {
-    // Un compte dont aucun module accessible n'a de route doit échouer.
-    // `Audit` est le dernier module non livré ; le jour où il l'est, ce test
-    // n'aura plus de module à lui donner et devra être repensé.
-    // proprement plutôt que rediriger vers une route absente. Les rôles
-    // seedés ont tous au moins un module construit : on fabrique donc un
-    // rôle ne portant qu'une permission encore sans écran.
-    $role = Role::findOrCreate('campagnes-seules', 'web');
-    $role->givePermissionTo(BackOfficeModule::Audit->permission());
+it('a user is refused when no module is reachable', function (): void {
+    /*
+     * `landingRoute()` ne rend rien quand aucun module accessible ne porte
+     * d'écran : la connexion échoue proprement plutôt que de rediriger vers
+     * une route absente.
+     *
+     * Ce test visait auparavant le journal d'audit, alors seul module annoncé
+     * sans écran — il est livré depuis, et tous les modules ont désormais leur
+     * route (`LayoutTest` le garde). Le cas réel qui subsiste est donc un rôle
+     * ne portant qu'une permission d'action, sans accès à un module : la
+     * personne se connecte et n'aurait aucun écran où aller.
+     */
+    $role = Role::findOrCreate('sans-module', 'web');
+    $role->givePermissionTo(Permission::AuditExport->value);
 
     $user = User::factory()->create(['is_active' => true, 'password' => Hash::make('motdepasse')]);
     $user->assignRole($role);
+
+    expect($user->visibleModules())->toBe([]);
 
     Livewire::test(Login::class)
         ->set('email', $user->email)

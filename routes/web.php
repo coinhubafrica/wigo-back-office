@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\BackOfficeModule;
+use App\Http\Controllers\BackOffice\AuditExportController;
 use App\Http\Controllers\BackOffice\DriverPhotoController;
 use App\Http\Controllers\BackOffice\MessageAttachmentController;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
+use App\Livewire\Audit\Index as AuditIndex;
 use App\Livewire\Auth\Login;
 use App\Livewire\Campaigns\Index as CampaignsIndex;
 use App\Livewire\Campaigns\Show as CampaignsShow;
@@ -166,4 +168,18 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('settings', SettingsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Settings->permission())
         ->name(BackOfficeModule::Settings->route());
+
+    /*
+    | Journal d'audit. La permission du module ouvre la relecture à l'écran ;
+    | l'export emporte le journal filtré dans un fichier et demande en plus
+    | `audit.export`, que le contrôleur vérifie lui-même — le 403 porte ainsi
+    | le même corps dans les deux cas, sans dire lequel des droits manquait.
+    */
+    Route::livewire('audit', AuditIndex::class)
+        ->middleware('permission:'.BackOfficeModule::Audit->permission())
+        ->name(BackOfficeModule::Audit->route());
+
+    Route::get('audit/export', AuditExportController::class)
+        ->middleware('permission:'.BackOfficeModule::Audit->permission())
+        ->name('bo.audit.export');
 });

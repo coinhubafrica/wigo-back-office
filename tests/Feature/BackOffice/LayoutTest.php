@@ -176,18 +176,33 @@ it('shows every module to a user who holds them all', function (): void {
     }
 });
 
-it('still shows an authorised module that has no route yet', function (): void {
-    // `module.audit` est accordé mais l'écran n'est pas livré : l'entrée reste,
-    // inactive, avec sa pastille — elle annonce ce qui vient, ce qu'un 403 ou
-    // une absence ne disent pas.
-    expect(Route::has(BackOfficeModule::Audit->route()))->toBeFalse();
+it('gives every module a screen', function (): void {
+    /*
+     * Le journal d'audit était le dernier module en attente d'écran. La branche
+     * « Bientôt » de la barre latérale reste du code vivant pour le prochain,
+     * mais elle n'a plus de sujet : cette assertion échouera le jour où l'on
+     * ajoutera un module sans sa route, ce qui est précisément le moment où il
+     * faut y repenser.
+     */
+    $pending = collect(BackOfficeModule::cases())
+        ->reject(fn (BackOfficeModule $module): bool => Route::has($module->route()))
+        ->map(fn (BackOfficeModule $module): string => $module->value)
+        ->all();
 
+    expect($pending)->toBe([], 'Ces modules sont annoncés sans écran livré.');
+});
+
+it('links the audit journal from the sidebar', function (): void {
     $html = $this->actingAs(layoutUser('admin'))
         ->get(route(BackOfficeModule::Users->route()))
         ->assertOk()
         ->getContent();
 
-    expect(layoutSidebar((string) $html))->toContain(layoutLabel(BackOfficeModule::Audit));
+    // `layoutLabel` échappe l'apostrophe : « Journal d'audit » s'écrit
+    // `Journal d&#039;audit` dans le HTML.
+    expect(layoutSidebar((string) $html))
+        ->toContain(layoutLabel(BackOfficeModule::Audit))
+        ->toContain('href="'.route(BackOfficeModule::Audit->route()).'"');
 });
 
 it('hides an unreachable module even when a direct visit would 403', function (): void {
