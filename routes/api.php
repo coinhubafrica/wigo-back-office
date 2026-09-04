@@ -148,6 +148,9 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
 |
 */
 
-Route::post('webhooks/wave', WaveWebhookController::class)
+// Une URL par compte Wave : c'est le segment qui désigne le secret à vérifier
+// (cf. `VerifyWaveSignature`). Chaque compte doit pointer son rappel ici.
+Route::post('webhooks/wave/{account}', WaveWebhookController::class)
+    ->whereIn('account', ['shop', 'topup'])
     ->middleware('wave.signature')
     ->name('webhooks.wave');

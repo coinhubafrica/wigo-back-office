@@ -8,6 +8,7 @@ use App\Enums\TransactionStatus;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Recharge\RechargeService;
+use App\Settings\WaveAccount;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -196,7 +197,7 @@ class Index extends Component
                 ->recharges()
                 ->whereIn('status', [TransactionStatus::Failed, TransactionStatus::ToReview])
                 ->count(),
-            'wave_balance' => $wave->businessBalance(),
+            'wave_balance' => $wave->businessBalance(WaveAccount::Topup),
         ];
     }
 

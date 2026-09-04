@@ -14,6 +14,8 @@ use App\Services\Fleet\FakeFleetDirectory;
 use App\Settings\FleetSettings;
 use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
+use App\Settings\WaveShopSettings;
+use App\Settings\WaveTopupSettings;
 use Database\Seeders\RolePermissionSeeder;
 use Livewire\Livewire;
 
@@ -246,3 +248,85 @@ function settingsUser(string $role, array $attributes = []): User
 
     return $user;
 }
+
+// ---------------------------------------------------------------- Wave
+
+it('stores each Wave account on its own', function (): void {
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('waveShopApiKey', 'cle-boutique')
+        ->set('waveShopWebhookSecret', 'secret-boutique')
+        ->call('saveWaveShop')
+        ->assertHasNoErrors()
+        ->set('waveTopupApiKey', 'cle-recharge')
+        ->set('waveTopupWebhookSecret', 'secret-recharge')
+        ->call('saveWaveTopup')
+        ->assertHasNoErrors();
+
+    // Les deux comptes ne doivent jamais se mélanger : encaisser une commande
+    // sur le compte de recharge fausserait la réconciliation comptable.
+    expect(app(WaveShopSettings::class)->api_key)->toBe('cle-boutique')
+        ->and(app(WaveShopSettings::class)->webhook_secret)->toBe('secret-boutique')
+        ->and(app(WaveTopupSettings::class)->api_key)->toBe('cle-recharge')
+        ->and(app(WaveTopupSettings::class)->webhook_secret)->toBe('secret-recharge');
+});
+
+it('leaves the other Wave account untouched when saving one', function (): void {
+    $topup = app(WaveTopupSettings::class);
+    $topup->api_key = 'cle-recharge-en-place';
+    $topup->webhook_secret = 'secret-recharge-en-place';
+    $topup->save();
+
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('waveShopApiKey', 'cle-boutique')
+        ->call('saveWaveShop')
+        ->assertHasNoErrors();
+
+    // Régler la boutique ne doit pas couper l'encaissement des recharges.
+    expect(app(WaveTopupSettings::class)->api_key)->toBe('cle-recharge-en-place')
+        ->and(app(WaveTopupSettings::class)->webhook_secret)->toBe('secret-recharge-en-place');
+});
+
+it('keeps the stored Wave secrets when the fields are left empty', function (): void {
+    $shop = app(WaveShopSettings::class);
+    $shop->api_key = 'cle-deja-en-place';
+    $shop->webhook_secret = 'secret-deja-en-place';
+    $shop->save();
+
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('waveShopWebhookSecret', 'nouveau-secret')
+        ->call('saveWaveShop')
+        ->assertHasNoErrors();
+
+    // Enregistrer un secret ne doit pas effacer la clé au passage.
+    expect(app(WaveShopSettings::class)->api_key)->toBe('cle-deja-en-place')
+        ->and(app(WaveShopSettings::class)->webhook_secret)->toBe('nouveau-secret');
+});
+
+it('never sends the stored Wave secrets back to the browser', function (): void {
+    $shop = app(WaveShopSettings::class);
+    $shop->api_key = 'cle-boutique-secrete';
+    $shop->save();
+
+    $topup = app(WaveTopupSettings::class);
+    $topup->webhook_secret = 'secret-recharge-tres-secret';
+    $topup->save();
+
+    $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        ->assertDontSee('cle-boutique-secrete')
+        ->assertDontSee('secret-recharge-tres-secret');
+});
+
+it('shows the callback URL of each Wave account', function (): void {
+    // Chaque compte doit pointer son propre rappel : c'est le segment d'URL qui
+    // désigne le secret à vérifier.
+    $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        ->assertSee(route('webhooks.wave', ['account' => 'shop']))
+        ->assertSee(route('webhooks.wave', ['account' => 'topup']));
+});

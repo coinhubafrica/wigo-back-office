@@ -42,7 +42,6 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <!-- Signature du webhook Wave : la doublure calcule le vrai HMAC. -->
-        <env name="WAVE_WEBHOOK_SECRET" value="secret-wave-test"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

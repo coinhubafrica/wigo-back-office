@@ -18,3 +18,10 @@ Décisions à ne pas redéfaire :
 - `SyncFleetJob` **échoue franchement sur 401/403** (clé refusée, inutile de réessayer), remet en file sinon.
 
 Un véhicule tient sur une seule ligne : une réaffectation déplace `driver_id` (cf. `.ai/rules/models.md`). La passe « parc » ne touche pas `driver_id`, pour ne pas détacher ce que la passe « conducteurs » vient de rattacher.
+
+## Yango : un seul chemin, Saloon + FleetSettings
+Tout appel à l'API Yango passe par Saloon (`app/Http/Integrations/Yango/`) et lit ses identifiants dans `FleetSettings` (base, chiffrés), résolus à l'appel.
+
+`HttpFleetClient` a été supprimé : il lisait `config('services.fleet.*')`, soit une seconde source d'identifiants pour le même parc — jamais renseignée en pratique, si bien que les crédits partaient avec un jeton vide et échouaient en silence (`isConfigured()` ne regardait que l'URL). Les variables `FLEET_BASE_URL`/`FLEET_API_KEY`/`FLEET_PARK_ID` sont retirées ; seul `FLEET_DRIVER` (`fake`|autre) reste.
+
+Contrat d'erreur inchangé et volontairement inverse : `FleetDirectory` (`SaloonFleetDirectory`) lève, `FleetClient` (`SaloonFleetClient`) rend `false`/`null`.

@@ -25,3 +25,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | tests/** | .ai/rules/tests.md |
 | app/Livewire/Vehicles/** | .ai/rules/vehicles.md |
 | resources/views/** | .ai/rules/views.md |
+| app/Services/Wave/** | .ai/rules/wave.md |

@@ -11,12 +11,12 @@ use App\Services\Fcm\HttpPushSender;
 use App\Services\Fcm\LogPushSender;
 use App\Services\Fleet\FakeFleetClient;
 use App\Services\Fleet\FakeFleetDirectory;
-use App\Services\Fleet\HttpFleetClient;
+use App\Services\Fleet\SaloonFleetClient;
 use App\Services\Fleet\SaloonFleetDirectory;
 use App\Services\Sms\HttpSmsSender;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Wave\FakeWaveClient;
-use App\Services\Wave\HttpWaveClient;
+use App\Services\Wave\SaloonWaveClient;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -48,7 +48,7 @@ class IntegrationServiceProvider extends ServiceProvider
                 return new FakeWaveClient;
             }
 
-            return new HttpWaveClient;
+            return new SaloonWaveClient;
         });
 
         $this->app->singleton(FleetClient::class, function (): FleetClient {
@@ -56,7 +56,7 @@ class IntegrationServiceProvider extends ServiceProvider
                 return new FakeFleetClient;
             }
 
-            return new HttpFleetClient;
+            return new SaloonFleetClient;
         });
 
         $this->app->singleton(FleetDirectory::class, function (): FleetDirectory {

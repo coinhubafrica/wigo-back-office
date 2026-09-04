@@ -883,6 +883,21 @@ return [
         'fleet_test_empty' => 'Connexion établie, mais Yango ne remonte aucun conducteur.',
         'fleet_test_failed_status' => 'Échec (:status) : :message',
 
+        'wave_shop_title' => 'Wave — Boutique',
+        'wave_shop_hint' => 'Compte qui encaisse les commandes de la boutique.',
+        'wave_topup_title' => 'Wave — Recharge Yango',
+        'wave_topup_hint' => 'Compte qui encaisse les recharges de portefeuille.',
+        'wave_api_key' => "Clé d'API",
+        'wave_webhook_secret' => 'Secret du webhook',
+        'wave_secret_hint' => 'Laissez vide pour conserver ce qui est enregistré.',
+        'wave_key_set' => "Une clé d'API est enregistrée.",
+        'wave_key_missing' => "Aucune clé d'API : ce compte ne peut pas encaisser.",
+        'wave_secret_set' => 'Un secret de webhook est enregistré.',
+        'wave_secret_missing' => 'Aucun secret : les callbacks de ce compte seront refusés.',
+        'wave_callback' => 'URL de rappel à déclarer chez Wave :',
+        'wave_shop_saved' => 'Compte Wave de la boutique enregistré.',
+        'wave_topup_saved' => 'Compte Wave de la recharge enregistré.',
+
         'save' => 'Enregistrer',
 
         'env_title' => "Réglages pilotés par l'environnement",

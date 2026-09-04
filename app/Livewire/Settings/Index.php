@@ -7,12 +7,16 @@ use App\Services\Fleet\FleetConnectionTester;
 use App\Settings\FleetSettings;
 use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
+use App\Settings\WaveAccountSettings;
+use App\Settings\WaveShopSettings;
+use App\Settings\WaveTopupSettings;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Réglages métier : barème OTP, plafonds de recharge et accès au parc Yango.
+ * Réglages métier : barème OTP, plafonds de recharge, accès au parc Yango et
+ * clés des deux comptes Wave (boutique et recharge).
  *
  * Seules les valeurs que le métier ajuste sont ici. Les interrupteurs de
  * sécurité et de déploiement (contournement d'OTP, jeton de documentation,
@@ -60,6 +64,23 @@ class Index extends Component
 
     public ?string $fleetTestMessage = null;
 
+    /**
+     * Clés et secrets des deux comptes Wave.
+     *
+     * Jamais pré-remplis, comme la clé Yango : vide à l'affichage signifie « on
+     * garde celui déjà enregistré ». Les deux comptes ont chacun leur panneau
+     * et leur enregistrement — la boutique et la recharge n'ont aucune raison
+     * de partager une clé, et les régler d'un seul geste invitait à les
+     * confondre.
+     */
+    public string $waveShopApiKey = '';
+
+    public string $waveShopWebhookSecret = '';
+
+    public string $waveTopupApiKey = '';
+
+    public string $waveTopupWebhookSecret = '';
+
     public function mount(OtpSettings $otp, RechargeSettings $recharge, FleetSettings $fleet): void
     {
         $this->otpLength = $otp->length;
@@ -77,6 +98,59 @@ class Index extends Component
 
         $this->fleetBaseUrl = $fleet->base_url;
         $this->fleetParkId = $fleet->park_id;
+    }
+
+    public function saveWaveShop(WaveShopSettings $shop): void
+    {
+        $this->validate([
+            // Facultatifs : laissés vides, les secrets déjà enregistrés sont
+            // conservés.
+            'waveShopApiKey' => 'nullable|string|max:255',
+            'waveShopWebhookSecret' => 'nullable|string|max:255',
+        ]);
+
+        $this->storeWaveAccount($shop, $this->waveShopApiKey, $this->waveShopWebhookSecret);
+
+        // Rien ne repart vers le navigateur une fois enregistré.
+        $this->waveShopApiKey = '';
+        $this->waveShopWebhookSecret = '';
+
+        $this->dispatch('toast', message: __('backoffice.settings.wave_shop_saved'));
+    }
+
+    public function saveWaveTopup(WaveTopupSettings $topup): void
+    {
+        $this->validate([
+            'waveTopupApiKey' => 'nullable|string|max:255',
+            'waveTopupWebhookSecret' => 'nullable|string|max:255',
+        ]);
+
+        $this->storeWaveAccount($topup, $this->waveTopupApiKey, $this->waveTopupWebhookSecret);
+
+        $this->waveTopupApiKey = '';
+        $this->waveTopupWebhookSecret = '';
+
+        $this->dispatch('toast', message: __('backoffice.settings.wave_topup_saved'));
+    }
+
+    /**
+     * Enregistre un compte Wave sans toucher à l'autre.
+     *
+     * Un champ vide conserve la valeur déjà en place : le formulaire n'affiche
+     * jamais les secrets, les effacer parce qu'on n'a rien saisi couperait
+     * l'encaissement.
+     */
+    private function storeWaveAccount(WaveAccountSettings $settings, string $apiKey, string $webhookSecret): void
+    {
+        if (filled($apiKey)) {
+            $settings->api_key = $apiKey;
+        }
+
+        if (filled($webhookSecret)) {
+            $settings->webhook_secret = $webhookSecret;
+        }
+
+        $settings->save();
     }
 
     public function saveOtp(OtpSettings $otp): void
@@ -173,7 +247,7 @@ class Index extends Component
         };
     }
 
-    public function render(FleetSettings $fleet): View
+    public function render(FleetSettings $fleet, WaveShopSettings $shop, WaveTopupSettings $topup): View
     {
         /** @var view-string $view */
         $view = 'livewire.settings.index';
@@ -183,6 +257,10 @@ class Index extends Component
             // est publiée, pour dire si la synchronisation peut tourner et si
             // le test a un sens.
             'fleetKeyStored' => filled($fleet->api_key),
+            'waveShopKeyStored' => $shop->isConfigured(),
+            'waveShopSecretStored' => filled($shop->webhook_secret),
+            'waveTopupKeyStored' => $topup->isConfigured(),
+            'waveTopupSecretStored' => filled($topup->webhook_secret),
         ]);
     }
 }

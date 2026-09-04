@@ -96,6 +96,94 @@
         </x-slot:footer>
     </x-panel>
 
+    {{--
+        Un panneau par compte Wave : la boutique et la recharge Yango
+        s'ouvrent et se renouvellent séparément, les enregistrer d'un seul
+        geste invitait à les confondre. Aucun champ n'est pré-rempli —
+        laisser vide conserve ce qui est enregistré.
+    --}}
+    <x-panel :title="__('backoffice.settings.wave_shop_title')" :subtitle="__('backoffice.settings.wave_shop_hint')">
+        <form id="settings-wave-shop" wire:submit="saveWaveShop" class="grid gap-4">
+            <x-field
+                :label="__('backoffice.settings.wave_api_key')"
+                name="waveShopApiKey"
+                type="password"
+                wire:model="waveShopApiKey"
+                autocomplete="new-password"
+                :hint="__('backoffice.settings.wave_secret_hint')"
+            />
+            <x-field
+                :label="__('backoffice.settings.wave_webhook_secret')"
+                name="waveShopWebhookSecret"
+                type="password"
+                wire:model="waveShopWebhookSecret"
+                autocomplete="new-password"
+            />
+
+            <p @class(['text-xs', 'text-muted' => $waveShopKeyStored, 'text-err-text' => ! $waveShopKeyStored])>
+                {{ $waveShopKeyStored ? __('backoffice.settings.wave_key_set') : __('backoffice.settings.wave_key_missing') }}
+            </p>
+            <p @class(['text-xs', 'text-muted' => $waveShopSecretStored, 'text-err-text' => ! $waveShopSecretStored])>
+                {{ $waveShopSecretStored ? __('backoffice.settings.wave_secret_set') : __('backoffice.settings.wave_secret_missing') }}
+            </p>
+
+            <p class="text-xs text-muted">
+                {{ __('backoffice.settings.wave_callback') }}
+                <code class="break-all">{{ route('webhooks.wave', ['account' => 'shop']) }}</code>
+            </p>
+        </form>
+
+        <x-slot:footer>
+            <div class="flex justify-end">
+                <x-button type="submit" form="settings-wave-shop" target="saveWaveShop">
+                    {{ __('backoffice.settings.save') }}
+                    <x-slot:loading>{{ __('backoffice.common.saving') }}</x-slot:loading>
+                </x-button>
+            </div>
+        </x-slot:footer>
+    </x-panel>
+
+    <x-panel :title="__('backoffice.settings.wave_topup_title')" :subtitle="__('backoffice.settings.wave_topup_hint')">
+        <form id="settings-wave-topup" wire:submit="saveWaveTopup" class="grid gap-4">
+            <x-field
+                :label="__('backoffice.settings.wave_api_key')"
+                name="waveTopupApiKey"
+                type="password"
+                wire:model="waveTopupApiKey"
+                autocomplete="new-password"
+                :hint="__('backoffice.settings.wave_secret_hint')"
+            />
+            <x-field
+                :label="__('backoffice.settings.wave_webhook_secret')"
+                name="waveTopupWebhookSecret"
+                type="password"
+                wire:model="waveTopupWebhookSecret"
+                autocomplete="new-password"
+            />
+
+            <p @class(['text-xs', 'text-muted' => $waveTopupKeyStored, 'text-err-text' => ! $waveTopupKeyStored])>
+                {{ $waveTopupKeyStored ? __('backoffice.settings.wave_key_set') : __('backoffice.settings.wave_key_missing') }}
+            </p>
+            <p @class(['text-xs', 'text-muted' => $waveTopupSecretStored, 'text-err-text' => ! $waveTopupSecretStored])>
+                {{ $waveTopupSecretStored ? __('backoffice.settings.wave_secret_set') : __('backoffice.settings.wave_secret_missing') }}
+            </p>
+
+            <p class="text-xs text-muted">
+                {{ __('backoffice.settings.wave_callback') }}
+                <code class="break-all">{{ route('webhooks.wave', ['account' => 'topup']) }}</code>
+            </p>
+        </form>
+
+        <x-slot:footer>
+            <div class="flex justify-end">
+                <x-button type="submit" form="settings-wave-topup" target="saveWaveTopup">
+                    {{ __('backoffice.settings.save') }}
+                    <x-slot:loading>{{ __('backoffice.common.saving') }}</x-slot:loading>
+                </x-button>
+            </div>
+        </x-slot:footer>
+    </x-panel>
+
     {{-- Ce qui n'est délibérément pas modifiable ici. --}}
     <section class="rounded border border-dashed border-line bg-surface p-5 lg:col-span-2" aria-labelledby="settings-env-title">
         <h2 id="settings-env-title" class="text-sm font-semibold text-ink">{{ __('backoffice.settings.env_title') }}</h2>

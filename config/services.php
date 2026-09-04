@@ -58,17 +58,14 @@ return [
     ],
 
     /*
-    | Wave Checkout — encaissement Mobile Money des recharges.
+    | Wave Checkout — encaissement Mobile Money.
     |
     | `driver` à `fake` (défaut) coupe toute sortie réseau : sessions
-    | déterministes, aucun paiement réel. `webhook_secret` sert à vérifier la
-    | signature HMAC-SHA256 du callback, y compris avec la doublure.
+    | déterministes, aucun paiement réel. Les clés et secrets des deux comptes
+    | (boutique et recharge) vivent dans `WaveSettings`, réglables à l'écran.
     */
     'wave' => [
         'driver' => env('WAVE_DRIVER', 'fake'),
-        'base_url' => env('WAVE_BASE_URL'),
-        'api_key' => env('WAVE_API_KEY'),
-        'webhook_secret' => env('WAVE_WEBHOOK_SECRET'),
     ],
 
     /*
@@ -77,9 +74,6 @@ return [
     */
     'fleet' => [
         'driver' => env('FLEET_DRIVER', 'fake'),
-        'base_url' => env('FLEET_BASE_URL'),
-        'api_key' => env('FLEET_API_KEY'),
-        'park_id' => env('FLEET_PARK_ID'),
     ],
 
 ];

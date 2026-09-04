@@ -4,18 +4,20 @@ namespace App\Services\Wave;
 
 use App\Contracts\WaveClient;
 use App\Models\Transaction;
+use App\Settings\WaveAccount;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Doublure locale : aucune sortie réseau, sessions déterministes.
  *
- * `verifySignature()` calcule le VRAI HMAC contre le secret configuré plutôt
- * que de rendre `true` : les tests de signature du webhook doivent éprouver
- * l'algorithme, pas le contourner.
+ * `verifySignature()` calcule le VRAI HMAC contre le secret du compte visé
+ * plutôt que de rendre `true` : les tests de signature du webhook doivent
+ * éprouver l'algorithme, pas le contourner — y compris le fait qu'un compte ne
+ * valide pas la signature de l'autre.
  */
 class FakeWaveClient implements WaveClient
 {
-    /** @var list<array{reference: string, amount: int, session_id: string}> */
+    /** @var list<array{reference: string, amount: int, session_id: string, account: string}> */
     private array $sessions = [];
 
     private bool $refuseNext = false;
@@ -31,16 +33,19 @@ class FakeWaveClient implements WaveClient
         }
 
         $sessionId = 'cos-fake-'.$transaction->reference;
+        $account = SaloonWaveClient::accountFor($transaction->type);
 
         $this->sessions[] = [
             'reference' => $transaction->reference,
             'amount' => $transaction->amount,
             'session_id' => $sessionId,
+            'account' => $account->value,
         ];
 
         Log::info('Wave (local) : session ouverte', [
             'reference' => $transaction->reference,
             'amount' => $transaction->amount,
+            'account' => $account->value,
         ]);
 
         return new WaveCheckoutSession(
@@ -49,9 +54,9 @@ class FakeWaveClient implements WaveClient
         );
     }
 
-    public function verifySignature(string $payload, ?string $signature): bool
+    public function verifySignature(WaveAccount $account, string $payload, ?string $signature): bool
     {
-        $secret = (string) config('services.wave.webhook_secret');
+        $secret = $account->settings()->webhook_secret;
 
         if ($secret === '' || ! is_string($signature) || $signature === '') {
             return false;
@@ -60,7 +65,7 @@ class FakeWaveClient implements WaveClient
         return hash_equals(hash_hmac('sha256', $payload, $secret), $signature);
     }
 
-    public function businessBalance(): ?int
+    public function businessBalance(WaveAccount $account): ?int
     {
         return $this->balance;
     }
@@ -68,7 +73,7 @@ class FakeWaveClient implements WaveClient
     /**
      * Sessions ouvertes depuis le démarrage, pour inspection dans les tests.
      *
-     * @return list<array{reference: string, amount: int, session_id: string}>
+     * @return list<array{reference: string, amount: int, session_id: string, account: string}>
      */
     public function sessions(): array
     {

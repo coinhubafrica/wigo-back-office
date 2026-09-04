@@ -4,13 +4,30 @@ use App\Enums\TransactionStatus;
 use App\Jobs\CreditRechargeJob;
 use App\Models\Driver;
 use App\Models\Transaction;
+use App\Settings\WaveAccount;
+use App\Settings\WaveShopSettings;
+use App\Settings\WaveTopupSettings;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
+
+beforeEach(function (): void {
+    // Deux secrets distincts : c'est ce qui permet de vérifier qu'un compte ne
+    // valide pas la signature de l'autre.
+    $shop = app(WaveShopSettings::class);
+    $shop->api_key = 'shop-key';
+    $shop->webhook_secret = 'secret-shop-test';
+    $shop->save();
+
+    $topup = app(WaveTopupSettings::class);
+    $topup->api_key = 'topup-key';
+    $topup->webhook_secret = 'secret-topup-test';
+    $topup->save();
+});
 
 it('refuses a missing signature', function (): void {
     Queue::fake();
 
-    $this->postJson(route('webhooks.wave'), wavePayload('RCH-2026-0001'))
+    $this->postJson(waveWebhookUrl(), wavePayload('RCH-2026-0001'))
         ->assertUnauthorized()
         ->assertJsonPath('message', __('api.recharge.invalid_signature'));
 
@@ -24,7 +41,7 @@ it('refuses an invalid signature', function (): void {
 
     $this->call(
         'POST',
-        route('webhooks.wave'),
+        waveWebhookUrl(),
         server: waveServerHeaders('signature-inventee'),
         content: json_encode($payload) ?: '',
     )->assertUnauthorized();
@@ -85,6 +102,43 @@ it('never credits twice when replaying the same webhook', function (): void {
     $this->assertSame(1, $driver->notifications()->count());
 });
 
+it('refuses a signature made with the other account secret', function (): void {
+    Queue::fake();
+
+    $body = json_encode(wavePayload('RCH-2026-0001')) ?: '';
+    // Signé avec le secret boutique, présenté à l'URL recharge : chaque compte
+    // n'authentifie que ses propres callbacks.
+    $signature = hash_hmac('sha256', $body, 'secret-shop-test');
+
+    test()->call(
+        'POST',
+        waveWebhookUrl(WaveAccount::Topup),
+        server: waveServerHeaders($signature),
+        content: $body,
+    )->assertUnauthorized();
+
+    Queue::assertNothingPushed();
+});
+
+it('does not queue a recharge for a shop payment', function (): void {
+    Queue::fake();
+
+    // La boutique n'est pas branchée : le règlement est accusé et tracé, jamais
+    // porté au portefeuille Yango.
+    postSignedWave(wavePayload('CMD-2026-0001'), WaveAccount::Shop)->assertOk();
+
+    Queue::assertNothingPushed();
+});
+
+it('rejects an unknown account segment', function (): void {
+    Queue::fake();
+
+    $this->postJson('/api/webhooks/wave/inconnu', wavePayload('RCH-2026-0001'))
+        ->assertNotFound();
+
+    Queue::assertNothingPushed();
+});
+
 it('needs neither a token nor a driver session', function (): void {
     Queue::fake();
 
@@ -92,18 +146,23 @@ it('needs neither a token nor a driver session', function (): void {
     postSignedWave(wavePayload('RCH-2026-0001'))->assertOk();
 });
 
+function waveWebhookUrl(WaveAccount $account = WaveAccount::Topup): string
+{
+    return route('webhooks.wave', ['account' => $account->value]);
+}
+
 /**
  * @param  array<string, mixed>  $payload
  */
-function postSignedWave(array $payload): TestResponse
+function postSignedWave(array $payload, WaveAccount $account = WaveAccount::Topup): TestResponse
 {
     $body = json_encode($payload) ?: '';
-    $signature = hash_hmac('sha256', $body, (string) config('services.wave.webhook_secret'));
+    $secret = $account->settings()->webhook_secret;
 
     return test()->call(
         'POST',
-        route('webhooks.wave'),
-        server: waveServerHeaders($signature),
+        waveWebhookUrl($account),
+        server: waveServerHeaders(hash_hmac('sha256', $body, $secret)),
         content: $body,
     );
 }

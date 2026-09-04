@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Contracts\WaveClient;
+use App\Settings\WaveAccount;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,11 @@ use Symfony\Component\HttpFoundation\Response;
  * Sans elle, n'importe qui pourrait déclarer un paiement et faire créditer un
  * solde. Le HMAC porte sur le corps BRUT — le relire après décodage JSON
  * donnerait un autre condensat.
+ *
+ * Le compte vient du segment d'URL (`webhooks/wave/{account}`), jamais du
+ * corps : chaque compte Wave a son propre secret, et un payload ne peut pas
+ * désigner lui-même la clé censée l'authentifier. Un segment inconnu est
+ * refusé sans même tenter de vérifier.
  */
 class VerifyWaveSignature
 {
@@ -26,10 +32,12 @@ class VerifyWaveSignature
     public function handle(Request $request, Closure $next): Response
     {
         $signature = $request->header(self::HEADER);
+        $account = WaveAccount::tryFrom((string) $request->route('account'));
 
-        if (! $this->wave->verifySignature($request->getContent(), $signature)) {
+        if ($account === null || ! $this->wave->verifySignature($account, $request->getContent(), $signature)) {
             Log::warning('Wave : signature de webhook refusée', [
                 'ip' => $request->ip(),
+                'account' => $request->route('account'),
                 'has_signature' => $signature !== null,
             ]);
 
