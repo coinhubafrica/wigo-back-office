@@ -121,6 +121,43 @@ class User extends Authenticatable
     }
 
     /**
+     * Droits accordés par les rôles, avec le rôle qui les porte.
+     *
+     * L'écran des droits doit pouvoir dire *pourquoi* une case est cochée :
+     * une permission héritée d'un rôle ne se retire pas au niveau de
+     * l'utilisateur, seulement en lui ôtant le rôle. Sans cette distinction,
+     * une case cochée-verrouillée serait inexplicable.
+     *
+     * @return array<string, list<string>> permission => libellés des rôles
+     */
+    public function permissionsByRole(): array
+    {
+        $this->loadMissing('roles.permissions');
+
+        $sources = [];
+
+        foreach ($this->roles as $role) {
+            foreach ($role->permissions as $permission) {
+                $sources[$permission->name][] = $role->label ?? $role->name;
+            }
+        }
+
+        return $sources;
+    }
+
+    /**
+     * Droits attachés à l'utilisateur seul, hors rôles.
+     *
+     * @return list<string>
+     */
+    public function directPermissionNames(): array
+    {
+        $this->loadMissing('permissions');
+
+        return $this->permissions->pluck('name')->all();
+    }
+
+    /**
      * Get the user's initials
      */
     public function initials(): string

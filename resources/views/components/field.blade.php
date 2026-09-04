@@ -76,7 +76,7 @@
             // L'œil « serveur » n'apparaît qu'à qui peut s'en servir : sinon il
             // proposerait une action systématiquement refusée.
             $canReveal = $reveal !== null
-                && (filled($revealed) || auth()->user()?->can(\App\Support\RevealsSecrets::PERMISSION));
+                && (filled($revealed) || auth()->user()?->can(\App\Enums\Permission::SettingsRevealSecrets->value));
         @endphp
         @if ($canReveal)
             {{-- L'œil interroge le serveur : le secret enregistré n'est pas dans

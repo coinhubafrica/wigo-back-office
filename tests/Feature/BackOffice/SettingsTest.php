@@ -7,6 +7,7 @@
 
 use App\Contracts\FleetDirectory;
 use App\Enums\BackOfficeModule;
+use App\Enums\Permission as BackOfficePermission;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Livewire\Settings\Index;
 use App\Models\AuditLog;
@@ -17,7 +18,6 @@ use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
 use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
-use App\Support\RevealsSecrets;
 use Database\Seeders\RolePermissionSeeder;
 use Livewire\Livewire;
 
@@ -399,7 +399,7 @@ it('refuses to reveal without the dedicated permission', function (): void {
     // un plafond et lire la clé d'encaissement sont deux décisions.
     $admin = settingsUser('admin');
 
-    expect($admin->can(RevealsSecrets::PERMISSION))->toBeFalse();
+    expect($admin->can(BackOfficePermission::SettingsRevealSecrets->value))->toBeFalse();
 
     Livewire::actingAs($admin)
         ->test(Index::class)
@@ -492,7 +492,7 @@ function settingsFieldTag(string $html, string $id): string
 function settingsRevealer(): User
 {
     $user = settingsUser('admin');
-    $user->givePermissionTo(RevealsSecrets::PERMISSION);
+    $user->givePermissionTo(BackOfficePermission::SettingsRevealSecrets->value);
 
     return $user->fresh();
 }

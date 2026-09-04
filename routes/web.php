@@ -20,6 +20,8 @@ use App\Livewire\Shop\Catalogue as ShopCatalogue;
 use App\Livewire\Shop\Orders as ShopOrders;
 use App\Livewire\SupportRequests\Index as SupportRequestsIndex;
 use App\Livewire\SupportRequests\Templates as SupportRequestsTemplates;
+use App\Livewire\Users\Index as UsersIndex;
+use App\Livewire\Users\Roles as UsersRoles;
 use App\Livewire\Vehicles\Index as VehiclesIndex;
 use App\Livewire\Vehicles\Show as VehiclesShow;
 use Illuminate\Support\Facades\Auth;
@@ -137,6 +139,19 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::get('support-requests/attachments/{attachment}', MessageAttachmentController::class)
         ->middleware('permission:'.BackOfficeModule::SupportRequests->permission())
         ->name('bo.support-requests.attachment');
+
+    /*
+    | Comptes du back-office et matrice des droits. Deux pages : la liste des
+    | utilisateurs et l'éditeur de rôles. La permission du module ouvre la
+    | lecture ; écrire demande en plus `users.manage` / `roles.manage`.
+    */
+    Route::livewire('users', UsersIndex::class)
+        ->middleware('permission:'.BackOfficeModule::Users->permission())
+        ->name(BackOfficeModule::Users->route());
+
+    Route::livewire('users/roles', UsersRoles::class)
+        ->middleware('permission:'.BackOfficeModule::Users->permission())
+        ->name('bo.users.roles');
 
     Route::livewire('settings', SettingsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Settings->permission())

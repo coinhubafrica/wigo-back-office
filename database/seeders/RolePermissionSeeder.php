@@ -2,8 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Enums\BackOfficeModule;
-use App\Support\RevealsSecrets;
+use App\Enums\Permission as BackOfficePermission;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -12,24 +11,20 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Permissions et rôles initiaux du back-office.
  *
- * Les permissions sont dérivées des modules (elles suivent le code). Les rôles,
- * eux, sont administrés dans Paramètres : ce seeder ne fait que poser la matrice
- * de départ du cahier des charges, sans écraser les rôles existants.
+ * Les permissions sont dérivées de l'énumération `Permission` (elles suivent le
+ * code). Les rôles, eux, sont administrés dans « Utilisateurs et rôles » : ce
+ * seeder ne fait que poser la matrice de départ du cahier des charges, sans
+ * écraser les rôles existants.
  */
 class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        // Une permission par module : celles-ci suivent le code, on les
-        // synchronise systématiquement.
-        foreach (BackOfficeModule::cases() as $module) {
-            Permission::findOrCreate($module->permission(), 'web');
+        // Le catalogue des droits suit le code : on le synchronise
+        // systématiquement, accès aux modules comme actions sensibles.
+        foreach (BackOfficePermission::cases() as $permission) {
+            Permission::findOrCreate($permission->value, 'web');
         }
-
-        // Lire une clé d'API en clair est une action à part : accéder aux
-        // Paramètres pour régler un plafond n'implique pas de pouvoir relever
-        // les secrets d'encaissement. Deux droits, deux décisions.
-        Permission::findOrCreate(RevealsSecrets::PERMISSION, 'web');
 
         // Le cache doit être vidé APRÈS la création : sinon `syncPermissions`
         // résout les noms sur un cache antérieur aux nouvelles permissions
@@ -48,13 +43,10 @@ class RolePermissionSeeder extends Seeder
             // Rôle déjà personnalisé dans le back-office : on ne touche pas à
             // ses permissions, seul le libellé est rafraîchi.
             if ($role->wasRecentlyCreated) {
-                $role->syncPermissions([
-                    ...array_map(
-                        fn (BackOfficeModule $module): string => $module->permission(),
-                        $definition['modules'],
-                    ),
-                    ...($definition['reveals_secrets'] ?? false ? [RevealsSecrets::PERMISSION] : []),
-                ]);
+                $role->syncPermissions(array_map(
+                    fn (BackOfficePermission $permission): string => $permission->value,
+                    $definition['permissions'],
+                ));
             }
         }
 
@@ -62,62 +54,69 @@ class RolePermissionSeeder extends Seeder
     }
 
     /**
-     * @return array<string, array{label: string, description: string, modules: list<BackOfficeModule>, reveals_secrets?: bool}>
+     * @return array<string, array{label: string, description: string, permissions: list<BackOfficePermission>}>
      */
     private function initialRoles(): array
     {
         $support = [
-            BackOfficeModule::Dashboard,
-            BackOfficeModule::Drivers,
-            BackOfficeModule::Vehicles,
-            BackOfficeModule::SupportRequests,
-            BackOfficeModule::Cnps,
-            BackOfficeModule::Shop,
-            BackOfficeModule::ShopOrders,
-            BackOfficeModule::Campaigns,
+            BackOfficePermission::ModuleDashboard,
+            BackOfficePermission::ModuleDrivers,
+            BackOfficePermission::ModuleVehicles,
+            BackOfficePermission::ModuleSupportRequests,
+            BackOfficePermission::ModuleCnps,
+            BackOfficePermission::ModuleShop,
+            BackOfficePermission::ModuleShopOrders,
+            BackOfficePermission::ModuleCampaigns,
         ];
 
         return [
             'gestionnaire' => [
                 'label' => 'Gestionnaire plateforme',
                 'description' => 'Suivi du parc, support, CNPS et boutique.',
-                'modules' => $support,
+                'permissions' => $support,
             ],
             'bonus' => [
                 'label' => 'Responsable Bonus / Animation',
                 'description' => 'Gestionnaire plateforme, plus les challenges, paiements et annonces.',
-                'modules' => [
+                'permissions' => [
                     ...$support,
-                    BackOfficeModule::Challenges,
-                    BackOfficeModule::Recharges,
-                    BackOfficeModule::Announcements,
+                    BackOfficePermission::ModuleChallenges,
+                    BackOfficePermission::ModuleRecharges,
+                    BackOfficePermission::ModuleAnnouncements,
+                    // Rejouer un crédit fait partie du métier du rôle : c'est
+                    // lui qui suit les recharges au quotidien.
+                    BackOfficePermission::RechargesReconcile,
                 ],
             ],
             'stock' => [
                 'label' => 'Gestionnaire catalogue',
                 'description' => 'Requêtes et boutique uniquement.',
-                'modules' => [
-                    BackOfficeModule::SupportRequests,
-                    BackOfficeModule::Shop,
-                    BackOfficeModule::ShopOrders,
+                'permissions' => [
+                    BackOfficePermission::ModuleSupportRequests,
+                    BackOfficePermission::ModuleShop,
+                    BackOfficePermission::ModuleShopOrders,
+                    BackOfficePermission::ShopManageCatalogue,
                 ],
             ],
             'admin' => [
                 'label' => 'Administrateur',
-                'description' => "Paramétrage et journal d'audit.",
-                'modules' => [
-                    BackOfficeModule::Dashboard,
-                    BackOfficeModule::Settings,
-                    BackOfficeModule::Audit,
+                'description' => "Comptes, paramétrage et journal d'audit.",
+                'permissions' => [
+                    BackOfficePermission::ModuleDashboard,
+                    BackOfficePermission::ModuleUsers,
+                    BackOfficePermission::ModuleSettings,
+                    BackOfficePermission::ModuleAudit,
+                    // L'administrateur tient les comptes et les rôles, mais ne
+                    // relève pas les clés d'encaissement : régler un plafond et
+                    // lire le secret qui encaisse ne sont pas la même décision.
+                    BackOfficePermission::UsersManage,
+                    BackOfficePermission::RolesManage,
                 ],
             ],
             'direction' => [
                 'label' => 'Directeur',
-                'description' => 'Accès à tous les modules.',
-                'modules' => BackOfficeModule::cases(),
-                // Seule la direction relève les clés en clair par défaut ; le
-                // droit s'attribue ensuite rôle par rôle depuis Paramètres.
-                'reveals_secrets' => true,
+                'description' => 'Tous les modules et toutes les actions sensibles.',
+                'permissions' => BackOfficePermission::cases(),
             ],
         ];
     }

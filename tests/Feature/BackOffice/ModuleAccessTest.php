@@ -19,8 +19,9 @@ it('shows each role the expected number of modules', function (string $role, int
     'gestionnaire' => ['gestionnaire', 8],
     'bonus' => ['bonus', 11],
     'stock' => ['stock', 3],
-    'admin' => ['admin', 3],
-    'direction' => ['direction', 13],
+    // + « Utilisateurs et rôles », qui a quitté les Paramètres.
+    'admin' => ['admin', 4],
+    'direction' => ['direction', 14],
 ]);
 
 it('lets the bonus role reach the challenges module', function (): void {
@@ -36,6 +37,16 @@ it('only lets admin and direction reach the settings', function (): void {
     $this->assertTrue(moduleAccessUser('direction')->can(BackOfficeModule::Settings->permission()));
     $this->assertFalse(moduleAccessUser('bonus')->can(BackOfficeModule::Settings->permission()));
     $this->assertFalse(moduleAccessUser('stock')->can(BackOfficeModule::Settings->permission()));
+});
+
+it('only lets admin and direction reach users and roles', function (): void {
+    // Le module a quitté les Paramètres : les deux rôles qui les tenaient le
+    // suivent, et personne d'autre ne l'hérite.
+    expect(moduleAccessUser('admin')->can(BackOfficeModule::Users->permission()))->toBeTrue()
+        ->and(moduleAccessUser('direction')->can(BackOfficeModule::Users->permission()))->toBeTrue()
+        ->and(moduleAccessUser('gestionnaire')->can(BackOfficeModule::Users->permission()))->toBeFalse()
+        ->and(moduleAccessUser('bonus')->can(BackOfficeModule::Users->permission()))->toBeFalse()
+        ->and(moduleAccessUser('stock')->can(BackOfficeModule::Users->permission()))->toBeFalse();
 });
 
 it('lets an authorised user reach the dashboard', function (): void {

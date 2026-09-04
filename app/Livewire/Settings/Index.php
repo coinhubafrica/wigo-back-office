@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use App\Enums\BackOfficeModule;
+use App\Enums\Permission as BackOfficePermission;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Fleet\FleetConnectionTester;
@@ -12,7 +13,6 @@ use App\Settings\RechargeSettings;
 use App\Settings\WaveAccountSettings;
 use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
-use App\Support\RevealsSecrets;
 use App\Support\SecretMask;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -161,7 +161,7 @@ class Index extends Component
         /** @var User $user */
         $user = auth()->user();
 
-        if (! $user->can(RevealsSecrets::PERMISSION)) {
+        if (! $user->can(BackOfficePermission::SettingsRevealSecrets->value)) {
             throw new AuthorizationException;
         }
 

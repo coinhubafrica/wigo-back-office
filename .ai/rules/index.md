@@ -11,6 +11,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/views/components/**, resources/views/layouts/**, resources/views/vendor/** | .ai/rules/components.md |
 | docs/api/**, app/Support/Docs/**, app/Http/Controllers/Docs/**, resources/views/docs/** | .ai/rules/docs.md |
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
+| app/Enums/Permission.php,app/Providers/AppServiceProvider.php | .ai/rules/enums-providers.md |
 | app/Services/Fleet/** | .ai/rules/fleet.md |
 | app/Http/** | .ai/rules/http.md |
 | resources/js/app.js | .ai/rules/js.md |
@@ -24,6 +25,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/Shop/** | .ai/rules/shop.md |
 | app/Services/Support/**, app/Services/Support/BroadcastDispatcher.php, app/Services/Support/CampaignDispatcher.php | .ai/rules/support.md |
 | tests/** | .ai/rules/tests.md |
+| app/Livewire/Users/** | .ai/rules/users.md |
 | app/Livewire/Vehicles/** | .ai/rules/vehicles.md |
 | resources/views/** | .ai/rules/views.md |
 | app/Services/Wave/** | .ai/rules/wave.md |

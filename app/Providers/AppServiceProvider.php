@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\Permission;
 use App\Models\Announcement;
 use App\Models\AuditLog;
 use App\Models\Campaign;
@@ -45,6 +46,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Spatie\Permission\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -134,6 +136,9 @@ class AppServiceProvider extends ServiceProvider
             'pickup_point' => PickupPoint::class,
             'prize' => Prize::class,
             'product' => Product::class,
+            // Les rôles sont sujets de lignes d'audit (matrice des droits) :
+            // `enforceMorphMap` lèverait sans cette entrée.
+            'role' => Role::class,
             'shop_order' => ShopOrder::class,
             'shop_order_item' => ShopOrderItem::class,
             'support_request' => SupportRequest::class,
@@ -198,33 +203,46 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Approbation des bonus surprise : action réservée à la direction, non
-     * couverte par la permission `module.challenges` (accès au module) qui
-     * elle est aussi accordée au rôle bonus.
+     * Portails des actions sensibles.
+     *
+     * Chacun consulte une permission de `Permission`, jamais un nom de rôle :
+     * les rôles s'administrent à l'écran (« Utilisateurs et rôles »), un
+     * `hasRole('direction')` en dur figeait une décision d'organisation dans le
+     * code et rendait la matrice des rôles mensongère — on cochait une case
+     * sans effet.
+     *
+     * Les noms de portails sont conservés : ils sont appelés depuis les
+     * composants Livewire et les vues.
      */
     protected function configureAuthorization(): void
     {
-        Gate::define('approveSurpriseChallenge', fn (User $user): bool => $user->hasRole('direction'));
+        $gates = [
+            // Un bonus surprise attribue un prix hors classement : l'accès au
+            // module (partagé avec le rôle bonus) n'ouvre pas l'approbation.
+            'approveSurpriseChallenge' => Permission::ChallengesApproveSurprise,
 
-        /*
-         * Réconciliation des recharges : rejouer un crédit ou marquer une
-         * transaction créditée touche à l'argent d'un conducteur. La
-         * permission `module.recharges` n'ouvre que la lecture du journal.
-         */
-        Gate::define('reconcileRecharges', fn (User $user): bool => $user->hasAnyRole(['bonus', 'direction']));
+            // Rejouer un crédit ou marquer une transaction créditée touche à
+            // l'argent d'un conducteur. `module.recharges` n'ouvre que la
+            // lecture du journal.
+            'reconcileRecharges' => Permission::RechargesReconcile,
 
-        // La permission `module.shop` ouvre le catalogue en lecture à tous les
-        // profils qui suivent la boutique ; écrire — créer une référence, la
-        // fermer à la commande, déplacer une commande — reste au magasinier et
-        // à la direction.
-        Gate::define('manageCatalogue', fn (User $user): bool => $user->hasAnyRole(['stock', 'direction']));
+            // `module.shop` ouvre le catalogue en lecture à tous les profils qui
+            // suivent la boutique ; écrire — créer une référence, la fermer à la
+            // commande, déplacer une commande — est un droit à part.
+            'manageCatalogue' => Permission::ShopManageCatalogue,
 
-        /*
-         * Redistribuer un ticket : un agent reprend le sien à son compte
-         * (« M'assigner », ouvert à tous), mais désigner un *autre*
-         * destinataire est un acte d'encadrement — c'est répartir la charge de
-         * l'équipe, pas traiter une demande.
-         */
-        Gate::define('reassignSupportRequest', fn (User $user): bool => $user->hasRole('direction'));
+            // Un agent reprend le sien à son compte (« M'assigner », ouvert à
+            // tous) ; désigner un *autre* destinataire est un acte
+            // d'encadrement — c'est répartir la charge de l'équipe.
+            'reassignSupportRequest' => Permission::SupportReassign,
+
+            // Tenir les comptes du back-office, et décider qui peut quoi.
+            'manageUsers' => Permission::UsersManage,
+            'manageRoles' => Permission::RolesManage,
+        ];
+
+        foreach ($gates as $ability => $permission) {
+            Gate::define($ability, fn (User $user): bool => $user->can($permission->value));
+        }
     }
 }
