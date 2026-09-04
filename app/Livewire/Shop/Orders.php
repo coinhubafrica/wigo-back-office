@@ -24,7 +24,7 @@ use Livewire\WithPagination;
  * L'écran n'offre que les transitions autorisées par
  * `ShopOrderStatus::allowedTransitions()` ; le service refuse le reste.
  */
-#[Layout('layouts.app', ['module' => BackOfficeModule::Shop])]
+#[Layout('layouts.app', ['module' => BackOfficeModule::ShopOrders])]
 class Orders extends Component
 {
     use WithPagination;

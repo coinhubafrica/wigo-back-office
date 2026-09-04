@@ -9,12 +9,13 @@ namespace App\Enums;
 enum BackOfficeModule: string
 {
     case Dashboard = 'dashboard';
-    case SupportRequests = 'support-requests';
     case Drivers = 'drivers';
+    case SupportRequests = 'support-requests';
     case Challenges = 'challenges';
     case Announcements = 'announcements';
     case Campaigns = 'campaigns';
     case Shop = 'shop';
+    case ShopOrders = 'shop-orders';
     case Recharges = 'recharges';
     case Cnps = 'cnps';
     case Settings = 'settings';
@@ -35,6 +36,7 @@ enum BackOfficeModule: string
             self::Announcements => 'Annonces',
             self::Campaigns => 'Campagnes',
             self::Shop => 'Produits',
+            self::ShopOrders => 'Commandes',
             self::Recharges => 'Recharges',
             self::Cnps => 'CNPS',
             self::Settings => 'Paramètres',
@@ -55,6 +57,7 @@ enum BackOfficeModule: string
             self::Recharges => 'Paiements',
             self::Cnps => 'CNPS (RSTI)',
             self::Shop => 'Boutique',
+            self::ShopOrders => 'Commandes',
             self::Announcements => 'Annonces',
             self::Campaigns => 'Campagnes',
             self::Settings => 'Paramètres',
@@ -69,12 +72,13 @@ enum BackOfficeModule: string
     {
         return match ($this) {
             self::Dashboard => "Vue d'ensemble du parc, de l'activité et de la performance des équipes",
-            self::Drivers => 'Liste, recherche, fiche 360°, modération des photos',
+            self::Drivers => 'Liste, recherche, fiche 360°, suivi CNPS',
             self::SupportRequests => 'File de traitement — chaque requête porte son fil de messages avec le conducteur',
             self::Challenges => 'La base de toute gratification : des critères, une période, un prix — classement, tirage au sort ou bonus surprise',
             self::Recharges => 'Journal des transactions Wave, réconciliation, rejeux',
             self::Cnps => 'Suivi des cotisations déclarées par les conducteurs, mois par mois',
-            self::Shop => 'Catalogue des pièces et de leurs prix, commandes, livraisons',
+            self::Shop => 'Catalogue des pièces et de leurs prix',
+            self::ShopOrders => 'Commandes des conducteurs : préparation, livraison, retraits',
             self::Announcements => "Bannières de l'accueil : image ou vidéo 15–30 s",
             self::Campaigns => 'Un message déposé dans le fil des conducteurs visés : tous, un segment ou un conducteur nommé',
             self::Settings => 'Utilisateurs et rôles, seuils, clés API',
@@ -91,7 +95,7 @@ enum BackOfficeModule: string
             self::Dashboard => 'Pilotage',
             self::SupportRequests, self::Drivers => 'Support',
             self::Challenges, self::Announcements, self::Campaigns => 'Marketing',
-            self::Shop => 'Boutique',
+            self::Shop, self::ShopOrders => 'Boutique',
             self::Recharges, self::Cnps => 'Finance',
             self::Settings, self::Audit => 'Système',
         };
@@ -110,6 +114,7 @@ enum BackOfficeModule: string
             self::Announcements => 'M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 1 1 0-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 0 1-1.44-4.282m3.102.069a18.03 18.03 0 0 1-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 0 1 8.835 2.535M10.34 6.66a23.847 23.847 0 0 0 8.835-2.535m0 0A23.74 23.74 0 0 0 18.795 3m.38 1.125a23.91 23.91 0 0 1 1.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 0 0 1.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 0 1 0 3.46',
             self::Campaigns => 'M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0',
             self::Shop => 'M2.25 3h1.386c.51 0 .955.343 1.087.836l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 1.936-4.762 2.32-7.342a.75.75 0 0 0-.622-.858H5.106M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z',
+            self::ShopOrders => 'M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z',
             self::Recharges => 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z',
             self::Cnps => 'M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z',
             self::Settings => 'M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
@@ -126,7 +131,7 @@ enum BackOfficeModule: string
             self::Dashboard => null,
             self::SupportRequests, self::Drivers => 'Support',
             self::Challenges, self::Announcements, self::Campaigns => 'Marketing',
-            self::Shop => 'Boutique',
+            self::Shop, self::ShopOrders => 'Boutique',
             self::Recharges, self::Cnps => 'Finance',
             self::Settings, self::Audit => 'Système',
         };

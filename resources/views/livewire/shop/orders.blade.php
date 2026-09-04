@@ -1,11 +1,4 @@
 <div>
-    <x-slot:actions>
-        <a href="{{ route(\App\Enums\BackOfficeModule::Shop->route()) }}" wire:navigate
-           class="inline-flex items-center gap-2 rounded border border-line bg-card px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface">
-            {{ __('backoffice.shop.catalogue') }}
-        </a>
-    </x-slot:actions>
-
     <x-toolbar>
         <div class="flex flex-wrap gap-1.5">
             <x-chip-filter wire:click="filterByStatus(null)" :active="$status === null">{{ __('backoffice.shop.all_statuses') }}</x-chip-filter>

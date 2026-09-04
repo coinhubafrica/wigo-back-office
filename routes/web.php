@@ -103,8 +103,8 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
         ->name(BackOfficeModule::Shop->route());
 
     Route::livewire('shop/orders', ShopOrders::class)
-        ->middleware('permission:'.BackOfficeModule::Shop->permission())
-        ->name('bo.shop.orders');
+        ->middleware('permission:'.BackOfficeModule::ShopOrders->permission())
+        ->name(BackOfficeModule::ShopOrders->route());
 
     Route::livewire('campaigns', CampaignsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Campaigns->permission())

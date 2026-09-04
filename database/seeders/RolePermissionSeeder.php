@@ -63,6 +63,7 @@ class RolePermissionSeeder extends Seeder
             BackOfficeModule::SupportRequests,
             BackOfficeModule::Cnps,
             BackOfficeModule::Shop,
+            BackOfficeModule::ShopOrders,
             BackOfficeModule::Campaigns,
         ];
 
@@ -88,6 +89,7 @@ class RolePermissionSeeder extends Seeder
                 'modules' => [
                     BackOfficeModule::SupportRequests,
                     BackOfficeModule::Shop,
+                    BackOfficeModule::ShopOrders,
                 ],
             ],
             'admin' => [

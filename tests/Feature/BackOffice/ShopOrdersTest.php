@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BackOfficeModule;
 use App\Enums\FulfilmentMode;
 use App\Enums\ShopOrderStatus;
 use App\Livewire\Shop\Orders;
@@ -19,14 +20,14 @@ it('a permitted user reaches the orders page', function (): void {
     ShopOrder::factory()->create(['reference' => 'CMD-2026-4187']);
 
     $this->actingAs(shopOrdersUser('stock'))
-        ->get(route('bo.shop.orders'))
+        ->get(route('bo.shop-orders'))
         ->assertOk()
         ->assertSee('CMD-2026-4187');
 });
 
 it('a user without the permission gets 403', function (): void {
     $this->actingAs(shopOrdersUser('admin'))
-        ->get(route('bo.shop.orders'))
+        ->get(route('bo.shop-orders'))
         ->assertForbidden();
 });
 
@@ -152,6 +153,35 @@ it('the detail panel shows the pickup code for a pickup', function (): void {
         ->test(Orders::class)
         ->call('select', $order->id)
         ->assertSee('482913');
+});
+
+it('carries its own permission, apart from the catalogue', function (): void {
+    // Les deux écrans sont deux modules : un rôle peut voir le catalogue sans
+    // les commandes, et l'inverse.
+    $user = shopOrdersUser('admin');
+    $user->syncPermissions([BackOfficeModule::Shop->permission()]);
+
+    $this->actingAs($user)
+        ->get(route(BackOfficeModule::Shop->route()))
+        ->assertOk();
+
+    $this->actingAs($user)
+        ->get(route(BackOfficeModule::ShopOrders->route()))
+        ->assertForbidden();
+});
+
+it('sits under Boutique alongside the catalogue', function (): void {
+    expect(BackOfficeModule::ShopOrders->group())->toBe('Boutique')
+        ->and(BackOfficeModule::Shop->group())->toBe('Boutique');
+});
+
+it('shows both entries in the sidebar', function (): void {
+    $this->actingAs(shopOrdersUser('direction'))
+        ->get(route(BackOfficeModule::ShopOrders->route()))
+        ->assertOk()
+        ->assertSee(route(BackOfficeModule::Shop->route()), escape: false)
+        ->assertSee(route(BackOfficeModule::ShopOrders->route()), escape: false)
+        ->assertSee(BackOfficeModule::ShopOrders->label());
 });
 
 function shopOrdersUser(string $role): User
