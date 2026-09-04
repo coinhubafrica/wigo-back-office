@@ -5,6 +5,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | app/Livewire/Announcements/** | .ai/rules/announcements.md |
+| app/Support/NavigationBadges.php | .ai/rules/app-support.md |
 | app/Services/Auth/** | .ai/rules/auth.md |
 | app/Services/Cnps/** | .ai/rules/cnps.md |
 | resources/views/components/**, resources/views/layouts/**, resources/views/vendor/** | .ai/rules/components.md |

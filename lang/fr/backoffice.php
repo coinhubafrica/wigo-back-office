@@ -38,6 +38,7 @@ return [
         'pagination_summary' => ':from–:to sur :total',
         'pagination_nav' => 'Pagination',
         'main_nav' => 'Navigation principale',
+        'pending_count' => ':count en attente',
     ],
 
     'groups' => [

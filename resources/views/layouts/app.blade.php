@@ -8,6 +8,7 @@
     // Les modules non livrés apparaissent en lien inactif (pas de route à générer).
     $grouped = collect(\App\Enums\BackOfficeModule::cases())
         ->groupBy(fn (\App\Enums\BackOfficeModule $m) => $m->group() ?? '');
+    $badges = app(\App\Support\NavigationBadges::class);
 @endphp
 
 {{--
@@ -76,6 +77,7 @@
                             @php
                                 $isActive = $module === $item;
                                 $isBuilt = \Illuminate\Support\Facades\Route::has($item->route());
+                                $badgeCount = $isBuilt ? $badges->for($item) : null;
                             @endphp
                             <li>
                                 {{-- Un module non livré est rendu en `<span>` et non en
@@ -95,9 +97,20 @@
                                         <path d="{{ $item->icon() }}"/>
                                     </svg>
                                     {{ $item->label() }}
-                                    @unless ($isBuilt)
+                                    @if ($badgeCount !== null)
+                                        {{-- Le nombre seul ne dit pas de quoi il s'agit hors contexte
+                                             visuel : le lecteur d'écran lit « Requêtes, 3 en attente ». --}}
+                                        <span @class([
+                                                  'ml-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums',
+                                                  'bg-white text-primary-text' => $isActive,
+                                                  'bg-primary text-white' => ! $isActive,
+                                              ])>
+                                            {{ $badgeCount > 99 ? '99+' : $badgeCount }}
+                                            <span class="sr-only">{{ __('backoffice.common.pending_count', ['count' => $badgeCount]) }}</span>
+                                        </span>
+                                    @elseif (! $isBuilt)
                                         <span class="ml-auto rounded-full border border-sidebar-line px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-muted">{{ __('backoffice.soon') }}</span>
-                                    @endunless
+                                    @endif
                                 </{{ $isBuilt ? 'a' : 'span' }}>
                             </li>
                         @endforeach
@@ -106,11 +119,19 @@
             </nav>
 
             {{-- Bloc utilisateur --}}
-            <div class="flex shrink-0 items-center gap-3 border-t border-sidebar-line px-4 py-3">
+            <div class="flex shrink-0 items-start gap-3 border-t border-sidebar-line px-4 py-4">
                 <x-avatar :initials="$user->initials()" />
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-medium text-white">{{ $user->fullName() }}</p>
-                    <p class="truncate text-xs text-sidebar-muted">{{ $user->email }}</p>
+                    <p class="truncate text-xs text-sidebar-muted" title="{{ $user->email }}">{{ $user->email }}</p>
+                    @if ($user->roleLabel())
+                        {{-- Le rôle vit ici, avec le nom et la déconnexion : dans la barre
+                             supérieure il flottait à côté des actions du module, où on le
+                             lisait comme un filtre plutôt que comme une identité. --}}
+                        <p class="mt-1 truncate text-[11px] font-semibold uppercase tracking-wide text-sidebar-muted">
+                            {{ $user->roleLabel() }}
+                        </p>
+                    @endif
                 </div>
                 <form method="POST" action="{{ route('bo.logout') }}">
                     @csrf
@@ -125,7 +146,7 @@
         </aside>
 
         <div class="flex min-w-0 flex-1 flex-col lg:pl-[260px]">
-            {{-- Barre supérieure : titre du module, retour, actions, rôle --}}
+            {{-- Barre supérieure : titre du module, retour, actions --}}
             <header class="sticky top-0 z-10 border-b border-line bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
                 <div class="mx-auto flex w-full max-w-[1440px] items-start gap-4 px-4 py-3.5 sm:px-6 lg:px-8 lg:py-4">
                     <button type="button" x-on:click="toggle()" :aria-expanded="sidebarOpen.toString()" aria-controls="sidebar"
@@ -149,9 +170,6 @@
                          hors de sa racine ; Alpine a besoin d'une portée pour `$dispatch`. --}}
                     <div x-data class="flex shrink-0 flex-wrap items-center justify-end gap-2.5 self-center">
                         {{ $actions ?? '' }}
-                        @if ($user->roleLabel())
-                            <x-badge tone="primary" class="hidden px-3 py-1 text-xs sm:inline-flex">{{ $user->roleLabel() }}</x-badge>
-                        @endif
                     </div>
                 </div>
             </header>
