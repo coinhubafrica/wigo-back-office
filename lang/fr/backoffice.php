@@ -39,6 +39,8 @@ return [
         'pagination_nav' => 'Pagination',
         'main_nav' => 'Navigation principale',
         'pending_count' => ':count en attente',
+        'show_value' => 'Afficher la valeur',
+        'hide_value' => 'Masquer la valeur',
     ],
 
     'groups' => [
@@ -850,6 +852,7 @@ return [
     ],
 
     'settings' => [
+        'key_replace_hint' => 'Clé enregistrée. Saisissez-en une nouvelle pour la remplacer.',
         'otp_title' => 'Authentification par OTP',
         'otp_hint' => 'Barème du code envoyé au conducteur à la connexion.',
         'otp_length' => 'Longueur du code',
@@ -875,7 +878,6 @@ return [
         'fleet_park_id' => 'Identifiant du parc',
         'fleet_api_key' => "Clé d'API",
         'fleet_api_key_hint' => 'Laissez vide pour conserver la clé enregistrée.',
-        'fleet_api_key_set' => 'Une clé est enregistrée.',
         'fleet_api_key_missing' => "Aucune clé enregistrée : la synchronisation ne peut pas s'exécuter.",
         'fleet_saved' => 'Accès au parc Yango enregistré.',
         'fleet_test' => 'Tester la connexion',
@@ -891,9 +893,7 @@ return [
         'wave_api_key' => "Clé d'API",
         'wave_webhook_secret' => 'Secret du webhook',
         'wave_secret_hint' => 'Laissez vide pour conserver ce qui est enregistré.',
-        'wave_key_set' => "Une clé d'API est enregistrée.",
         'wave_key_missing' => "Aucune clé d'API : ce compte ne peut pas encaisser.",
-        'wave_secret_set' => 'Un secret de webhook est enregistré.',
         'wave_secret_missing' => 'Aucun secret : les callbacks de ce compte seront refusés.',
         'wave_callback' => 'URL de rappel à déclarer chez Wave :',
         'wave_shop_saved' => 'Compte Wave de la boutique enregistré.',

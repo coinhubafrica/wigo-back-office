@@ -86,6 +86,16 @@
         outline-offset: 2px;
     }
 
+    /*
+     * `x-cloak` masque un élément jusqu'à l'initialisation d'Alpine. Sans
+     * cette règle l'attribut ne fait rien : le voile de la barre latérale et
+     * l'œil « masquer » d'un champ mot de passe s'affichaient un instant au
+     * chargement avant qu'Alpine ne les retire.
+     */
+    [x-cloak] {
+        display: none !important;
+    }
+
     /* Le back-office n'anime que des transitions courtes ; on les neutralise
      * plutôt que de les décliner composant par composant. */
     @media (prefers-reduced-motion: reduce) {

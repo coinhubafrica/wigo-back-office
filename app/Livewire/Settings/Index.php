@@ -3,6 +3,8 @@
 namespace App\Livewire\Settings;
 
 use App\Enums\BackOfficeModule;
+use App\Models\AuditLog;
+use App\Models\User;
 use App\Services\Fleet\FleetConnectionTester;
 use App\Settings\FleetSettings;
 use App\Settings\OtpSettings;
@@ -10,6 +12,9 @@ use App\Settings\RechargeSettings;
 use App\Settings\WaveAccountSettings;
 use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
+use App\Support\RevealsSecrets;
+use App\Support\SecretMask;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -56,6 +61,10 @@ class Index extends Component
      * Jamais pré-rempli avec la clé enregistrée : une clé en clair dans le HTML
      * de la page serait lisible par toute extension du navigateur. Vide à
      * l'affichage signifie « on garde celle déjà enregistrée ».
+     *
+     * Ce que le champ montre au repos est un *aperçu masqué* (`SecretMask`),
+     * rendu en filigrane et non comme valeur : il nomme la clé en place sans
+     * la publier, et disparaît dès la première frappe.
      */
     public string $fleetApiKey = '';
 
@@ -68,7 +77,8 @@ class Index extends Component
      * Clés et secrets des deux comptes Wave.
      *
      * Jamais pré-remplis, comme la clé Yango : vide à l'affichage signifie « on
-     * garde celui déjà enregistré ». Les deux comptes ont chacun leur panneau
+     * garde celui déjà enregistré », et seul un aperçu masqué en filigrane dit
+     * lequel est en place. Les deux comptes ont chacun leur panneau
      * et leur enregistrement — la boutique et la recharge n'ont aucune raison
      * de partager une clé, et les régler d'un seul geste invitait à les
      * confondre.
@@ -98,6 +108,85 @@ class Index extends Component
 
         $this->fleetBaseUrl = $fleet->base_url;
         $this->fleetParkId = $fleet->park_id;
+    }
+
+    /**
+     * Secrets relevés en clair pendant cette visite, par nom de champ.
+     *
+     * Rempli uniquement par `reveal()`, donc jamais au chargement : une clé ne
+     * part vers le navigateur que sur un geste explicite, tracé au journal.
+     * `$fieldsRevealed` n'est pas persisté entre navigations — quitter l'écran
+     * remasque tout.
+     *
+     * @var array<string, string>
+     */
+    public array $revealedSecrets = [];
+
+    /**
+     * Les seuls secrets qu'un clic peut demander, et où les lire.
+     *
+     * Table blanche explicite : le navigateur envoie un nom de champ, jamais un
+     * nom de réglage. Sans cela, `reveal('...')` deviendrait une lecture
+     * arbitraire de la table `settings`.
+     *
+     * @return array<string, callable(): string>
+     */
+    private function revealableSecrets(): array
+    {
+        return [
+            'fleetApiKey' => fn (): string => app(FleetSettings::class)->api_key,
+            'waveShopApiKey' => fn (): string => app(WaveShopSettings::class)->api_key,
+            'waveShopWebhookSecret' => fn (): string => app(WaveShopSettings::class)->webhook_secret,
+            'waveTopupApiKey' => fn (): string => app(WaveTopupSettings::class)->api_key,
+            'waveTopupWebhookSecret' => fn (): string => app(WaveTopupSettings::class)->webhook_secret,
+        ];
+    }
+
+    /**
+     * Renvoie un secret enregistré en clair, pour le champ nommé.
+     *
+     * Trois gardes, dans cet ordre : le champ doit figurer à la table blanche,
+     * l'agent doit porter le droit `settings.reveal-secrets`, et la lecture est
+     * journalisée avant de repartir. Le contenu n'est jamais écrit dans le
+     * journal — seulement le fait qu'il a été relevé, et par qui.
+     */
+    public function reveal(string $field): void
+    {
+        $secrets = $this->revealableSecrets();
+
+        if (! array_key_exists($field, $secrets)) {
+            throw new AuthorizationException;
+        }
+
+        /** @var User $user */
+        $user = auth()->user();
+
+        if (! $user->can(RevealsSecrets::PERMISSION)) {
+            throw new AuthorizationException;
+        }
+
+        $secret = $secrets[$field]();
+
+        if (blank($secret)) {
+            return;
+        }
+
+        AuditLog::record(
+            action: 'settings.secret_revealed',
+            summary: "{$user->fullName()} a relevé en clair le secret « {$field} ».",
+            by: $user,
+            context: ['field' => $field],
+        );
+
+        $this->revealedSecrets[$field] = $secret;
+    }
+
+    /**
+     * Remasque un secret : il quitte l'état du composant, donc la page.
+     */
+    public function conceal(string $field): void
+    {
+        unset($this->revealedSecrets[$field]);
     }
 
     public function saveWaveShop(WaveShopSettings $shop): void
@@ -261,6 +350,17 @@ class Index extends Component
             'waveShopSecretStored' => filled($shop->webhook_secret),
             'waveTopupKeyStored' => $topup->isConfigured(),
             'waveTopupSecretStored' => filled($topup->webhook_secret),
+
+            // Aperçus masqués : ils disent *laquelle* est en place — une clé de
+            // test se distingue d'une clé de production, et les deux comptes
+            // Wave l'un de l'autre. Passés en données de rendu et non en
+            // propriétés liées : rien à renvoyer, donc rien à confondre avec
+            // une saisie au moment d'enregistrer.
+            'fleetKeyPreview' => SecretMask::preview($fleet->api_key),
+            'waveShopKeyPreview' => SecretMask::preview($shop->api_key),
+            'waveShopSecretPreview' => SecretMask::preview($shop->webhook_secret),
+            'waveTopupKeyPreview' => SecretMask::preview($topup->api_key),
+            'waveTopupSecretPreview' => SecretMask::preview($topup->webhook_secret),
         ]);
     }
 }

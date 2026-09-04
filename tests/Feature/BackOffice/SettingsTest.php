@@ -9,6 +9,7 @@ use App\Contracts\FleetDirectory;
 use App\Enums\BackOfficeModule;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Livewire\Settings\Index;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Fleet\FakeFleetDirectory;
 use App\Settings\FleetSettings;
@@ -16,6 +17,7 @@ use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
 use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
+use App\Support\RevealsSecrets;
 use Database\Seeders\RolePermissionSeeder;
 use Livewire\Livewire;
 
@@ -321,6 +323,141 @@ it('never sends the stored Wave secrets back to the browser', function (): void 
         ->assertDontSee('secret-recharge-tres-secret');
 });
 
+it('shows a masked preview of each stored secret', function (): void {
+    settingsStoreFleetKey('wave_sk_live_ABCDEFGHIJKL4821');
+
+    $shop = app(WaveShopSettings::class);
+    $shop->api_key = 'wave_sk_live_MNOPQRSTUVWX7788';
+    $shop->save();
+
+    $html = $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        ->getContent();
+
+    // L'aperçu nomme la clé en place — préfixe et quatre derniers caractères —
+    // sans qu'aucun des deux secrets ne paraisse en entier.
+    expect($html)->toContain('wave_sk_live_••••••••••••4821')
+        ->toContain('wave_sk_live_••••••••••••7788')
+        ->and($html)->not->toContain('ABCDEFGHIJKL4821')
+        ->and($html)->not->toContain('MNOPQRSTUVWX7788');
+});
+
+it('offers the preview as a placeholder, never as a submitted value', function (): void {
+    settingsStoreFleetKey('wave_sk_live_ABCDEFGHIJKL4821');
+
+    $html = $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        ->getContent();
+
+    // En `placeholder` l'aperçu est un filigrane : il ne part pas au serveur et
+    // ne peut pas être pris pour une saisie au moment d'enregistrer.
+    $tag = settingsFieldTag($html, 'field-fleetapikey');
+
+    expect($tag)->toContain('placeholder="wave_sk_live_')
+        ->toContain('4821"')
+        ->and($tag)->not->toContain('value=');
+
+    // Le champ reste vide côté composant : enregistrer sans y toucher conserve
+    // la clé, comme avant l'aperçu.
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->assertSet('fleetApiKey', '');
+});
+
+it('shows no preview for a secret that is not stored', function (): void {
+    $response = $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        // Le message d'absence porte la conséquence. `assertSee` et non
+        // `toContain` : Blade échappe l'apostrophe en `&#039;`.
+        ->assertSee(__('backoffice.settings.fleet_api_key_missing'));
+
+    // Aucun filigrane sur le champ.
+    expect(settingsFieldTag($response->getContent(), 'field-fleetapikey'))
+        ->not->toContain('placeholder=');
+});
+
+it('reveals a stored secret in clear to a holder of the permission', function (): void {
+    settingsStoreFleetKey('yapi10-E5IuB_zhLWUxL1rE0p46kd45MHZ');
+
+    Livewire::actingAs(settingsRevealer())
+        ->test(Index::class)
+        ->assertSet('revealedSecrets', [])
+        ->call('reveal', 'fleetApiKey')
+        ->assertSet('revealedSecrets.fleetApiKey', 'yapi10-E5IuB_zhLWUxL1rE0p46kd45MHZ')
+        // Remasquer retire le secret de l'état, donc de la page.
+        ->call('conceal', 'fleetApiKey')
+        ->assertSet('revealedSecrets', []);
+});
+
+it('refuses to reveal without the dedicated permission', function (): void {
+    settingsStoreFleetKey('cle-tres-secrete');
+
+    // `admin` administre les Paramètres mais ne relève pas les secrets : régler
+    // un plafond et lire la clé d'encaissement sont deux décisions.
+    $admin = settingsUser('admin');
+
+    expect($admin->can(RevealsSecrets::PERMISSION))->toBeFalse();
+
+    Livewire::actingAs($admin)
+        ->test(Index::class)
+        ->call('reveal', 'fleetApiKey')
+        ->assertForbidden();
+});
+
+it('refuses to reveal a setting that is not on the whitelist', function (): void {
+    // Sans table blanche, `reveal()` deviendrait une lecture arbitraire de la
+    // table `settings` pilotée depuis le navigateur.
+    Livewire::actingAs(settingsRevealer())
+        ->test(Index::class)
+        ->call('reveal', 'otpLength')
+        ->assertForbidden();
+});
+
+it('logs every reveal without writing the secret to the journal', function (): void {
+    settingsStoreFleetKey('cle-tres-secrete');
+
+    $user = settingsRevealer();
+
+    Livewire::actingAs($user)
+        ->test(Index::class)
+        ->call('reveal', 'fleetApiKey');
+
+    $entry = AuditLog::query()->where('action', 'settings.secret_revealed')->sole();
+
+    expect($entry->user_id)->toBe($user->getKey())
+        ->and($entry->context)->toBe(['field' => 'fleetApiKey'])
+        // Le journal dit qu'on a relevé, jamais quoi.
+        ->and($entry->summary)->not->toContain('cle-tres-secrete')
+        ->and(json_encode($entry->context))->not->toContain('cle-tres-secrete');
+});
+
+it('logs nothing and reveals nothing when no secret is stored', function (): void {
+    Livewire::actingAs(settingsRevealer())
+        ->test(Index::class)
+        ->call('reveal', 'fleetApiKey')
+        ->assertSet('revealedSecrets', []);
+
+    expect(AuditLog::query()->where('action', 'settings.secret_revealed')->count())->toBe(0);
+});
+
+it('hides the reveal control from a user without the permission', function (): void {
+    settingsStoreFleetKey('cle-tres-secrete');
+
+    $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        // Pas de bouton qui proposerait une action toujours refusée.
+        ->assertDontSee("reveal('fleetApiKey')", false);
+
+    $this->actingAs(settingsRevealer())
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        ->assertSee("reveal('fleetApiKey')", false);
+});
+
 it('shows the callback URL of each Wave account', function (): void {
     // Chaque compte doit pointer son propre rappel : c'est le segment d'URL qui
     // désigne le secret à vérifier.
@@ -330,3 +467,32 @@ it('shows the callback URL of each Wave account', function (): void {
         ->assertSee(route('webhooks.wave', ['account' => 'shop']))
         ->assertSee(route('webhooks.wave', ['account' => 'topup']));
 });
+
+/**
+ * La balise `<input>` portant cet identifiant, pour n'inspecter que ses
+ * attributs. Les attributs ne sont pas dans un ordre garanti : on remonte de
+ * l'`id` au `<` ouvrant plutôt que d'écrire un motif sur tout le tag.
+ */
+function settingsFieldTag(string $html, string $id): string
+{
+    $at = strpos($html, 'id="'.$id.'"');
+
+    if ($at === false) {
+        return '';
+    }
+
+    $open = strrpos(substr($html, 0, $at), '<');
+
+    return substr($html, (int) $open, (int) strpos($html, '>', $at) - (int) $open + 1);
+}
+
+/**
+ * Un agent qui porte le droit de relever les secrets en clair.
+ */
+function settingsRevealer(): User
+{
+    $user = settingsUser('admin');
+    $user->givePermissionTo(RevealsSecrets::PERMISSION);
+
+    return $user->fresh();
+}

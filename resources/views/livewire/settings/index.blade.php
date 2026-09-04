@@ -56,19 +56,28 @@
         <form id="settings-fleet" wire:submit="saveFleet" class="grid gap-4 sm:grid-cols-2">
             <x-field :label="__('backoffice.settings.fleet_base_url')" name="fleetBaseUrl" type="url" wire:model="fleetBaseUrl" placeholder="https://fleet-api.yango.tech" />
             <x-field :label="__('backoffice.settings.fleet_park_id')" name="fleetParkId" wire:model="fleetParkId" />
+            {{-- L'aperçu masqué passe en `placeholder` : il s'affiche en filigrane,
+                 n'est pas une valeur du champ (donc jamais renvoyé au serveur ni
+                 confondu avec une saisie) et s'efface à la première frappe. --}}
             <x-field
                 :label="__('backoffice.settings.fleet_api_key')"
                 name="fleetApiKey"
                 type="password"
+                reveal="fleetApiKey"
+                :revealed="$revealedSecrets['fleetApiKey'] ?? null"
                 wire:model="fleetApiKey"
-                autocomplete="new-password"
-                :hint="__('backoffice.settings.fleet_api_key_hint')"
+                autocomplete="off"
+                :placeholder="$fleetKeyPreview"
+                :hint="$fleetKeyStored ? __('backoffice.settings.key_replace_hint') : __('backoffice.settings.fleet_api_key_hint')"
                 class="sm:col-span-2"
             />
 
-            <p @class(['sm:col-span-2 text-xs', 'text-muted' => $fleetKeyStored, 'text-err-text' => ! $fleetKeyStored])>
-                {{ $fleetKeyStored ? __('backoffice.settings.fleet_api_key_set') : __('backoffice.settings.fleet_api_key_missing') }}
-            </p>
+            {{-- Seule l'absence est signalée : « une clé est enregistrée » répétait
+                 l'aperçu et l'aide du champ, juste au-dessus. Ce qui reste dit la
+                 conséquence — ce que le module ne peut pas faire sans clé. --}}
+            @unless ($fleetKeyStored)
+                <p class="sm:col-span-2 text-xs text-err-text">{{ __('backoffice.settings.fleet_api_key_missing') }}</p>
+            @endunless
         </form>
 
         @if ($fleetTestMessage !== null)
@@ -108,24 +117,31 @@
                 :label="__('backoffice.settings.wave_api_key')"
                 name="waveShopApiKey"
                 type="password"
+                reveal="waveShopApiKey"
+                :revealed="$revealedSecrets['waveShopApiKey'] ?? null"
                 wire:model="waveShopApiKey"
-                autocomplete="new-password"
-                :hint="__('backoffice.settings.wave_secret_hint')"
+                autocomplete="off"
+                :placeholder="$waveShopKeyPreview"
+                :hint="$waveShopKeyStored ? __('backoffice.settings.key_replace_hint') : __('backoffice.settings.wave_secret_hint')"
             />
             <x-field
                 :label="__('backoffice.settings.wave_webhook_secret')"
                 name="waveShopWebhookSecret"
                 type="password"
+                reveal="waveShopWebhookSecret"
+                :revealed="$revealedSecrets['waveShopWebhookSecret'] ?? null"
                 wire:model="waveShopWebhookSecret"
-                autocomplete="new-password"
+                autocomplete="off"
+                :placeholder="$waveShopSecretPreview"
+                :hint="$waveShopSecretStored ? __('backoffice.settings.key_replace_hint') : null"
             />
 
-            <p @class(['text-xs', 'text-muted' => $waveShopKeyStored, 'text-err-text' => ! $waveShopKeyStored])>
-                {{ $waveShopKeyStored ? __('backoffice.settings.wave_key_set') : __('backoffice.settings.wave_key_missing') }}
-            </p>
-            <p @class(['text-xs', 'text-muted' => $waveShopSecretStored, 'text-err-text' => ! $waveShopSecretStored])>
-                {{ $waveShopSecretStored ? __('backoffice.settings.wave_secret_set') : __('backoffice.settings.wave_secret_missing') }}
-            </p>
+            @unless ($waveShopKeyStored)
+                <p class="text-xs text-err-text">{{ __('backoffice.settings.wave_key_missing') }}</p>
+            @endunless
+            @unless ($waveShopSecretStored)
+                <p class="text-xs text-err-text">{{ __('backoffice.settings.wave_secret_missing') }}</p>
+            @endunless
 
             <p class="text-xs text-muted">
                 {{ __('backoffice.settings.wave_callback') }}
@@ -149,24 +165,31 @@
                 :label="__('backoffice.settings.wave_api_key')"
                 name="waveTopupApiKey"
                 type="password"
+                reveal="waveTopupApiKey"
+                :revealed="$revealedSecrets['waveTopupApiKey'] ?? null"
                 wire:model="waveTopupApiKey"
-                autocomplete="new-password"
-                :hint="__('backoffice.settings.wave_secret_hint')"
+                autocomplete="off"
+                :placeholder="$waveTopupKeyPreview"
+                :hint="$waveTopupKeyStored ? __('backoffice.settings.key_replace_hint') : __('backoffice.settings.wave_secret_hint')"
             />
             <x-field
                 :label="__('backoffice.settings.wave_webhook_secret')"
                 name="waveTopupWebhookSecret"
                 type="password"
+                reveal="waveTopupWebhookSecret"
+                :revealed="$revealedSecrets['waveTopupWebhookSecret'] ?? null"
                 wire:model="waveTopupWebhookSecret"
-                autocomplete="new-password"
+                autocomplete="off"
+                :placeholder="$waveTopupSecretPreview"
+                :hint="$waveTopupSecretStored ? __('backoffice.settings.key_replace_hint') : null"
             />
 
-            <p @class(['text-xs', 'text-muted' => $waveTopupKeyStored, 'text-err-text' => ! $waveTopupKeyStored])>
-                {{ $waveTopupKeyStored ? __('backoffice.settings.wave_key_set') : __('backoffice.settings.wave_key_missing') }}
-            </p>
-            <p @class(['text-xs', 'text-muted' => $waveTopupSecretStored, 'text-err-text' => ! $waveTopupSecretStored])>
-                {{ $waveTopupSecretStored ? __('backoffice.settings.wave_secret_set') : __('backoffice.settings.wave_secret_missing') }}
-            </p>
+            @unless ($waveTopupKeyStored)
+                <p class="text-xs text-err-text">{{ __('backoffice.settings.wave_key_missing') }}</p>
+            @endunless
+            @unless ($waveTopupSecretStored)
+                <p class="text-xs text-err-text">{{ __('backoffice.settings.wave_secret_missing') }}</p>
+            @endunless
 
             <p class="text-xs text-muted">
                 {{ __('backoffice.settings.wave_callback') }}

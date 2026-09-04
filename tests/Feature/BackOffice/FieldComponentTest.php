@@ -75,3 +75,63 @@ it('keeps layout classes on the wrapper, not the control', function (): void {
         ->toMatch('/<input[^>]*placeholder="Nom"/')
         ->not->toMatch('/<input[^>]*sm:col-span-2/');
 });
+
+it('gives a password field a reveal toggle that defaults to masked', function (): void {
+    $html = Blade::render('<x-field label="Clé d\'API" name="fleetApiKey" type="password" wire:model="fleetApiKey" />');
+
+    // Le champ arrive masqué : c'est l'état sans JS comme au chargement.
+    expect($html)->toMatch('/<input type="password"/')
+        ->toContain('x-data="revealable"')
+        ->toContain("x-bind:type=\"revealed ? 'text' : 'password'\"")
+        ->toContain('x-on:click="toggle()"')
+        ->toContain('x-bind:aria-pressed="revealed.toString()"')
+        ->toContain('Afficher la valeur')
+        ->toContain('Masquer la valeur')
+        ->toContain('wire:model="fleetApiKey"')
+        ->toContain('id="field-fleetapikey"');
+});
+
+it('keeps the reveal toggle visible on an empty field', function (): void {
+    // L'œil ne dépend pas du contenu : un contrôle qui va et vient selon la
+    // saisie se cherche, et sur un champ de clé on veut relire ce qu'on colle.
+    $empty = Blade::render('<x-field label="Clé" name="k" type="password" />');
+    $withPreview = Blade::render('<x-field label="Clé" name="k" type="password" placeholder="wave_sk_live_••••4821" />');
+
+    foreach ([$empty, $withPreview] as $html) {
+        expect($html)->toContain('x-on:click="toggle()"')
+            ->and($html)->not->toContain('x-show="! empty"');
+    }
+});
+
+it('keeps the password label, hint and error wiring of every other field', function (): void {
+    View::share('errors', (new ViewErrorBag)->put('default', new MessageBag(['pin' => ['Code invalide.']])));
+
+    $html = Blade::render('<x-field label="Code" name="pin" type="password" />');
+
+    expect($html)->toContain('for="field-pin"')
+        ->toContain('Code invalide.')
+        ->toContain('aria-invalid="true"')
+        ->toContain('aria-describedby="field-pin-error"');
+});
+
+it('falls back to the local toggle without the reveal permission', function (): void {
+    // Sans permission (ici, sans utilisateur), pas d'œil « serveur » : le champ
+    // garde la bascule locale, qui ne montre que ce qu'on saisit.
+    $html = Blade::render('<x-field label="Clé" name="k" type="password" reveal="fleetApiKey" />');
+
+    expect($html)->not->toContain("reveal('fleetApiKey')")
+        ->and($html)->toContain('x-data="revealable"');
+});
+
+it('shows a revealed secret read only', function (): void {
+    $html = Blade::render(
+        '<x-field label="Clé" name="k" type="password" reveal="fleetApiKey" :revealed="$secret" />',
+        ['secret' => 'yapi10-EnClair']
+    );
+
+    // Relevée, la clé s'affiche telle quelle et ne se saisit pas : écrire
+    // par-dessus voudrait dire la remplacer, ce qui passe par le champ vide.
+    expect($html)->toContain('yapi10-EnClair')
+        ->toContain('readonly')
+        ->toContain('type="text"');
+});

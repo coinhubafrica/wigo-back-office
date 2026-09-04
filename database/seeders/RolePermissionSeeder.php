@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\BackOfficeModule;
+use App\Support\RevealsSecrets;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -25,6 +26,11 @@ class RolePermissionSeeder extends Seeder
             Permission::findOrCreate($module->permission(), 'web');
         }
 
+        // Lire une clé d'API en clair est une action à part : accéder aux
+        // Paramètres pour régler un plafond n'implique pas de pouvoir relever
+        // les secrets d'encaissement. Deux droits, deux décisions.
+        Permission::findOrCreate(RevealsSecrets::PERMISSION, 'web');
+
         // Le cache doit être vidé APRÈS la création : sinon `syncPermissions`
         // résout les noms sur un cache antérieur aux nouvelles permissions
         // (cas d'un `migrate:fresh --seed`, où les tables viennent d'être
@@ -42,10 +48,13 @@ class RolePermissionSeeder extends Seeder
             // Rôle déjà personnalisé dans le back-office : on ne touche pas à
             // ses permissions, seul le libellé est rafraîchi.
             if ($role->wasRecentlyCreated) {
-                $role->syncPermissions(array_map(
-                    fn (BackOfficeModule $module): string => $module->permission(),
-                    $definition['modules'],
-                ));
+                $role->syncPermissions([
+                    ...array_map(
+                        fn (BackOfficeModule $module): string => $module->permission(),
+                        $definition['modules'],
+                    ),
+                    ...($definition['reveals_secrets'] ?? false ? [RevealsSecrets::PERMISSION] : []),
+                ]);
             }
         }
 
@@ -53,7 +62,7 @@ class RolePermissionSeeder extends Seeder
     }
 
     /**
-     * @return array<string, array{label: string, description: string, modules: list<BackOfficeModule>}>
+     * @return array<string, array{label: string, description: string, modules: list<BackOfficeModule>, reveals_secrets?: bool}>
      */
     private function initialRoles(): array
     {
@@ -106,6 +115,9 @@ class RolePermissionSeeder extends Seeder
                 'label' => 'Directeur',
                 'description' => 'Accès à tous les modules.',
                 'modules' => BackOfficeModule::cases(),
+                // Seule la direction relève les clés en clair par défaut ; le
+                // droit s'attribue ensuite rôle par rôle depuis Paramètres.
+                'reveals_secrets' => true,
             ],
         ];
     }

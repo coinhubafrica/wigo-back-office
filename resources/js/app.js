@@ -245,3 +245,34 @@ document.addEventListener('alpine:init', () => {
         },
     }))
 })
+
+/**
+ * Champ masqué que l'on peut révéler le temps de le relire.
+ *
+ * Sert aux clés d'API et au mot de passe (`<x-field type="password">`). Le
+ * champ bascule entre `password` et `text` : ce que l'on révèle est donc
+ * toujours *ce que l'on vient de saisir*, jamais un secret enregistré — les
+ * clés stockées ne sont pas renvoyées au navigateur et le champ arrive vide.
+ *
+ * Le type est porté par Alpine (`:type`) et non par l'attribut initial, et le
+ * champ revient masqué à chaque navigation : un onglet laissé ouvert sur un
+ * écran de réglages ne garde pas une clé en clair à l'écran.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('revealable', () => ({
+        revealed: false,
+
+        init() {
+            this.onNavigated = () => { this.revealed = false }
+            window.addEventListener('livewire:navigated', this.onNavigated)
+        },
+
+        destroy() {
+            window.removeEventListener('livewire:navigated', this.onNavigated)
+        },
+
+        toggle() {
+            this.revealed = ! this.revealed
+        },
+    }))
+})
