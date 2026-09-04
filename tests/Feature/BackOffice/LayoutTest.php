@@ -12,6 +12,7 @@ use App\Models\ShopOrder;
 use App\Models\SupportRequest;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\Route;
 
 beforeEach(function (): void {
     $this->seed(RolePermissionSeeder::class);
@@ -124,13 +125,134 @@ it('shows the role in the sidebar user block rather than the top bar', function 
         ->and(strpos($html, (string) $label))->toBeLessThan($sidebarEnd);
 });
 
+/*
+|--------------------------------------------------------------------------
+| Filtre par permission
+|--------------------------------------------------------------------------
+*/
+
+it('hides the modules a user cannot reach', function (): void {
+    // `stock` porte Requêtes, Produits et Commandes : rien d'autre ne doit
+    // apparaître. Une entrée qui répond 403 fait croire à un écran cassé.
+    $html = $this->actingAs(layoutUser('stock'))
+        ->get(route(BackOfficeModule::Shop->route()))
+        ->assertOk()
+        ->getContent();
+
+    $sidebar = layoutSidebar((string) $html);
+
+    expect($sidebar)->toContain(layoutLabel(BackOfficeModule::SupportRequests))
+        ->toContain(layoutLabel(BackOfficeModule::Shop))
+        ->toContain(layoutLabel(BackOfficeModule::ShopOrders))
+        ->not->toContain(layoutLabel(BackOfficeModule::Recharges))
+        ->not->toContain(layoutLabel(BackOfficeModule::Cnps))
+        ->not->toContain(layoutLabel(BackOfficeModule::Users))
+        ->not->toContain(layoutLabel(BackOfficeModule::Settings));
+});
+
+it('drops a group whose modules are all hidden', function (): void {
+    // Sans ses deux entrées, l'intertitre « Finance » surnagerait seul.
+    $html = $this->actingAs(layoutUser('stock'))
+        ->get(route(BackOfficeModule::Shop->route()))
+        ->assertOk()
+        ->getContent();
+
+    expect(layoutSidebar((string) $html))
+        ->not->toContain('nav-group-finance')
+        ->not->toContain('nav-group-systeme')
+        ->toContain('nav-group-boutique');
+});
+
+it('shows every module to a user who holds them all', function (): void {
+    $html = $this->actingAs(layoutUser('direction'))
+        ->get(route(BackOfficeModule::Dashboard->route()))
+        ->assertOk()
+        ->getContent();
+
+    $sidebar = layoutSidebar((string) $html);
+
+    foreach (BackOfficeModule::cases() as $module) {
+        expect($sidebar)->toContain(layoutLabel($module));
+    }
+});
+
+it('still shows an authorised module that has no route yet', function (): void {
+    // `module.audit` est accordé mais l'écran n'est pas livré : l'entrée reste,
+    // inactive, avec sa pastille — elle annonce ce qui vient, ce qu'un 403 ou
+    // une absence ne disent pas.
+    expect(Route::has(BackOfficeModule::Audit->route()))->toBeFalse();
+
+    $html = $this->actingAs(layoutUser('admin'))
+        ->get(route(BackOfficeModule::Users->route()))
+        ->assertOk()
+        ->getContent();
+
+    expect(layoutSidebar((string) $html))->toContain(layoutLabel(BackOfficeModule::Audit));
+});
+
+it('hides an unreachable module even when a direct visit would 403', function (): void {
+    // Le masquage double le middleware, il ne le remplace pas.
+    $user = layoutUser('stock');
+
+    $this->actingAs($user)
+        ->get(route(BackOfficeModule::Recharges->route()))
+        ->assertForbidden();
+
+    $html = $this->actingAs($user)
+        ->get(route(BackOfficeModule::Shop->route()))
+        ->assertOk()
+        ->getContent();
+
+    expect(layoutSidebar((string) $html))->not->toContain(layoutLabel(BackOfficeModule::Recharges));
+});
+
+it('follows a permission granted directly, not only through a role', function (): void {
+    $user = User::factory()->create(['is_active' => true]);
+    $user->givePermissionTo(BackOfficeModule::Cnps->permission());
+
+    $html = $this->actingAs($user)
+        ->get(route(BackOfficeModule::Cnps->route()))
+        ->assertOk()
+        ->getContent();
+
+    expect(layoutSidebar((string) $html))
+        ->toContain(layoutLabel(BackOfficeModule::Cnps))
+        ->not->toContain(layoutLabel(BackOfficeModule::Drivers));
+});
+
+/**
+ * La barre latérale seule : le titre du module et son sous-titre répètent des
+ * libellés dans la barre supérieure, les chercher dans toute la page ferait
+ * passer un module masqué pour visible.
+ */
+function layoutSidebar(string $html): string
+{
+    $end = strpos($html, '</aside>');
+
+    return $end === false ? $html : substr($html, 0, $end);
+}
+
+/**
+ * Libellé du module tel qu'il apparaît dans le HTML.
+ *
+ * Blade échappe l'apostrophe : « Journal d'audit » s'écrit
+ * `Journal d&#039;audit`. Chercher le libellé brut le manquait, et le module
+ * passait pour masqué alors qu'il était bien rendu.
+ */
+function layoutLabel(BackOfficeModule $module): string
+{
+    return e($module->label());
+}
+
 /**
  * Contenu de la pastille de ce module dans la barre latérale, ou `null` s'il
  * n'en porte pas.
  */
 function layoutBadge(string $html, BackOfficeModule $module): ?string
 {
-    $start = strpos($html, $module->label());
+    // Même échappement que `layoutLabel` : un libellé à apostrophe ne se
+    // trouve pas tel quel dans le HTML.
+    $start = strpos($html, e($module->label()));
 
     if ($start === false) {
         return null;

@@ -3,10 +3,24 @@
 @php
     /** @var \App\Models\User $user */
     $user = auth()->user();
-    // Le filtre par permission et par route livrée est désactivé temporairement
-    // pour visualiser l'intégralité de la navigation pendant la construction du BO.
-    // Les modules non livrés apparaissent en lien inactif (pas de route à générer).
-    $grouped = collect(\App\Enums\BackOfficeModule::cases())
+
+    /*
+    | La barre latérale ne montre que les modules autorisés.
+    |
+    | Masquer n'est pas protéger — chaque route porte son middleware
+    | `permission:module.*`. Mais afficher une entrée qui répond 403 est un
+    | mensonge : l'agent croit l'écran cassé plutôt qu'interdit. Les
+    | permissions sont résolues en une fois par `visibleModules()`.
+    |
+    | Un module autorisé mais non livré (pas de route enregistrée) reste
+    | affiché, en lien inactif portant la pastille « bientôt » : il annonce ce
+    | qui vient, ce que 403 ne fait pas.
+    |
+    | Les groupes vides disparaissent avec leurs modules : `groupBy` ne crée
+    | pas de clé pour une collection filtrée à vide, donc aucun intertitre
+    | « Finance » ne surnage sans entrée sous lui.
+    */
+    $grouped = collect($user->visibleModules())
         ->groupBy(fn (\App\Enums\BackOfficeModule $m) => $m->group() ?? '');
     $badges = app(\App\Support\NavigationBadges::class);
 @endphp
