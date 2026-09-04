@@ -268,6 +268,11 @@ return [
         'field_body' => 'Message',
         'field_deeplink' => 'Lien interne (facultatif)',
         'deeplink_hint' => "Ouvre un écran de l'application à la lecture. Doit commencer par wigo://.",
+        'field_image' => 'Image (facultatif)',
+        'image_hint' => 'JPG, PNG ou WEBP, 5 Mo maximum. Elle apparaît au-dessus du message.',
+        'image_uploading' => 'Téléversement en cours…',
+        'image_remove' => "Retirer l'image",
+        'image_alt' => 'Image de la campagne « :title »',
 
         'audience_label' => 'Cible',
         'segment_status_label' => 'Statuts retenus',

@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
@@ -38,7 +39,21 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Campaigns])]
 class Index extends Component
 {
-    use InteractsWithCurrentUser, WithPagination;
+    use InteractsWithCurrentUser, WithFileUploads, WithPagination;
+
+    /**
+     * Disque des images d'envoi : `local`, qui est le disque **privé** (sa
+     * racine est `storage/app/private`), et non `public`. Une campagne peut
+     * illustrer une situation nominative, et rien ici n'a besoin d'une URL
+     * devinable. Même disque que les pièces jointes du support — ne pas le
+     * confondre avec `FILESYSTEM_DISK`, qui vaut `public` en local.
+     */
+    private const IMAGE_DISK = 'local';
+
+    /**
+     * Plafond du téléversement, en kilo-octets.
+     */
+    private const IMAGE_MAX_KB = 5120;
 
     public bool $composerOpen = false;
 
@@ -50,6 +65,11 @@ class Index extends Component
     public string $audience = 'all';
 
     public string $deeplink = '';
+
+    /**
+     * Image jointe à l'envoi, le temps de la composition.
+     */
+    public mixed $image = null;
 
     /** @var list<string> */
     public array $segmentStatuses = [];
@@ -269,7 +289,39 @@ class Index extends Component
             'status' => CampaignStatus::Draft,
             'deeplink' => $this->deeplink === '' ? null : $this->deeplink,
             'created_by_user_id' => Auth::id(),
+            ...$this->imageAttributes(),
         ]);
+    }
+
+    /**
+     * Range l'image sur le disque privé, une seule fois : l'envoi n'en fera
+     * pas une copie par conducteur.
+     *
+     * @return array<string, mixed>
+     */
+    private function imageAttributes(): array
+    {
+        if ($this->image === null) {
+            return [];
+        }
+
+        return [
+            'image_disk' => self::IMAGE_DISK,
+            'image_path' => $this->image->store('campaigns', self::IMAGE_DISK),
+            'image_name' => $this->image->getClientOriginalName(),
+            'image_mime' => $this->image->getMimeType() ?? 'application/octet-stream',
+            'image_size_bytes' => $this->image->getSize(),
+        ];
+    }
+
+    /**
+     * Retire l'image du composeur. Le fichier temporaire de Livewire part avec
+     * la prochaine purge — il n'a jamais atteint le disque de destination.
+     */
+    public function removeImage(): void
+    {
+        $this->image = null;
+        $this->resetValidation('image');
     }
 
     private function validateForm(): void
@@ -279,6 +331,9 @@ class Index extends Component
             'body' => ['required', 'string', 'max:2000'],
             'audience' => ['required', 'in:'.implode(',', array_column(CampaignAudience::cases(), 'value'))],
             'deeplink' => ['nullable', 'string', 'max:40', 'starts_with:wigo://'],
+            // Images seulement, et bornées : aucun antivirus n'existe dans la
+            // chaîne, et la même limite vaut déjà pour le support.
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.self::IMAGE_MAX_KB],
             // Un envoi individuel sans destinataire ne partirait à personne :
             // mieux vaut le refuser que le laisser passer sans bruit.
             'driverIds' => [
@@ -316,7 +371,7 @@ class Index extends Component
     private function resetForm(): void
     {
         $this->reset([
-            'title', 'body', 'audience', 'deeplink',
+            'title', 'body', 'audience', 'deeplink', 'image',
             'segmentStatuses', 'segmentHasVehicle', 'driverIds', 'driverSearch',
         ]);
         $this->resetValidation();

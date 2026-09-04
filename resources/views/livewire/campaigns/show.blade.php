@@ -26,6 +26,15 @@
         <h2 class="text-lg font-semibold text-ink">{{ $campaign->title }}</h2>
         <p class="mt-0.5 text-xs text-muted">{{ __('backoffice.campaigns.message_hint') }}</p>
 
+        {{-- L'image au-dessus du texte, comme dans le fil du conducteur. Elle
+             vit sur un disque privé : elle passe par la route protégée, jamais
+             par son chemin de stockage. --}}
+        @if ($campaign->hasImage())
+            <img src="{{ route('bo.campaigns.image', $campaign) }}"
+                 alt="{{ __('backoffice.campaigns.image_alt', ['title' => $campaign->title]) }}"
+                 class="mt-3 max-h-80 rounded-lg border border-line object-contain">
+        @endif
+
         {{-- `whitespace-pre-line` : les retours à la ligne saisis dans le
              composeur font partie du message et doivent survivre ici. --}}
         <div class="mt-3 whitespace-pre-line rounded-lg rounded-tl-sm border border-line bg-surface px-4 py-3.5 text-sm leading-relaxed text-ink">{{ $campaign->body }}</div>

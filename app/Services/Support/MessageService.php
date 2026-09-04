@@ -177,7 +177,12 @@ class MessageService
     /**
      * Message système : aucun émetteur, d'où l'absence de relation `sender`.
      *
+     * Le type reste `System` même avec une pièce jointe : `MessageType` dit
+     * comment lire le message, et l'application branche sur `system_event`.
+     * Le basculer en `Attachment` lui ferait perdre l'évènement.
+     *
      * @param  array<string, mixed>  $payload
+     * @param  list<MessageAttachment>  $attachments
      */
     public function writeSystemMessage(
         Conversation $conversation,
@@ -185,8 +190,9 @@ class MessageService
         array $payload = [],
         ?SupportRequest $request = null,
         ?Campaign $campaign = null,
+        array $attachments = [],
     ): Message {
-        $message = DB::transaction(function () use ($conversation, $event, $payload, $request, $campaign): Message {
+        $message = DB::transaction(function () use ($conversation, $event, $payload, $request, $campaign, $attachments): Message {
             $message = $this->write($conversation, [
                 'support_request_id' => $request?->getKey(),
                 'campaign_id' => $campaign?->getKey(),
@@ -197,7 +203,7 @@ class MessageService
                 // ancienne de l'application affiche cette phrase plutôt que
                 // rien face à un évènement qu'elle ne connaît pas.
                 'body' => $event->render($payload),
-            ]);
+            ], $attachments);
 
             $conversation->increment('driver_unread_count');
             $this->stampLastMessage($conversation, $message);

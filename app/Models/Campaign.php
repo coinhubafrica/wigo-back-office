@@ -32,6 +32,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property array<string, mixed>|null $segment
  * @property CampaignStatus $status
  * @property string|null $deeplink
+ * @property string|null $image_disk
+ * @property string|null $image_path
+ * @property string|null $image_name
+ * @property string|null $image_mime
+ * @property int|null $image_size_bytes
  * @property string|null $created_by_user_id
  * @property CarbonImmutable|null $scheduled_for
  * @property CarbonImmutable|null $sent_at
@@ -61,6 +66,7 @@ class Campaign extends Model
             'scheduled_for' => 'datetime',
             'sent_at' => 'datetime',
             'recipients_count' => 'integer',
+            'image_size_bytes' => 'integer',
         ];
     }
 
@@ -91,6 +97,36 @@ class Campaign extends Model
     public function supportRequests(): HasMany
     {
         return $this->hasMany(SupportRequest::class, 'opened_from_campaign_id');
+    }
+
+    /**
+     * L'envoi porte-t-il une image ?
+     */
+    public function hasImage(): bool
+    {
+        return $this->image_path !== null;
+    }
+
+    /**
+     * Attributs de la pièce jointe à déposer dans le fil d'un conducteur.
+     *
+     * Le fichier n'est pas recopié : chaque ligne pointe le `path` téléversé
+     * une fois à la composition. Ce sont des lignes de métadonnées, pas des
+     * copies — et elles rendent l'image lisible par les chemins existants,
+     * côté mobile comme côté back-office, sans toucher au contrat de l'API.
+     *
+     * @return array<string, mixed>
+     */
+    public function attachmentAttributes(): array
+    {
+        return [
+            'disk' => $this->image_disk,
+            'path' => $this->image_path,
+            'original_name' => $this->image_name,
+            'mime_type' => $this->image_mime,
+            'size_bytes' => $this->image_size_bytes,
+            'uploaded_by_user_id' => $this->created_by_user_id,
+        ];
     }
 
     /**

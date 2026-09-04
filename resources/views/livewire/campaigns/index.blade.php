@@ -150,16 +150,44 @@
                     {{-- Aperçu : le message arrive dans le fil du conducteur
                          comme un message système. Le voir avant l'envoi évite
                          de découvrir une coquille sur cinq mille écrans. --}}
-                    @if (trim($body) !== '')
+                    @if (trim($body) !== '' || $image !== null)
                         <div class="mt-2 rounded border border-line bg-surface p-3">
                             <p class="text-[10.5px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.campaigns.preview') }}</p>
                             <div class="mt-2 rounded bg-card px-3 py-2.5 shadow-sm">
                                 @if (trim($title) !== '')
                                     <p class="text-[13px] font-bold text-ink">{{ $title }}</p>
                                 @endif
-                                <p class="mt-0.5 whitespace-pre-line text-[13px] leading-relaxed text-ink">{{ $body }}</p>
+                                {{-- L'image se lit au-dessus du texte, comme
+                                     dans le fil : l'aperçu ne vaut que s'il
+                                     montre le même ordre. --}}
+                                @if ($image !== null && ! $errors->has('image'))
+                                    <img src="{{ $image->temporaryUrl() }}" alt=""
+                                         class="mt-1.5 max-h-48 w-full rounded object-cover">
+                                @endif
+                                @if (trim($body) !== '')
+                                    <p class="mt-0.5 whitespace-pre-line text-[13px] leading-relaxed text-ink">{{ $body }}</p>
+                                @endif
                             </div>
                         </div>
+                    @endif
+                </div>
+
+                {{-- Images seulement : la chaîne ne porte aucun antivirus, et
+                     un agent n'a pas à ouvrir un fichier quelconque. --}}
+                <div>
+                    <x-field :label="__('backoffice.campaigns.field_image')" name="image" id="campaign-image" type="file"
+                             wire:model="image" accept="image/jpeg,image/png,image/webp"
+                             :hint="__('backoffice.campaigns.image_hint')" />
+
+                    <div wire:loading wire:target="image" class="mt-1 text-xs text-muted">
+                        {{ __('backoffice.campaigns.image_uploading') }}
+                    </div>
+
+                    @if ($image !== null && ! $errors->has('image'))
+                        <button type="button" wire:click="removeImage"
+                                class="mt-1.5 text-xs font-semibold text-err-text hover:underline">
+                            {{ __('backoffice.campaigns.image_remove') }}
+                        </button>
                     @endif
                 </div>
 

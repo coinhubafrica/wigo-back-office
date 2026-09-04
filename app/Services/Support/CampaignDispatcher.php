@@ -7,6 +7,7 @@ use App\Enums\SystemMessageEvent;
 use App\Models\Campaign;
 use App\Models\Conversation;
 use App\Models\Driver;
+use App\Models\MessageAttachment;
 use App\Notifications\CampaignPublished;
 use Illuminate\Support\Collection;
 
@@ -20,6 +21,11 @@ use Illuminate\Support\Collection;
  *
  * Pas de table de destinataires : les messages déposés font foi. Ils disent
  * qui a reçu, et leur `read_at` dit qui a lu.
+ *
+ * Une image éventuelle est téléversée **une fois** à la composition : chaque
+ * message reçoit sa ligne `message_attachments` pointant le même fichier. Ce
+ * sont des métadonnées, pas des copies, et elles rendent l'image lisible par
+ * les chemins déjà en place — sans toucher au contrat de l'API.
  *
  * Rejouable de bout en bout : un conducteur qui a déjà reçu l'envoi est
  * ignoré, donc reprendre un envoi à moitié fait ne dépose ni ne notifie deux
@@ -76,11 +82,35 @@ class CampaignDispatcher
                         SystemMessageEvent::CampaignMessage,
                         ['body' => $campaign->body, 'title' => $campaign->title],
                         campaign: $campaign,
+                        attachments: $this->attachmentsFor($campaign),
                     );
 
                     $driver->notify(new CampaignPublished($campaign));
                 }
             });
+    }
+
+    /**
+     * Pièce jointe du message déposé chez un conducteur.
+     *
+     * Une ligne par destinataire, toutes sur le `path` téléversé une fois à la
+     * composition : le disque ne reçoit pas cinq mille copies du même fichier.
+     * Corollaire à ne pas perdre de vue — **supprimer ce fichier casse tous
+     * les messages de l'envoi**, jamais un seul.
+     *
+     * La ligne naît sans `message_id` et `MessageService` la rattache dans la
+     * foulée. La purge des orphelines ne s'en saisit pas : elle ne prend que
+     * ce qui traîne depuis plus d'un jour.
+     *
+     * @return list<MessageAttachment>
+     */
+    private function attachmentsFor(Campaign $campaign): array
+    {
+        if (! $campaign->hasImage()) {
+            return [];
+        }
+
+        return [MessageAttachment::query()->create($campaign->attachmentAttributes())];
     }
 
     /**

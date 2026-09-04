@@ -39,6 +39,11 @@ class CampaignPublished extends Notification implements ShouldQueue
             'title' => $this->campaign->title,
             'body' => $this->campaign->body,
             'campaign_id' => $this->campaign->getKey(),
+            // Un booléen, pas une URL : cette charge utile est écrite en base
+            // et relue longtemps après, alors qu'une URL signée expire en une
+            // heure. L'application ouvre le fil, où le message porte sa pièce
+            // jointe avec une URL fraîche.
+            'has_image' => $this->campaign->hasImage(),
             'deeplink' => $this->campaign->deeplink ?? 'wigo://campaigns/'.$this->campaign->getKey(),
         ];
     }

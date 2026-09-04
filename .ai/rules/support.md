@@ -39,3 +39,18 @@ Le nom compte : `Campaign` et non `Broadcast`. Le mot « broadcast » est déjà
 Rejouable : un conducteur qui a déjà reçu l'envoi est ignoré, donc reprendre un envoi à moitié fait ne dépose ni ne notifie deux fois. Écriture par lots de 500.
 
 Aucun endpoint mobile : la composition est réservée au back-office, et la réception passe par le fil de conversation, la table `notifications` et le push FCM — les mêmes chemins que n'importe quel message.
+
+## L'image d'une campagne est stockée une fois, mais portée par une ligne de pièce jointe par destinataire
+La campagne porte le fichier (`campaigns.image_disk` / `image_path` / `image_name` / `image_mime` / `image_size_bytes`), téléversé **une seule fois** à la composition. L'envoi crée ensuite une ligne `message_attachments` par conducteur, toutes sur le **même** `path` : ce sont des métadonnées, pas des copies. Cinq mille conducteurs ne font donc pas cinq mille copies du même JPEG.
+
+Ce découpage est ce qui permet de ne rien changer au contrat de l'API : `MessageResource.attachments` et le scope par conversation de `SupportController::downloadAttachment` fonctionnent tels quels, chaque conducteur ne pouvant tirer que la ligne accrochée à *son* message.
+
+Corollaire à ne pas perdre de vue : **supprimer le fichier casse tous les messages de l'envoi**, jamais un seul. Ne pas « nettoyer » un `path` parce qu'une ligne disparaît.
+
+Le message reste `MessageType::System` avec sa pièce jointe — l'application branche sur `system_event`, le basculer en `Attachment` lui ferait perdre l'évènement. `writeSystemMessage()` accepte donc un `$attachments`.
+
+Disque : `local`, qui est le disque **privé** (racine `storage/app/private`), comme les pièces jointes du support — pas `public`, et pas `FILESYSTEM_DISK` (qui vaut `public` en local). Il n'existe aucun disque nommé `private` dans `config/filesystems.php`, malgré la racine : `Storage::fake('private')` en fabriquerait un et masquerait l'erreur en test.
+
+Images seulement (`jpg,jpeg,png,webp`, 5 Mo) : aucun antivirus dans la chaîne, même borne que le support.
+
+La charge utile de `CampaignPublished` porte `has_image` (booléen) et **pas** d'URL : elle est écrite en base et relue longtemps après, alors qu'une URL signée expire en une heure.

@@ -2,6 +2,7 @@
 
 use App\Enums\BackOfficeModule;
 use App\Http\Controllers\BackOffice\AuditExportController;
+use App\Http\Controllers\BackOffice\CampaignImageController;
 use App\Http\Controllers\BackOffice\DriverPhotoController;
 use App\Http\Controllers\BackOffice\MessageAttachmentController;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
@@ -133,6 +134,13 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('campaigns', CampaignsIndex::class)
         ->middleware('permission:'.BackOfficeModule::Campaigns->permission())
         ->name(BackOfficeModule::Campaigns->route());
+
+    // Déclarée avant `campaigns/{campaign}` : le joker avalerait sinon ce
+    // chemin et l'image passerait pour un identifiant de campagne. L'image vit
+    // sur un disque privé, d'où cette route protégée plutôt qu'un lien direct.
+    Route::get('campaigns/image/{campaign}', CampaignImageController::class)
+        ->middleware('permission:'.BackOfficeModule::Campaigns->permission())
+        ->name('bo.campaigns.image');
 
     Route::livewire('campaigns/{campaign}', CampaignsShow::class)
         ->middleware('permission:'.BackOfficeModule::Campaigns->permission())
