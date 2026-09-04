@@ -1,11 +1,13 @@
 <?php
 
 use App\Enums\BackOfficeModule;
+use App\Http\Resources\CnpsStatementPayload;
 use App\Livewire\Cnps\Index;
 use App\Models\CnpsDeclaration;
 use App\Models\CnpsReference;
 use App\Models\Driver;
 use App\Models\User;
+use App\Services\Cnps\CnpsStatementService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -207,7 +209,7 @@ it('the driver fiche shows the cnps panel', function (): void {
         ->assertSee('Août 2026');
 });
 
-it('the fiche panel lists the twelve previous months', function (): void {
+it('the fiche panel lists the five previous months, not the mobile thirteen', function (): void {
     $driver = Driver::factory()->create();
     CnpsReference::factory()->effectiveFrom('2025-01', 9000)->create(['driver_id' => $driver->id]);
     CnpsDeclaration::factory()->forPeriod('2026-07', 9000)->create(['driver_id' => $driver->id]);
@@ -217,9 +219,24 @@ it('the fiche panel lists the twelve previous months', function (): void {
         ->assertOk()
         ->assertSee('Juillet 2026')
         ->assertSee('Payé')
-        // Le mois le plus ancien de la fenêtre.
-        ->assertSee('Août 2025')
-        ->assertSee('En retard');
+        // Le mois le plus ancien de la fenêtre : cinq mois avant août.
+        ->assertSee('Mars 2026')
+        ->assertSee('En retard')
+        // La profondeur mobile n'est pas celle de la fiche : ce panneau
+        // s'aligne sur ses voisins, il ne déroule pas l'année.
+        ->assertDontSee('Août 2025');
+});
+
+it('the mobile statement still carries thirteen months', function (): void {
+    $driver = Driver::factory()->create();
+    CnpsReference::factory()->effectiveFrom('2025-01', 9000)->create(['driver_id' => $driver->id]);
+
+    $statement = CnpsStatementPayload::build($driver, app(CnpsStatementService::class));
+
+    // Le mois en cours plus douze d'historique.
+    expect($statement['history'])->toHaveCount(12)
+        ->and($statement['current']['label'])->toBe('Août 2026')
+        ->and(end($statement['history'])['label'])->toBe('Août 2025');
 });
 
 it('the fiche panel holds no validation control', function (): void {

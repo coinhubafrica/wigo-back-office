@@ -45,31 +45,69 @@
         <x-table loading="filterByStatus,resetFilters,search,gotoPage,previousPage,nextPage">
             <x-slot:head>
                 <x-th>{{ __('backoffice.drivers.column_driver') }}</x-th>
+                <x-th>{{ __('backoffice.drivers.column_identity') }}</x-th>
+                <x-th>{{ __('backoffice.drivers.column_license') }}</x-th>
                 <x-th>{{ __('backoffice.drivers.column_status') }}</x-th>
-                <x-th>{{ __('backoffice.drivers.column_phone') }}</x-th>
+                <x-th align="right">{{ __('backoffice.drivers.column_balance') }}</x-th>
+                <x-th>{{ __('backoffice.drivers.column_cnps') }}</x-th>
             </x-slot:head>
 
             @foreach ($drivers as $driver)
-                {{-- La navigation est portée par le lien du nom, pas par un
-                     `onclick` sur la ligne : la ligne restait inatteignable au
-                     clavier et court-circuitait `wire:navigate`. --}}
-                <tr wire:key="driver-{{ $driver->id }}" class="group transition-colors hover:bg-surface">
+                {{-- Toute la ligne est cliquable, mais la navigation reste
+                     portée par un vrai lien : celui du nom, doublé d'une
+                     surface étirée en absolu sur la ligne. Un `onclick` sur le
+                     `<tr>` la rendait inatteignable au clavier et
+                     court-circuitait `wire:navigate`. --}}
+                <tr wire:key="driver-{{ $driver->id }}" class="group relative transition-colors hover:bg-surface">
+                    @php
+                        // « Suzuki Dzire - Blanc · AA-567-HJ-01 » : les parties
+                        // que Yango n'a pas envoyées disparaissent au lieu de
+                        // laisser un séparateur orphelin.
+                        $vehicleLine = $driver->vehicle === null
+                            ? __('backoffice.drivers.no_vehicle')
+                            : implode(' · ', array_filter([
+                                $driver->vehicle->description(),
+                                $driver->vehicle->plate_number,
+                            ]));
+                        $cnps = $cnpsStatuses[$driver->id] ?? null;
+                    @endphp
                     <x-td>
                         <div class="flex items-center gap-2.5">
                             <x-avatar :initials="$driver->initials()" />
                             <span class="min-w-0">
+                                {{-- `after:absolute after:inset-0` étire la zone
+                                     cliquable du lien sur toute la ligne sans
+                                     ajouter de second arrêt de tabulation. --}}
                                 <a href="{{ route('bo.drivers.show', $driver) }}" wire:navigate
-                                   class="block text-sm font-bold text-ink group-hover:text-primary-text">
+                                   class="block text-sm font-bold text-ink after:absolute after:inset-0 after:content-[''] group-hover:text-primary-text">
                                     {{ $driver->fullName() }}
                                 </a>
-                                <span class="text-xs text-muted">{{ $driver->vehicle?->plate_number ?? __('backoffice.drivers.no_vehicle') }}</span>
+                                <span class="block truncate text-xs text-muted">{{ $vehicleLine }}</span>
                             </span>
                         </div>
                     </x-td>
+                    <x-td nowrap>
+                        <span class="block font-mono text-sm text-ink">{{ $driver->yango_id ?? '—' }}</span>
+                        <span class="block font-mono text-xs text-muted">{{ $driver->phone }}</span>
+                    </x-td>
+                    <x-td mono nowrap>{{ $driver->license_number ?? '—' }}</x-td>
                     <x-td>
                         <x-badge :classes="$driver->status->badgeClasses()">{{ $driver->status->label() }}</x-badge>
                     </x-td>
-                    <x-td mono nowrap>{{ $driver->phone }}</x-td>
+                    <x-td align="right" nowrap>
+                        @if ($driver->yango_balance === null)
+                            <span class="text-sm text-muted">—</span>
+                        @else
+                            <span class="text-sm font-bold tabular-nums text-ink">{{ number_format($driver->yango_balance, 0, ',', ' ') }} FCFA</span>
+                        @endif
+                    </x-td>
+                    <x-td nowrap>
+                        @if ($cnps === null)
+                            <span class="text-sm text-muted">—</span>
+                        @else
+                            <x-badge :classes="$cnps->badgeClasses()">{{ $cnps->label() }}</x-badge>
+                        @endif
+                    </x-td>
                 </tr>
             @endforeach
 

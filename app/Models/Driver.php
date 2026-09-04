@@ -35,6 +35,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property CarbonImmutable|null $last_login_at
  * @property-read Vehicle|null $vehicle
  * @property-read Collection<int, OtpCode> $otpCodes
+ * @property-read Collection<int, SupportRequest> $supportRequests
  * @property-read Collection<int, CnpsDeclaration> $cnpsDeclarations
  * @property-read Collection<int, CnpsReference> $cnpsReferences
  * @property-read Collection<int, Transaction> $transactions
@@ -117,6 +118,17 @@ class Driver extends Authenticatable
     public function shopOrders(): HasMany
     {
         return $this->hasMany(ShopOrder::class);
+    }
+
+    /**
+     * Requêtes support ouvertes par le conducteur, de la plus récente à la
+     * plus ancienne.
+     *
+     * @return HasMany<SupportRequest, $this>
+     */
+    public function supportRequests(): HasMany
+    {
+        return $this->hasMany(SupportRequest::class)->latest('created_at');
     }
 
     /**

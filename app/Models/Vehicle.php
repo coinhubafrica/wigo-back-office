@@ -60,4 +60,18 @@ class Vehicle extends Model
     {
         return $this->belongsTo(VehicleModel::class);
     }
+
+    /**
+     * « Suzuki Dzire - Blanc » pour la ligne sous le nom du conducteur.
+     *
+     * `brand`, `model` et `color` viennent de Yango en chaînes libres et
+     * peuvent manquer : les parties absentes disparaissent au lieu de laisser
+     * un tiret orphelin.
+     */
+    public function description(): string
+    {
+        $makeAndModel = trim(implode(' ', array_filter([$this->brand, $this->model])));
+
+        return trim(implode(' - ', array_filter([$makeAndModel, $this->color])));
+    }
 }
