@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Campaign;
 use App\Models\IdempotencyKey;
 use App\Models\MessageAttachment;
 use App\Models\OtpCode;
@@ -43,7 +44,22 @@ Schedule::call(function (): void {
         ->whereNull('message_id')
         ->where('created_at', '<', now()->subDay())
         ->each(function (MessageAttachment $attachment): void {
-            Storage::disk($attachment->disk)->delete($attachment->path);
+            /*
+            | Le fichier d'une campagne est partagé par tous ses messages : une
+            | seule ligne orpheline — un envoi interrompu entre la création de
+            | la pièce jointe et son rattachement — emporterait sinon l'image
+            | de l'envoi entier, et l'écran de détail tomberait en 404. On jette
+            | la ligne, on garde le fichier tant qu'une campagne le revendique.
+            */
+            $claimed = Campaign::query()
+                ->where('image_path', $attachment->path)
+                ->where('image_disk', $attachment->disk)
+                ->exists();
+
+            if (! $claimed) {
+                Storage::disk($attachment->disk)->delete($attachment->path);
+            }
+
             $attachment->delete();
         });
 })

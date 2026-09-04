@@ -57,6 +57,12 @@ class Index extends Component
 
     public bool $composerOpen = false;
 
+    /**
+     * Brouillon en cours de retouche, le cas échéant. Un envoi parti ne se
+     * modifie pas : le message est déjà dans le fil des conducteurs.
+     */
+    public ?string $editingId = null;
+
     public string $title = '';
 
     public string $body = '';
@@ -92,9 +98,42 @@ class Index extends Component
         $this->composerOpen = true;
     }
 
+    /**
+     * Rouvre un brouillon pour le corriger.
+     *
+     * Sans cela un brouillon enregistré ne pouvait plus qu'être envoyé ou
+     * abandonné — jamais relu ni repris —, et « dupliquer » n'aurait produit
+     * qu'une copie que personne ne pouvait retoucher.
+     */
+    public function edit(string $id): void
+    {
+        $campaign = Campaign::query()->findOrFail($id);
+
+        // Un envoi parti est une trace : il se duplique, il ne se réécrit pas.
+        if ($campaign->status !== CampaignStatus::Draft) {
+            return;
+        }
+
+        $this->resetForm();
+
+        $this->editingId = $campaign->getKey();
+        $this->title = $campaign->title;
+        $this->body = $campaign->body;
+        $this->audience = $campaign->audience->value;
+        $this->deeplink = $campaign->deeplink ?? '';
+
+        $segment = $campaign->segment ?? [];
+        $this->segmentStatuses = $segment['status'] ?? [];
+        $this->segmentHasVehicle = $segment['has_vehicle'] ?? null;
+        $this->driverIds = $segment['driver_ids'] ?? [];
+
+        $this->composerOpen = true;
+    }
+
     public function cancelCompose(): void
     {
         $this->composerOpen = false;
+        $this->editingId = null;
         $this->resetValidation();
     }
 
@@ -119,10 +158,15 @@ class Index extends Component
     {
         Gate::authorize('manageCampaigns');
 
+        $wasEditing = $this->editingId !== null;
         $campaign = $this->persist();
 
         $this->composerOpen = false;
-        $this->dispatch('toast', message: __('backoffice.campaigns.draft_saved', ['title' => $campaign->title]));
+        $this->editingId = null;
+        $this->dispatch('toast', message: __(
+            $wasEditing ? 'backoffice.campaigns.draft_updated' : 'backoffice.campaigns.draft_saved',
+            ['title' => $campaign->title],
+        ));
     }
 
     public function confirmSend(?string $campaignId = null): void
@@ -281,15 +325,28 @@ class Index extends Component
 
         $segment = $this->segment();
 
-        return Campaign::query()->create([
+        $attributes = [
             'title' => $this->title,
             'body' => $this->body,
             'audience' => $this->audienceEnum(),
             'segment' => $segment === [] ? null : $segment,
             'status' => CampaignStatus::Draft,
             'deeplink' => $this->deeplink === '' ? null : $this->deeplink,
-            'created_by_user_id' => Auth::id(),
             ...$this->imageAttributes(),
+        ];
+
+        if ($this->editingId !== null) {
+            $campaign = Campaign::query()->findOrFail($this->editingId);
+            // `created_by_user_id` n'est pas réécrit : l'auteur du brouillon
+            // reste celui qui l'a ouvert.
+            $campaign->update($attributes);
+
+            return $campaign->refresh();
+        }
+
+        return Campaign::query()->create([
+            ...$attributes,
+            'created_by_user_id' => Auth::id(),
         ]);
     }
 
@@ -371,7 +428,7 @@ class Index extends Component
     private function resetForm(): void
     {
         $this->reset([
-            'title', 'body', 'audience', 'deeplink', 'image',
+            'title', 'body', 'audience', 'deeplink', 'image', 'editingId',
             'segmentStatuses', 'segmentHasVehicle', 'driverIds', 'driverSearch',
         ]);
         $this->resetValidation();

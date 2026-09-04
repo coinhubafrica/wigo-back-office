@@ -20,23 +20,15 @@ Deux invariants portés par `MessageService`, et nulle part ailleurs :
 
 La priorité et les deux échéances SLA sont **dérivées** de la catégorie par `SlaCalculator`, jamais saisies, et stockées : retoucher le barème ne doit pas rejouer les tickets passés.
 
-## Diffusions : audience figée, envoi rejouable, compte affiché avant l'envoi
-Les destinataires sont **matérialisés** (`broadcast_recipients`, une ligne par conducteur, par lots de 500) et non recalculés à la lecture. Sans cela l'audience changerait sous les pieds du destinataire au gré de son statut, et le taux d'ouverture n'aurait pas de dénominateur.
-
-Rejouable de bout en bout : l'unicité `(broadcast_id, driver_id)` absorbe une reprise, et **seules les lignes réellement insérées sont notifiées** — reprendre un envoi à moitié fait ne prévient donc personne deux fois. Cinq mille conducteurs notifiés en double, c'est un incident ; un test couvre ce cas.
-
-Le nombre de destinataires affiché avant l'envoi sort du **même** `BroadcastAudienceResolver` que la matérialisation : un agent ne doit pas voir un nombre puis en toucher un autre. Attention au piège corrigé une fois déjà — la confirmation d'un brouillon déjà enregistré doit compter sur *sa* propre audience (`confirmingCount`), jamais sur l'état courant du composeur, qui vaut « tous » après un rechargement de page.
-
-Une diffusion ne se répond pas : l'API mobile n'expose que la liste et le marquage en lu. Le bouton « Répondre » de l'application ouvre le fil du support, et `support_requests.opened_from_broadcast_id` garde le lien.
+## Le compte affiché avant l'envoi vient du même résolveur que l'envoi
+Le nombre de destinataires montré avant de diffuser sort du **même** `CampaignAudienceResolver` que la matérialisation : un agent ne doit pas voir un nombre puis en toucher un autre. Piège déjà corrigé une fois — la confirmation d'un brouillon déjà enregistré doit compter sur *sa* propre audience (`confirmingCount`), jamais sur l'état courant du composeur, qui vaut « tous » après un rechargement de page.
 
 ## Envois groupés : « campaign », pas « broadcast »
 Un envoi groupé dépose **le même message dans la conversation de chaque conducteur visé** — un message système, que le conducteur lit là où il lit déjà le support et auquel il peut répondre sur place. Sa réponse repart en tri comme n'importe quel sujet nouveau.
 
 Le nom compte : `Campaign` et non `Broadcast`. Le mot « broadcast » est déjà pris par Laravel (`ShouldBroadcast`, `Broadcast::channel()`, Reverb), et ce dépôt fait les deux. Deux sens pour un même terme est un piège — **ne pas renommer en sens inverse**, et se méfier d'un rechercher-remplacer global : il casse `broadcastOn()`, `ShouldBroadcast`, `/broadcasting/auth` et `config('broadcasting.default')`.
 
-**Pas de table de destinataires.** Les messages déposés font foi : ils disent qui a reçu, et leur `read_at` dit qui a lu. `Campaign::readRate()` compte dessus plutôt que sur un compteur — un `read_at` ne dérive pas, et il atteste d'un fil réellement ouvert, pas d'une notification balayée.
-
-Rejouable : un conducteur qui a déjà reçu l'envoi est ignoré, donc reprendre un envoi à moitié fait ne dépose ni ne notifie deux fois. Écriture par lots de 500.
+Les destinataires sont **matérialisés** dans `campaign_recipients` — voir la section « Les destinataires d'une campagne sont matérialisés » plus bas, qui remplace l'ancienne règle « pas de table de destinataires ». `Campaign::readRate()` continue de compter sur les messages déposés plutôt que sur un compteur : un `read_at` ne dérive pas, et il atteste d'un fil réellement ouvert, pas d'une notification balayée.
 
 Aucun endpoint mobile : la composition est réservée au back-office, et la réception passe par le fil de conversation, la table `notifications` et le push FCM — les mêmes chemins que n'importe quel message.
 
@@ -54,3 +46,24 @@ Disque : `local`, qui est le disque **privé** (racine `storage/app/private`), c
 Images seulement (`jpg,jpeg,png,webp`, 5 Mo) : aucun antivirus dans la chaîne, même borne que le support.
 
 La charge utile de `CampaignPublished` porte `has_image` (booléen) et **pas** d'URL : elle est écrite en base et relue longtemps après, alors qu'une URL signée expire en une heure.
+
+## Les destinataires d'une campagne sont matérialisés ; la réservation, pas la lecture, empêche le double envoi
+**Cette règle renverse « Pas de table de destinataires ».** Ce choix tenait tant qu'un envoi ne pouvait qu'aboutir : un conducteur dont le message n'a jamais été écrit n'avait alors aucune ligne, donc n'apparaissait nulle part, et l'échec était invisible autant qu'irrattrapable. `campaign_recipients` est cet endroit manquant.
+
+Partage des rôles, à ne pas brouiller :
+- `campaign_recipients` porte l'état de la **remise** (`pending` / `sent` / `failed`, plus `error` et `attempts`) ;
+- `messages.read_at` porte l'état de la **lecture**, et lui seul. Aucun drapeau de lecture n'est recopié sur la ligne destinataire — un `read_at` ne dérive pas, c'est ce qui en fait une preuve.
+
+`readRate()` garde pour dénominateur les **messages déposés** : un conducteur qui n'a rien reçu ne peut pas lire. Le taux de remise (`deliveryRate()`) se compte sur les visés. Mélanger les deux rendrait les deux chiffres illisibles.
+
+**Idempotence.** Le docblock de `DispatchCampaignJob` affirmait que la reprise était « absorbée par l'unicité `(campaign_id, driver_id)` en base » alors que cette contrainte n'existait pas : la garde réelle était un `whereIn` en PHP, par lot et hors transaction, que deux workers pouvaient franchir ensemble. Désormais :
+1. `insertOrIgnore` sur `UNIQUE (campaign_id, driver_id)` — rematérialiser n'ajoute personne deux fois ;
+2. **réserver avant d'écrire** : `UPDATE ... WHERE claimed_at IS NULL`, atomique sur MySQL comme SQLite, un seul worker en ressort avec une ligne modifiée.
+
+L'ordre est la garantie : réserver **puis** écrire le message. Inverser, c'est retrouver la course. Le mode de défaillance devient la sous-livraison (ligne réservée non remise, rattrapable), jamais la sur-livraison — le bon compromis quand notifier deux fois est un incident.
+
+**Le job de lot attrape par destinataire et ne lève jamais.** Ce n'est pas de la politesse : en file `sync` (donc en test), une exception qui sort d'un job de lot remonte jusqu'à l'appelant, `allowFailures()` ne l'avale pas et le rappel `finally` — qui sort la campagne de `Sending` — ne tourne pas. Vérifié à l'expérience.
+
+Un job par **lot de 200**, pas par destinataire : la granularité d'échec vient de la ligne, qui survit à la purge de `failed_jobs` et se requête depuis l'écran. Le rejeu, lui, reste unitaire.
+
+`Failed` ne se pose que si **rien** n'est parti. Une campagne remise à 4 999 sur 5 000 est envoyée ; ses échecs se lisent sur sa page.

@@ -6,6 +6,7 @@ use App\Enums\Permission;
 use App\Models\Announcement;
 use App\Models\AuditLog;
 use App\Models\Campaign;
+use App\Models\CampaignRecipient;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
@@ -118,6 +119,7 @@ class AppServiceProvider extends ServiceProvider
             'announcement' => Announcement::class,
             'audit_log' => AuditLog::class,
             'campaign' => Campaign::class,
+            'campaign_recipient' => CampaignRecipient::class,
             'challenge' => Challenge::class,
             'challenge_ticket' => ChallengeTicket::class,
             'challenge_winner' => ChallengeWinner::class,

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CampaignAudience;
+use App\Enums\CampaignRecipientStatus;
 use App\Enums\CampaignStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\CampaignFactory;
@@ -44,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read User|null $createdByUser
+ * @property-read Collection<int, CampaignRecipient> $recipients
  * @property-read Collection<int, Message> $messages
  * @property-read Collection<int, SupportRequest> $supportRequests
  */
@@ -79,8 +81,21 @@ class Campaign extends Model
     }
 
     /**
-     * Messages déposés par cet envoi, un par conducteur touché. Tient lieu de
-     * table de destinataires.
+     * Conducteurs visés par cet envoi, et l'état de leur remise.
+     *
+     * L'audience est figée à l'envoi : c'est ici qu'on lit qui aurait dû
+     * recevoir, y compris ceux dont la remise a échoué et qui n'ont donc aucun
+     * message.
+     *
+     * @return HasMany<CampaignRecipient, $this>
+     */
+    public function recipients(): HasMany
+    {
+        return $this->hasMany(CampaignRecipient::class);
+    }
+
+    /**
+     * Messages déposés par cet envoi, un par conducteur réellement touché.
      *
      * @return HasMany<Message, $this>
      */
@@ -138,8 +153,49 @@ class Campaign extends Model
     }
 
     /**
-     * Taux d'ouverture en pourcentage, sur les destinataires matérialisés.
+     * Conducteurs visés, remise réussie ou non.
      */
+    public function targetedCount(): int
+    {
+        return $this->recipients()->count();
+    }
+
+    /**
+     * Conducteurs chez qui le message a bien été déposé.
+     */
+    public function deliveredCount(): int
+    {
+        return $this->recipients()->where('status', CampaignRecipientStatus::Sent)->count();
+    }
+
+    /**
+     * Conducteurs visés que l'envoi n'a pas atteints.
+     */
+    public function failedCount(): int
+    {
+        return $this->recipients()->failed()->count();
+    }
+
+    public function hasFailures(): bool
+    {
+        return $this->failedCount() > 0;
+    }
+
+    /**
+     * Part des visés réellement atteints. À ne pas confondre avec le taux de
+     * lecture : celui-ci se compte sur les messages déposés, car un conducteur
+     * qui n'a rien reçu ne peut pas lire — les mélanger rendrait les deux
+     * chiffres illisibles.
+     */
+    public function deliveryRate(): ?float
+    {
+        $targeted = $this->targetedCount();
+
+        return $targeted > 0
+            ? round($this->deliveredCount() / $targeted * 100, 1)
+            : null;
+    }
+
     /**
      * Nombre de destinataires ayant ouvert leur fil depuis l'envoi.
      */

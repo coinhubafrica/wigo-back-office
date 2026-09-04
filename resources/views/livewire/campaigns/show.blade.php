@@ -18,6 +18,13 @@
     <x-panel :title="__('backoffice.campaigns.message_section')">
         <x-slot:actions>
             <x-badge :classes="$campaign->status->badgeClasses()">{{ $campaign->status->label() }}</x-badge>
+            {{-- Dupliquer plutôt que renvoyer : l'original reste une trace,
+                 la copie s'édite puis part comme un envoi neuf. --}}
+            @if ($canManage)
+                <x-button size="sm" variant="secondary" wire:click="duplicate" target="duplicate">
+                    {{ __('backoffice.campaigns.duplicate') }}
+                </x-button>
+            @endif
             @if ($isDraft)
                 <x-button size="sm" wire:click="confirmSend" target="confirmSend">{{ __('backoffice.campaigns.send') }}</x-button>
             @endif
@@ -95,6 +102,21 @@
                 @foreach (['all' => __('backoffice.campaigns.filter_all'), 'read' => __('backoffice.campaigns.filter_read'), 'unread' => __('backoffice.campaigns.filter_unread')] as $value => $label)
                     <x-chip-filter wire:key="recipient-filter-{{ $value }}" wire:click="filterBy('{{ $value }}')" :active="$filter === $value">{{ $label }}</x-chip-filter>
                 @endforeach
+
+                {{-- La puce des échecs n'apparaît que s'il y en a : un compteur
+                     à zéro en permanence finirait par ne plus se lire. --}}
+                @if ($failed > 0)
+                    <x-chip-filter wire:key="recipient-filter-failed" wire:click="filterBy('failed')"
+                                   :active="$filter === 'failed'" tone="danger" :count="$failed">
+                        {{ __('backoffice.campaigns.filter_failed') }}
+                    </x-chip-filter>
+
+                    @if ($canSend)
+                        <x-button size="sm" variant="secondary" wire:click="confirmReplayAll" target="confirmReplayAll">
+                            {{ __('backoffice.campaigns.replay_all') }}
+                        </x-button>
+                    @endif
+                @endif
             </x-slot:actions>
         @endunless
 
@@ -105,12 +127,14 @@
                 <x-slot:head>
                     <x-th>{{ __('backoffice.campaigns.column_driver') }}</x-th>
                     <x-th>{{ __('backoffice.campaigns.column_phone') }}</x-th>
+                    <x-th>{{ __('backoffice.campaigns.column_delivery') }}</x-th>
                     <x-th>{{ __('backoffice.campaigns.column_read_state') }}</x-th>
+                    <x-th><span class="sr-only">{{ __('backoffice.campaigns.replay') }}</span></x-th>
                 </x-slot:head>
 
-                @foreach ($recipients as $message)
-                    @php($driver = $message->conversation?->driver)
-                    <tr wire:key="recipient-{{ $message->id }}" class="transition-colors hover:bg-surface">
+                @foreach ($recipients as $recipient)
+                    @php($driver = $recipient->driver)
+                    <tr wire:key="recipient-{{ $recipient->id }}" class="transition-colors hover:bg-surface">
                         <x-td>
                             @if ($driver)
                                 <a href="{{ route('bo.drivers.show', $driver) }}" wire:navigate
@@ -120,12 +144,33 @@
                             @endif
                         </x-td>
                         <x-td mono muted nowrap>{{ $driver?->phone ?? '—' }}</x-td>
+                        {{-- Remise : l'état de l'envoi chez ce conducteur. Une
+                             ligne en échec porte sa raison, sans quoi il n'y
+                             aurait rien à faire de l'information. --}}
+                        <x-td>
+                            <x-badge :classes="$recipient->status->badgeClasses()">{{ $recipient->status->label() }}</x-badge>
+                            @if ($recipient->error)
+                                <p class="mt-0.5 max-w-[320px] truncate text-[11px] text-err-text" title="{{ $recipient->error }}">{{ $recipient->error }}</p>
+                            @endif
+                        </x-td>
+                        {{-- Lecture : sans message déposé, la question ne se
+                             pose pas — un tiret, jamais « non lu ». --}}
                         <x-td nowrap>
-                            @if ($message->read_at)
+                            @if ($recipient->message === null)
+                                <span class="text-[13px] text-muted">—</span>
+                            @elseif ($recipient->message->read_at)
                                 <x-badge tone="ok">{{ __('backoffice.campaigns.read_badge') }}</x-badge>
-                                <span class="ml-1.5 text-xs text-muted tabular-nums">{{ $message->read_at->format('d/m/Y H:i') }}</span>
+                                <span class="ml-1.5 text-xs text-muted tabular-nums">{{ $recipient->message->read_at->format('d/m/Y H:i') }}</span>
                             @else
                                 <x-badge>{{ __('backoffice.campaigns.unread_badge') }}</x-badge>
+                            @endif
+                        </x-td>
+                        <x-td align="right" nowrap>
+                            @if ($canSend && $recipient->status->isReplayable())
+                                <x-button size="sm" variant="secondary"
+                                          wire:click="confirmReplay('{{ $recipient->id }}')" target="confirmReplay">
+                                    {{ __('backoffice.campaigns.replay') }}
+                                </x-button>
                             @endif
                         </x-td>
                     </tr>
@@ -169,5 +214,26 @@
                 </p>
             </x-confirm>
         @endif
+    @endif
+
+    {{-- ---------------------------------------------------------------- --}}
+    {{-- Rejeu : unitaire ou en masse, une confirmation partagée.          --}}
+    {{-- Hors du bloc « brouillon » : un rejeu ne concerne qu'un envoi     --}}
+    {{-- déjà parti, soit exactement le cas contraire.                     --}}
+    {{-- ---------------------------------------------------------------- --}}
+    @if ($confirmingReplayId !== null)
+        <x-confirm close="cancelReplay" action="replay"
+                   :title="__('backoffice.campaigns.confirm_replay_title')"
+                   :body="__('backoffice.campaigns.confirm_replay_body')"
+                   :confirm-label="__('backoffice.campaigns.replay')"
+                   :loading="__('backoffice.common.sending')" />
+    @endif
+
+    @if ($confirmingReplayAll)
+        <x-confirm close="cancelReplay" action="replayAllFailures"
+                   :title="__('backoffice.campaigns.confirm_replay_all_title')"
+                   :body="trans_choice('backoffice.campaigns.confirm_replay_all_body', $failed, ['count' => $failed])"
+                   :confirm-label="__('backoffice.campaigns.replay_all')"
+                   :loading="__('backoffice.common.sending')" />
     @endif
 </div>

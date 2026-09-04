@@ -11,8 +11,10 @@ use App\Jobs\DispatchCampaignJob;
 use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
 use App\Models\Campaign;
+use App\Models\CampaignRecipient;
 use App\Models\Message;
 use App\Services\Support\CampaignAudienceResolver;
+use App\Services\Support\CampaignDispatcher;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -21,11 +23,13 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Détail d'une campagne : ce qui a été écrit, à qui, et qui l'a lu.
+ * Détail d'une campagne : ce qui a été écrit, à qui, qui l'a reçu et qui l'a lu.
  *
- * En lecture seule. Une campagne partie ne se modifie pas — le message est
- * déjà dans le fil des conducteurs — et un brouillon se retouche depuis le
- * composeur, qui porte déjà la validation et le calcul d'audience.
+ * Le texte, lui, ne se modifie pas ici : une campagne partie est une trace, et
+ * un brouillon se retouche depuis le composeur, qui porte la validation et le
+ * calcul d'audience. L'écran porte en revanche les gestes de rattrapage —
+ * rejouer une remise en échec — et la duplication, qui ouvre une copie
+ * éditable sans toucher à l'original.
  */
 #[Layout('layouts.app', ['module' => BackOfficeModule::Campaigns])]
 class Show extends Component
@@ -34,8 +38,12 @@ class Show extends Component
 
     public Campaign $campaign;
 
-    /** @var 'all'|'read'|'unread' */
+    /** @var 'all'|'read'|'unread'|'failed' */
     public string $filter = 'all';
+
+    public ?string $confirmingReplayId = null;
+
+    public bool $confirmingReplayAll = false;
 
     public bool $confirmingSend = false;
 
@@ -57,7 +65,7 @@ class Show extends Component
      */
     public function filterBy(string $filter): void
     {
-        $this->filter = in_array($filter, ['read', 'unread'], strict: true) ? $filter : 'all';
+        $this->filter = in_array($filter, ['read', 'unread', 'failed'], strict: true) ? $filter : 'all';
         $this->resetPage();
     }
 
@@ -97,7 +105,7 @@ class Show extends Component
 
     public function render(CampaignAudienceResolver $audience): View
     {
-        $delivered = $this->campaign->messages()->count();
+        $delivered = $this->campaign->deliveredCount();
 
         return view('livewire.campaigns.show', [
             'delivered' => $delivered,
@@ -112,6 +120,10 @@ class Show extends Component
                 ? $audience->query($this->campaign)->count()
                 : null,
             'recipients' => $this->recipients(),
+            'targeted' => $this->campaign->targetedCount(),
+            'failed' => $this->campaign->failedCount(),
+            'canSend' => Gate::allows('sendCampaign'),
+            'canManage' => Gate::allows('manageCampaigns'),
             'segmentLabels' => $this->segmentLabels(),
         ]);
     }
@@ -122,18 +134,123 @@ class Show extends Component
      *
      * @return LengthAwarePaginator<int, Message>
      */
+    /**
+     * Destinataires visés et l'état de leur remise.
+     *
+     * « Non lu » veut dire « a reçu le message et ne l'a pas ouvert » : un
+     * échec n'a pas de message et ne doit donc pas s'y compter, sans quoi
+     * l'écran mélangerait « pas encore lu » et « jamais reçu ».
+     *
+     * Les échecs remontent en tête : c'est ce qu'un agent vient chercher.
+     *
+     * @return LengthAwarePaginator<int, CampaignRecipient>
+     */
     private function recipients(): LengthAwarePaginator
     {
-        /** @var LengthAwarePaginator<int, Message> $rows */
-        $rows = $this->campaign->messages()
-            ->with('conversation.driver')
-            ->when($this->filter === 'read', fn ($query) => $query->whereNotNull('read_at'))
-            ->when($this->filter === 'unread', fn ($query) => $query->whereNull('read_at'))
-            ->orderByDesc('read_at')
+        /** @var LengthAwarePaginator<int, CampaignRecipient> $rows */
+        $rows = $this->campaign->recipients()
+            ->with(['driver', 'message'])
+            ->when($this->filter === 'read', fn ($query) => $query
+                ->whereHas('message', fn ($message) => $message->whereNotNull('read_at')))
+            ->when($this->filter === 'unread', fn ($query) => $query
+                ->whereHas('message', fn ($message) => $message->whereNull('read_at')))
+            ->when($this->filter === 'failed', fn ($query) => $query->failed())
+            ->orderByRaw("CASE WHEN status = 'failed' THEN 0 ELSE 1 END")
             ->orderBy('id')
             ->paginate(25);
 
         return $rows;
+    }
+
+    public function confirmReplay(string $recipientId): void
+    {
+        $this->confirmingReplayId = $recipientId;
+    }
+
+    public function confirmReplayAll(): void
+    {
+        $this->confirmingReplayAll = true;
+    }
+
+    public function cancelReplay(): void
+    {
+        $this->confirmingReplayId = null;
+        $this->confirmingReplayAll = false;
+    }
+
+    /**
+     * Rejoue une remise en échec. Même droit qu'un envoi : le geste dépose un
+     * message chez un conducteur réel et le notifie.
+     */
+    public function replay(CampaignDispatcher $dispatcher): void
+    {
+        Gate::authorize('sendCampaign');
+
+        if ($this->confirmingReplayId === null) {
+            return;
+        }
+
+        $recipient = CampaignRecipient::query()
+            ->with(['campaign', 'driver'])
+            ->findOrFail($this->confirmingReplayId);
+
+        $this->confirmingReplayId = null;
+
+        if (! $recipient->isReplayable()) {
+            $this->dispatch('toast', message: __('backoffice.campaigns.not_replayable'), tone: 'warn');
+
+            return;
+        }
+
+        $dispatcher->replayRecipient($recipient, $this->actor());
+
+        $this->dispatch('toast', message: __('backoffice.campaigns.replayed'));
+    }
+
+    public function replayAllFailures(CampaignDispatcher $dispatcher): void
+    {
+        Gate::authorize('sendCampaign');
+
+        $this->confirmingReplayAll = false;
+
+        $count = $dispatcher->replayFailures($this->campaign, $this->actor());
+
+        $this->dispatch('toast', message: trans_choice(
+            'backoffice.campaigns.replayed_count',
+            $count,
+            ['count' => $count],
+        ));
+    }
+
+    /**
+     * Duplique la campagne en un brouillon éditable et l'ouvre.
+     *
+     * L'original n'est pas touché : c'est une trace. La copie garde le même
+     * fichier image — il est stocké une fois et personne ne le réécrit.
+     *
+     * Non journalisé : un brouillon n'atteint personne, au même titre que
+     * `saveDraft` et que la duplication d'une annonce.
+     */
+    public function duplicate(): void
+    {
+        Gate::authorize('manageCampaigns');
+
+        $copy = $this->campaign->replicate([
+            'status', 'sent_at', 'scheduled_for', 'recipients_count', 'created_by_user_id',
+        ]);
+
+        $copy->fill([
+            'title' => $this->campaign->title.' ('.__('backoffice.campaigns.copy_suffix').')',
+            'status' => CampaignStatus::Draft,
+            'sent_at' => null,
+            'scheduled_for' => null,
+            'recipients_count' => 0,
+            'created_by_user_id' => $this->actor()->getKey(),
+        ]);
+
+        $copy->save();
+
+        $this->redirectRoute(BackOfficeModule::Campaigns->route(), navigate: true);
     }
 
     /**

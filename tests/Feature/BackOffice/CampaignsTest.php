@@ -226,6 +226,67 @@ it('never uses the native confirm dialog', function (): void {
         ->assertDontSee('wire:confirm');
 });
 
+it('reopens a draft for editing', function (): void {
+    // Sans cela un brouillon enregistré ne pouvait plus être corrigé : ni relu,
+    // ni repris, seulement envoyé ou abandonné.
+    $campaign = Campaign::factory()->create([
+        'title' => 'Maintenance dimanche',
+        'body' => 'Le service sera interrompu.',
+        'deeplink' => 'wigo://recharge',
+    ]);
+
+    Livewire::actingAs(campaignsUser('bonus'))
+        ->test(Index::class)
+        ->call('edit', $campaign->id)
+        ->assertSet('editingId', $campaign->id)
+        ->assertSet('title', 'Maintenance dimanche')
+        ->assertSet('body', 'Le service sera interrompu.')
+        ->assertSet('deeplink', 'wigo://recharge')
+        ->assertSet('composerOpen', true);
+});
+
+it('updates the draft in place rather than creating a second one', function (): void {
+    $campaign = Campaign::factory()->create(['title' => 'Avant']);
+
+    Livewire::actingAs(campaignsUser('bonus'))
+        ->test(Index::class)
+        ->call('edit', $campaign->id)
+        ->set('title', 'Après')
+        ->call('saveDraft');
+
+    expect(Campaign::query()->count())->toBe(1)
+        ->and($campaign->fresh()->title)->toBe('Après');
+});
+
+it('keeps the image of a draft edited without a new file', function (): void {
+    $campaign = Campaign::factory()->create([
+        'image_disk' => 'local',
+        'image_path' => 'campaigns/visuel.jpg',
+        'image_name' => 'visuel.jpg',
+        'image_mime' => 'image/jpeg',
+        'image_size_bytes' => 2048,
+    ]);
+
+    Livewire::actingAs(campaignsUser('bonus'))
+        ->test(Index::class)
+        ->call('edit', $campaign->id)
+        ->set('title', 'Titre corrigé')
+        ->call('saveDraft');
+
+    expect($campaign->fresh()->image_path)->toBe('campaigns/visuel.jpg');
+});
+
+it('refuses to reopen a campaign already sent', function (): void {
+    // Un envoi parti est une trace : il se duplique, il ne se réécrit pas.
+    $campaign = Campaign::factory()->sent()->create();
+
+    Livewire::actingAs(campaignsUser('bonus'))
+        ->test(Index::class)
+        ->call('edit', $campaign->id)
+        ->assertSet('editingId', null)
+        ->assertSet('composerOpen', false);
+});
+
 /**
  * @param  array<string, mixed>  $attributes
  */

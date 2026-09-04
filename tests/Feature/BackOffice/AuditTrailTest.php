@@ -16,9 +16,11 @@
  */
 
 use App\Enums\AuditAction;
+use App\Enums\CampaignRecipientStatus;
 use App\Enums\ShopOrderStatus;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Campaigns\Index as CampaignsIndex;
+use App\Livewire\Campaigns\Show;
 use App\Livewire\Challenges\Prizes as ChallengesPrizes;
 use App\Livewire\Settings\Index as SettingsIndex;
 use App\Livewire\Shop\Catalogue as ShopCatalogue;
@@ -26,12 +28,14 @@ use App\Livewire\Shop\Orders as ShopOrders;
 use App\Livewire\SupportRequests\Templates as SupportTemplates;
 use App\Models\Announcement;
 use App\Models\AuditLog;
+use App\Models\Campaign;
 use App\Models\Driver;
 use App\Models\MessageTemplate;
 use App\Models\Prize;
 use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Models\User;
+use App\Services\Support\CampaignDispatcher;
 use App\Settings\FleetSettings;
 use App\Settings\RechargeSettings;
 use Database\Seeders\RolePermissionSeeder;
@@ -285,6 +289,38 @@ it('does not journalise saving a campaign draft', function (): void {
         ->call('saveDraft');
 
     expect(AuditLog::query()->where('action', AuditAction::CampaignSent->value)->exists())->toBeFalse();
+});
+
+it('does not journalise duplicating a campaign', function (): void {
+    // Une copie est un brouillon : elle n'atteint personne, exactement comme
+    // l'enregistrement d'un brouillon ou la duplication d'une annonce.
+    $campaign = Campaign::factory()->create();
+
+    Livewire::actingAs(trailUser('direction'))
+        ->test(Show::class, ['campaign' => $campaign])
+        ->call('duplicate');
+
+    expect(AuditLog::query()->count())->toBe(0);
+});
+
+it('journalises replaying failed campaign deliveries', function (): void {
+    // Un rejeu dépose un message chez un conducteur réel et le notifie : il
+    // doit rester possible de dire qui l'a relancé.
+    Driver::factory()->create();
+    $campaign = Campaign::factory()->create();
+    app(CampaignDispatcher::class)->materialise($campaign);
+    $campaign->recipients()->sole()->forceFill([
+        'status' => CampaignRecipientStatus::Failed,
+    ])->save();
+
+    Livewire::actingAs(trailUser('direction'))
+        ->test(Show::class, ['campaign' => $campaign])
+        ->call('confirmReplayAll')
+        ->call('replayAllFailures');
+
+    $line = AuditLog::query()->where('action', AuditAction::CampaignRecipientsReplayed->value)->sole();
+
+    expect($line->context['recipients'])->toBe(1);
 });
 
 // ------------------------------------------------------- challenges

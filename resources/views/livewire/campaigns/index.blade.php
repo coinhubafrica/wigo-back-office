@@ -107,7 +107,10 @@
                     <x-td muted nowrap class="text-xs">{{ ($campaign->sent_at ?? $campaign->created_at)?->diffForHumans() }}</x-td>
                     <x-td align="right" nowrap>
                         @if ($campaign->status === \App\Enums\CampaignStatus::Draft)
-                            <x-button size="sm" wire:click="confirmSend('{{ $campaign->id }}')" target="confirmSend">{{ __('backoffice.campaigns.send') }}</x-button>
+                            <span class="inline-flex items-center gap-1.5">
+                                <x-button size="sm" variant="secondary" wire:click="edit('{{ $campaign->id }}')" target="edit">{{ __('backoffice.campaigns.edit') }}</x-button>
+                                <x-button size="sm" wire:click="confirmSend('{{ $campaign->id }}')" target="confirmSend">{{ __('backoffice.campaigns.send') }}</x-button>
+                            </span>
                         @endif
                     </x-td>
                 </tr>
@@ -133,7 +136,8 @@
     {{-- Composeur.                                                        --}}
     {{-- ---------------------------------------------------------------- --}}
     @if ($composerOpen)
-        <x-modal close="cancelCompose" align="start" size="lg" :title="__('backoffice.campaigns.compose_title')">
+        <x-modal close="cancelCompose" align="start" size="lg"
+                 :title="$editingId === null ? __('backoffice.campaigns.compose_title') : __('backoffice.campaigns.compose_edit_title')">
             <div class="space-y-4">
                 <x-field :label="__('backoffice.campaigns.field_title')" name="title" id="campaign-title"
                          wire:model.live.debounce.400ms="title" required />

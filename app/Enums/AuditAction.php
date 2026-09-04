@@ -62,6 +62,7 @@ enum AuditAction: string
 
     // Campagnes — rédiger un brouillon n'atteint personne ; diffuser, si.
     case CampaignSent = 'campaign.sent';
+    case CampaignRecipientsReplayed = 'campaign.recipients_replayed';
 
     /*
     | Boutique. Le *mouvement de prix* est journalisé, pas l'enregistrement :
@@ -134,6 +135,7 @@ enum AuditAction: string
             self::AnnouncementDeleted => 'Annonce supprimée',
 
             self::CampaignSent => 'Campagne diffusée',
+            self::CampaignRecipientsReplayed => 'Échecs de campagne rejoués',
 
             self::ShopPriceChanged => 'Prix modifié',
             self::ShopProductDeleted => 'Référence supprimée',
@@ -193,7 +195,8 @@ enum AuditAction: string
             self::AnnouncementWithdrawn,
             self::AnnouncementDeleted => BackOfficeModule::Announcements,
 
-            self::CampaignSent => BackOfficeModule::Campaigns,
+            self::CampaignSent,
+            self::CampaignRecipientsReplayed => BackOfficeModule::Campaigns,
 
             self::ShopPriceChanged,
             self::ShopProductDeleted => BackOfficeModule::Shop,
@@ -279,6 +282,7 @@ enum AuditAction: string
             self::AnnouncementPublished,
             self::AnnouncementWithdrawn,
             self::CampaignSent,
+            self::CampaignRecipientsReplayed,
             self::RechargeReplayed => 'bg-neutral-bg text-neutral-text',
         };
     }
