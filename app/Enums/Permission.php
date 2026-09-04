@@ -97,6 +97,13 @@ enum Permission: string
     case UsersManage = 'users.manage';
     case RolesManage = 'roles.manage';
 
+    /*
+    | Journal d'audit. L'accès au module ouvre la relecture à l'écran, où la
+    | trace reste dans l'application ; un export l'en fait sortir dans un
+    | fichier qui se transmet et ne se révoque plus. Deux décisions distinctes.
+    */
+    case AuditExport = 'audit.export';
+
     /**
      * Module dont ce droit ouvre l'accès, ou `null` s'il s'agit d'une action.
      */
@@ -150,6 +157,8 @@ enum Permission: string
             self::SettingsRevealSecrets => BackOfficeModule::Settings,
 
             self::UsersManage, self::RolesManage => BackOfficeModule::Users,
+
+            self::AuditExport => BackOfficeModule::Audit,
         };
     }
 
@@ -193,6 +202,8 @@ enum Permission: string
             self::SettingsRevealSecrets => 'Relever une clé en clair',
             self::UsersManage => 'Gérer les utilisateurs',
             self::RolesManage => 'Gérer les rôles',
+
+            self::AuditExport => 'Exporter le journal',
         };
     }
 
@@ -235,6 +246,7 @@ enum Permission: string
             self::SettingsRevealSecrets => 'Affiche en clair les clés Wave et Yango. Chaque relevé est journalisé.',
             self::UsersManage => 'Créer un compte, changer son identité, ses rôles, ses droits, le désactiver.',
             self::RolesManage => 'Créer un rôle, changer ses permissions, le supprimer.',
+            self::AuditExport => "Emporte le journal filtré dans un fichier qui ne se rappelle pas. L'export est lui-même journalisé.",
             default => null,
         };
     }

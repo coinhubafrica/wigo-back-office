@@ -280,6 +280,10 @@ class AppServiceProvider extends ServiceProvider
             // Tenir les comptes du back-office, et décider qui peut quoi.
             'manageUsers' => Permission::UsersManage,
             'manageRoles' => Permission::RolesManage,
+
+            // Relire le journal à l'écran laisse la trace dans l'application ;
+            // l'exporter l'en fait sortir dans un fichier qui se transmet.
+            'exportAuditLog' => Permission::AuditExport,
         ];
 
         foreach ($gates as $ability => $permission) {

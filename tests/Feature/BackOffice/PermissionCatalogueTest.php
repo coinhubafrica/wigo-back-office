@@ -65,6 +65,13 @@ it('guards every mutating Livewire method with a gate', function (): void {
      * `Gate::authorize`. Ce test lit le code plutôt que d'énumérer les
      * méthodes : un écran ajouté sans garde le fait échouer.
      */
+    /*
+     * `Audit/Index` n'y figure pas volontairement : l'écran du journal est en
+     * lecture seule (ses méthodes ne font que filtrer et déplier), et son seul
+     * geste écrivant — l'export — vit dans `AuditExportController`, gardé par
+     * `audit.export` et couvert par `AuditExportTest`. Ne pas « corriger »
+     * cette absence.
+     */
     $writers = [
         'Announcements/Index', 'Campaigns/Index', 'Campaigns/Show',
         'Challenges/Prizes', 'Challenges/Show', 'Challenges/Wizard',
@@ -101,6 +108,7 @@ it('resolves each sensitive gate from a permission, not a role name', function (
     'reassignSupportRequest' => ['reassignSupportRequest', Permission::SupportReassign],
     'manageUsers' => ['manageUsers', Permission::UsersManage],
     'manageRoles' => ['manageRoles', Permission::RolesManage],
+    'exportAuditLog' => ['exportAuditLog', Permission::AuditExport],
 ]);
 
 it('keeps the abilities each seeded role used to hold by its name', function (string $role, string $ability): void {

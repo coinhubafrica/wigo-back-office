@@ -142,6 +142,7 @@ class RolePermissionSeeder extends Seeder
                     BackOfficePermission::UsersManage,
                     BackOfficePermission::RolesManage,
                     BackOfficePermission::SettingsManage,
+                    BackOfficePermission::AuditExport,
                 ],
             ],
             'direction' => [
