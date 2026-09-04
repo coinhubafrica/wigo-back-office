@@ -2,10 +2,11 @@
 
 namespace App\Livewire\Settings;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\Permission as BackOfficePermission;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
-use App\Models\User;
 use App\Services\Fleet\FleetConnectionTester;
 use App\Settings\FleetSettings;
 use App\Settings\OtpSettings;
@@ -32,6 +33,8 @@ use Livewire\Component;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Settings])]
 class Index extends Component
 {
+    use InteractsWithCurrentUser;
+
     public int $otpLength = 6;
 
     public int $otpTtlMinutes = 5;
@@ -159,8 +162,7 @@ class Index extends Component
             throw new AuthorizationException;
         }
 
-        /** @var User $user */
-        $user = auth()->user();
+        $user = $this->actor();
 
         if (! $user->can(BackOfficePermission::SettingsRevealSecrets->value)) {
             throw new AuthorizationException;
@@ -173,7 +175,7 @@ class Index extends Component
         }
 
         AuditLog::record(
-            action: 'settings.secret_revealed',
+            action: AuditAction::SettingsSecretRevealed->value,
             summary: "{$user->fullName()} a relevé en clair le secret « {$field} ».",
             by: $user,
             context: ['field' => $field],
@@ -201,11 +203,25 @@ class Index extends Component
             'waveShopWebhookSecret' => 'nullable|string|max:255',
         ]);
 
+        $replaced = $this->replacedSecretFields([
+            'api_key' => $this->waveShopApiKey,
+            'webhook_secret' => $this->waveShopWebhookSecret,
+        ]);
+
         $this->storeWaveAccount($shop, $this->waveShopApiKey, $this->waveShopWebhookSecret);
 
         // Rien ne repart vers le navigateur une fois enregistré.
         $this->waveShopApiKey = '';
         $this->waveShopWebhookSecret = '';
+
+        if ($replaced !== []) {
+            AuditLog::record(
+                action: AuditAction::SettingsWaveShopUpdated->value,
+                summary: "{$this->actor()->fullName()} a remplacé les clés du compte Wave boutique.",
+                by: $this->actor(),
+                context: ['fields' => $replaced],
+            );
+        }
 
         $this->dispatch('toast', message: __('backoffice.settings.wave_shop_saved'));
     }
@@ -219,12 +235,111 @@ class Index extends Component
             'waveTopupWebhookSecret' => 'nullable|string|max:255',
         ]);
 
+        $replaced = $this->replacedSecretFields([
+            'api_key' => $this->waveTopupApiKey,
+            'webhook_secret' => $this->waveTopupWebhookSecret,
+        ]);
+
         $this->storeWaveAccount($topup, $this->waveTopupApiKey, $this->waveTopupWebhookSecret);
 
         $this->waveTopupApiKey = '';
         $this->waveTopupWebhookSecret = '';
 
+        if ($replaced !== []) {
+            AuditLog::record(
+                action: AuditAction::SettingsWaveTopupUpdated->value,
+                summary: "{$this->actor()->fullName()} a remplacé les clés du compte Wave recharge.",
+                by: $this->actor(),
+                context: ['fields' => $replaced],
+            );
+        }
+
         $this->dispatch('toast', message: __('backoffice.settings.wave_topup_saved'));
+    }
+
+    /**
+     * Noms des champs secrets effectivement remplacés — jamais leurs valeurs.
+     *
+     * Même règle que `settings.secret_revealed` : le journal dit *qu'une* clé a
+     * changé et laquelle, jamais ce qu'elle vaut. Une clé recopiée dans
+     * `context` serait lisible par quiconque atteint l'écran d'audit, et
+     * l'export l'emporterait dans un fichier — l'outil de surveillance
+     * deviendrait le point de fuite qu'il est censé surveiller.
+     *
+     * Seuls les champs remplis y figurent : enregistrer avec le champ vide
+     * conserve la clé en place (cf. `storeWaveAccount`) et ne doit donc rien
+     * annoncer.
+     *
+     * @param  array<string, string>  $candidates
+     * @return list<string>
+     */
+    private function replacedSecretFields(array $candidates): array
+    {
+        return array_keys(array_filter(
+            $candidates,
+            fn (string $value): bool => filled($value),
+        ));
+    }
+
+    /**
+     * Journalise un réglage non secret, en ne gardant que ce qui a bougé.
+     *
+     * Un barème réenregistré à l'identique n'écrit rien : le journal doit dire
+     * ce qui a changé, pas qu'on a cliqué sur « Enregistrer ».
+     *
+     * @param  array<string, int>  $before
+     * @param  array<string, int>  $after
+     */
+    private function recordSettingChange(AuditAction $action, string $summary, array $before, array $after): void
+    {
+        $changed = [];
+
+        foreach ($after as $field => $value) {
+            if (($before[$field] ?? null) !== $value) {
+                $changed[$field.'_before'] = $before[$field] ?? null;
+                $changed[$field.'_after'] = $value;
+            }
+        }
+
+        if ($changed === []) {
+            return;
+        }
+
+        AuditLog::record(
+            action: $action->value,
+            summary: $summary,
+            by: $this->actor(),
+            context: $changed,
+        );
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function otpValues(OtpSettings $otp): array
+    {
+        return [
+            'length' => $otp->length,
+            'ttl_minutes' => $otp->ttl_minutes,
+            'max_attempts' => $otp->max_attempts,
+            'lock_minutes' => $otp->lock_minutes,
+            'throttle_max_sends' => $otp->throttle_max_sends,
+            'throttle_decay_minutes' => $otp->throttle_decay_minutes,
+            'retention_days' => $otp->retention_days,
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function rechargeValues(RechargeSettings $recharge): array
+    {
+        return [
+            'min_amount' => $recharge->min_amount,
+            'max_amount' => $recharge->max_amount,
+            'daily_cap' => $recharge->daily_cap,
+            'balance_ttl_minutes' => $recharge->balance_ttl_minutes,
+        ];
     }
 
     /**
@@ -263,6 +378,14 @@ class Index extends Component
             'otpRetentionDays' => 'required|integer|min:1|max:365',
         ]);
 
+        /*
+        | `max_attempts`, `lock_minutes` et les deux `throttle_*` sont la
+        | défense anti-force-brute du mobile : les desserrer est une décision de
+        | sécurité. Rien ici n'est secret, donc l'avant/après est journalisé —
+        | c'est le diff qui a du sens, pas la valeur seule.
+        */
+        $before = $this->otpValues($otp);
+
         $otp->length = $this->otpLength;
         $otp->ttl_minutes = $this->otpTtlMinutes;
         $otp->max_attempts = $this->otpMaxAttempts;
@@ -271,6 +394,13 @@ class Index extends Component
         $otp->throttle_decay_minutes = $this->otpThrottleDecayMinutes;
         $otp->retention_days = $this->otpRetentionDays;
         $otp->save();
+
+        $this->recordSettingChange(
+            AuditAction::SettingsOtpUpdated,
+            "{$this->actor()->fullName()} a modifié le barème OTP.",
+            $before,
+            $this->otpValues($otp),
+        );
 
         $this->dispatch('toast', message: __('backoffice.settings.otp_saved'));
     }
@@ -289,11 +419,21 @@ class Index extends Component
             'rechargeBalanceTtlMinutes' => 'required|integer|min:1|max:1440',
         ]);
 
+        // Ces bornes décident de l'argent qu'un conducteur peut engager.
+        $before = $this->rechargeValues($recharge);
+
         $recharge->min_amount = $this->rechargeMinAmount;
         $recharge->max_amount = $this->rechargeMaxAmount;
         $recharge->daily_cap = $this->rechargeDailyCap;
         $recharge->balance_ttl_minutes = $this->rechargeBalanceTtlMinutes;
         $recharge->save();
+
+        $this->recordSettingChange(
+            AuditAction::SettingsRechargeUpdated,
+            "{$this->actor()->fullName()} a modifié les plafonds de recharge.",
+            $before,
+            $this->rechargeValues($recharge),
+        );
 
         $this->dispatch('toast', message: __('backoffice.settings.recharge_saved'));
     }
@@ -309,6 +449,11 @@ class Index extends Component
             'fleetApiKey' => 'nullable|string|max:255',
         ]);
 
+        // Avant/après de ce qui n'est pas secret : l'adresse du service et le
+        // parc identifient *quel* parc on crédite, et détourner l'adresse est
+        // une voie d'exfiltration. La clé, elle, n'est citée que par son nom.
+        $before = ['base_url' => $fleet->base_url, 'park_id' => $fleet->park_id];
+
         $fleet->base_url = $this->fleetBaseUrl;
         $fleet->park_id = $this->fleetParkId;
 
@@ -319,9 +464,21 @@ class Index extends Component
         $fleet->save();
 
         // La clé ne repart pas vers le navigateur une fois enregistrée.
+        $replaced = $this->replacedSecretFields(['api_key' => $this->fleetApiKey]);
         $this->fleetApiKey = '';
         $this->fleetTestSucceeded = null;
         $this->fleetTestMessage = null;
+
+        AuditLog::record(
+            action: AuditAction::SettingsFleetUpdated->value,
+            summary: "{$this->actor()->fullName()} a modifié l'accès au parc Yango.",
+            by: $this->actor(),
+            context: array_filter([
+                'base_url' => $before['base_url'] === $fleet->base_url ? null : $fleet->base_url,
+                'park_id' => $before['park_id'] === $fleet->park_id ? null : $fleet->park_id,
+                'fields' => $replaced === [] ? null : $replaced,
+            ]),
+        );
 
         $this->dispatch('toast', message: __('backoffice.settings.fleet_saved'));
     }

@@ -2,7 +2,10 @@
 
 namespace App\Livewire\Shop;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
+use App\Models\AuditLog;
 use App\Models\PartCategory;
 use App\Models\Product;
 use App\Models\ShopOrder;
@@ -27,7 +30,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Shop])]
 class Catalogue extends Component
 {
-    use WithFileUploads, WithPagination;
+    use InteractsWithCurrentUser, WithFileUploads, WithPagination;
 
     #[Url]
     public string $search = '';
@@ -156,7 +159,26 @@ class Catalogue extends Component
             $this->dispatch('toast', message: __('backoffice.shop.product_created'));
         } else {
             $product = Product::query()->findOrFail($this->editingId);
+            $priceBefore = $product->unit_price;
             $product->update($attributes);
+
+            /*
+            | Seul le *mouvement de prix* est journalisé, pas l'enregistrement :
+            | un prix est ce qu'un conducteur paie, tandis que corriger un
+            | libellé ou une photo laisse la ligne elle-même comme preuve. Même
+            | règle que `user.updated`, qui ne garde que les champs sensibles —
+            | un journal encombré ne se lit pas.
+            */
+            if ($priceBefore !== $product->unit_price) {
+                AuditLog::record(
+                    action: AuditAction::ShopPriceChanged->value,
+                    summary: "{$this->actor()->fullName()} a changé le prix de « {$product->name} » de {$priceBefore} à {$product->unit_price} FCFA.",
+                    subject: $product,
+                    by: $this->actor(),
+                    context: ['price_before' => $priceBefore, 'price_after' => $product->unit_price],
+                );
+            }
+
             $this->dispatch('toast', message: __('backoffice.shop.product_updated'));
         }
 
@@ -194,6 +216,16 @@ class Catalogue extends Component
 
             return;
         }
+
+        // Enregistré avant la suppression : après, il ne reste rien à citer —
+        // c'est pourquoi une suppression dure se journalise là où un simple
+        // enregistrement ne le fait pas.
+        AuditLog::record(
+            action: AuditAction::ShopProductDeleted->value,
+            summary: "{$this->actor()->fullName()} a supprimé la référence « {$product->name} » ({$product->reference}).",
+            by: $this->actor(),
+            context: ['reference' => $product->reference, 'price' => $product->unit_price],
+        );
 
         $product->delete();
 

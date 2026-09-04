@@ -2,11 +2,13 @@
 
 namespace App\Livewire\Shop;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\FulfilmentMode;
 use App\Enums\ShopOrderStatus;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
+use App\Models\AuditLog;
 use App\Models\ShopOrder;
-use App\Models\User;
 use App\Services\Shop\ShopOrderService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -27,7 +29,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['module' => BackOfficeModule::ShopOrders])]
 class Orders extends Component
 {
-    use WithPagination;
+    use InteractsWithCurrentUser, WithPagination;
 
     #[Url]
     public string $search = '';
@@ -116,11 +118,35 @@ class Orders extends Component
     {
         $this->validate(['cancelReason' => 'required|string|max:255']);
 
-        /** @var User $user */
-        $user = auth()->user();
+        $user = $this->actor();
+        $reason = $this->cancelReason;
 
+        /*
+        | Journalisé ici et non dans `apply()` : les quatre transitions qui
+        | passent par le même point ne portent ni motif ni conséquence
+        | financière, et poser une ligne sur chacune noierait celle-ci.
+        | `apply()` reste le point unique d'autorisation — le portail et le
+        | journal n'ont pas la même granularité.
+        */
         $this->apply(
-            fn (ShopOrder $order) => $orders->cancel($order, $this->cancelReason, $user),
+            function (ShopOrder $order) use ($orders, $reason, $user): ShopOrder {
+                $before = $order->status;
+                $cancelled = $orders->cancel($order, $reason, $user);
+
+                AuditLog::record(
+                    action: AuditAction::ShopOrderCancelled->value,
+                    summary: "{$user->fullName()} a annulé la commande {$order->reference}.",
+                    subject: $cancelled,
+                    by: $user,
+                    driver: $order->driver,
+                    context: [
+                        'reason' => $reason,
+                        'status_before' => $before->value,
+                    ],
+                );
+
+                return $cancelled;
+            },
             message: __('backoffice.shop.order_cancelled'),
             ability: 'cancelShopOrder',
         );

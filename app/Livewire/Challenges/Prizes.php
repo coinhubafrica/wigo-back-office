@@ -2,7 +2,10 @@
 
 namespace App\Livewire\Challenges;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
+use App\Models\AuditLog;
 use App\Models\Prize;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -19,7 +22,7 @@ use Livewire\WithFileUploads;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Challenges])]
 class Prizes extends Component
 {
-    use WithFileUploads;
+    use InteractsWithCurrentUser, WithFileUploads;
 
     public bool $formOpen = false;
 
@@ -108,6 +111,20 @@ class Prizes extends Component
 
             return;
         }
+
+        /*
+        | Enregistré avant la suppression : après, il ne reste rien à citer.
+        | Seule la suppression est journalisée — créer ou renommer un lot laisse
+        | la ligne comme preuve, et le lot ne porte pas de valeur (elle vit sur
+        | le challenge, dans `reward_amount`), donc il n'y a pas de mouvement de
+        | montant à suivre ici.
+        */
+        AuditLog::record(
+            action: AuditAction::ChallengePrizeDeleted->value,
+            summary: "{$this->actor()->fullName()} a supprimé le lot « {$prize->name} ».",
+            by: $this->actor(),
+            context: ['name' => $prize->name],
+        );
 
         $prize->delete();
 

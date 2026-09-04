@@ -2,8 +2,11 @@
 
 namespace App\Livewire\SupportRequests;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\SupportRequestCategory;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
+use App\Models\AuditLog;
 use App\Models\Conversation;
 use App\Models\Driver;
 use App\Models\Message;
@@ -43,7 +46,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['module' => BackOfficeModule::SupportRequests])]
 class Index extends Component
 {
-    use WithPagination;
+    use InteractsWithCurrentUser, WithPagination;
 
     /** @var 'triage'|'tickets' */
     #[Url]
@@ -197,7 +200,7 @@ class Index extends Component
         $requests->createFromTriage(
             $conversation,
             SupportRequestCategory::from($this->ticketCategory),
-            $this->agent(),
+            $this->actor(),
             $this->ticketSubject === '' ? null : $this->ticketSubject,
         );
 
@@ -236,7 +239,22 @@ class Index extends Component
             return;
         }
 
-        $requests->dismissUntriaged($conversation, $this->agent());
+        $dismissed = $requests->dismissUntriaged($conversation, $this->actor());
+
+        /*
+        | Le conducteur n'obtient **aucune** réponse : c'est le geste que
+        | `support.dismiss` isole dans sa propre permission, et le seul du
+        | module qu'aucune ligne ne consigne par ailleurs — répondre laisse un
+        | message, écarter ne laisse rien.
+        */
+        AuditLog::record(
+            action: AuditAction::SupportDismissed->value,
+            summary: "{$this->actor()->fullName()} a écarté {$dismissed} message(s) de {$conversation->driver->fullName()} sans réponse.",
+            subject: $conversation,
+            by: $this->actor(),
+            driver: $conversation->driver,
+            context: ['messages' => $dismissed],
+        );
 
         $this->confirmingDismiss = null;
         $this->dispatch('toast', message: __('backoffice.support_requests.dismissed'));
@@ -261,7 +279,7 @@ class Index extends Component
             return;
         }
 
-        $messages->sendUntriagedReply($conversation, $this->agent(), $this->triageDraft);
+        $messages->sendUntriagedReply($conversation, $this->actor(), $this->triageDraft);
 
         $this->triageDraft = '';
         $this->dispatch('messages-updated');
@@ -280,7 +298,7 @@ class Index extends Component
             return;
         }
 
-        $messages->sendFromStaff($request, $this->agent(), $this->draft);
+        $messages->sendFromStaff($request, $this->actor(), $this->draft);
 
         $this->draft = '';
         $this->dispatch('messages-updated');
@@ -316,7 +334,7 @@ class Index extends Component
         $request = $this->liveRequest();
 
         if ($request !== null) {
-            $requests->assign($request, $this->agent());
+            $requests->assign($request, $this->actor());
             $this->dispatch('toast', message: __('backoffice.support_requests.assigned'));
         }
     }
@@ -341,6 +359,19 @@ class Index extends Component
         }
 
         $requests->assign($request, $target);
+
+        // `assigned_user_id` ne garde que le porteur *courant* : sans le
+        // journal, une chaîne de réattributions serait irrécupérable. Et
+        // confier le ticket d'autrui est un acte de gestion sur sa charge.
+        AuditLog::record(
+            action: AuditAction::SupportReassigned->value,
+            summary: "{$this->actor()->fullName()} a confié la requête #{$request->number} à {$target->fullName()}.",
+            subject: $request,
+            by: $this->actor(),
+            driver: $request->driver,
+            context: ['to' => $target->getKey()],
+        );
+
         $this->dispatch('toast', message: __('backoffice.support_requests.reassigned', ['name' => $target->fullName()]));
     }
 
@@ -586,13 +617,5 @@ class Index extends Component
             ->whereNull('support_request_id')
             ->whereNull('triaged_at')
             ->count();
-    }
-
-    private function agent(): User
-    {
-        /** @var User $user */
-        $user = Auth::user();
-
-        return $user;
     }
 }

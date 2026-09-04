@@ -2,8 +2,11 @@
 
 namespace App\Livewire\SupportRequests;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\SupportRequestCategory;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
+use App\Models\AuditLog;
 use App\Models\MessageTemplate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +24,8 @@ use Livewire\Component;
 #[Layout('layouts.app', ['module' => BackOfficeModule::SupportRequests])]
 class Templates extends Component
 {
+    use InteractsWithCurrentUser;
+
     public bool $formOpen = false;
 
     public ?string $editingId = null;
@@ -123,8 +128,26 @@ class Templates extends Component
     {
         Gate::authorize('manageSupportTemplates');
 
-        if ($this->confirmingDeleteId !== null) {
-            MessageTemplate::query()->whereKey($this->confirmingDeleteId)->delete();
+        $template = $this->confirmingDeleteId === null
+            ? null
+            : MessageTemplate::query()->find($this->confirmingDeleteId);
+
+        if ($template !== null) {
+            /*
+            | Enregistré avant la suppression : après, il ne reste rien à
+            | citer. C'est la règle que suivent déjà `announcement.deleted` et
+            | `role.deleted` — une suppression dure se journalise là où
+            | l'enregistrement d'une réponse type, outil interne de l'agent, ne
+            | le fait pas.
+            */
+            AuditLog::record(
+                action: AuditAction::SupportTemplateDeleted->value,
+                summary: "{$this->actor()->fullName()} a supprimé la réponse type « {$template->title} ».",
+                by: $this->actor(),
+                context: ['title' => $template->title, 'usage_count' => $template->usage_count],
+            );
+
+            $template->delete();
         }
 
         $this->confirmingDeleteId = null;

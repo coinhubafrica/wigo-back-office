@@ -2,11 +2,14 @@
 
 namespace App\Livewire\Challenges;
 
+use App\Enums\AuditAction;
 use App\Enums\AwardMode;
 use App\Enums\ChallengeRecurrence;
 use App\Enums\ChallengeStatus;
 use App\Enums\ChallengeType;
 use App\Enums\PrizeNature;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
+use App\Models\AuditLog;
 use App\Models\Challenge;
 use App\Models\Prize;
 use Illuminate\Contracts\View\View;
@@ -22,6 +25,8 @@ use Livewire\Component;
  */
 class Wizard extends Component
 {
+    use InteractsWithCurrentUser;
+
     public bool $open = false;
 
     public int $step = 1;
@@ -250,6 +255,25 @@ class Wizard extends Component
             'eligibles_count' => $this->estimatedEligibles(),
             'created_by' => auth()->id(),
         ]);
+
+        /*
+        | Un challenge engage un budget de lots dès sa création. Et la branche
+        | d'auto-approbation fait que les droits du créateur décident s'il part
+        | en production sans relecture : c'est cette branche-là qui doit laisser
+        | une trace, le statut retenu la nomme.
+        */
+        AuditLog::record(
+            action: AuditAction::ChallengeCreated->value,
+            summary: "{$this->actor()->fullName()} a créé le challenge « {$challenge->name} » ({$type->label()}), du {$challenge->period_start->translatedFormat('j M Y')} au {$challenge->period_end->translatedFormat('j M Y')}.",
+            subject: $challenge,
+            by: $this->actor(),
+            context: [
+                'type' => $type->value,
+                'status' => $challenge->status->value,
+                'winners' => $challenge->winners_count,
+                'reward_amount' => $challenge->reward_amount,
+            ],
+        );
 
         $this->open = false;
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Challenges;
 
+use App\Enums\AuditAction;
 use App\Enums\AwardMode;
 use App\Enums\BackOfficeModule;
 use App\Enums\ChallengeRecurrence;
@@ -9,12 +10,12 @@ use App\Enums\ChallengeStatus;
 use App\Enums\ChallengeType;
 use App\Enums\PrizeNature;
 use App\Enums\YangoOrderStatus;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
 use App\Models\Driver;
-use App\Models\User;
 use App\Services\Challenges\DrawService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -32,6 +33,8 @@ use Livewire\Component;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Challenges])]
 class Show extends Component
 {
+    use InteractsWithCurrentUser;
+
     public Challenge $challenge;
 
     public bool $showRejectForm = false;
@@ -75,6 +78,17 @@ class Show extends Component
             'approved_at' => now(),
         ]);
 
+        // `approved_by`/`approved_at` ne gardent que la *dernière* valeur : un
+        // rejet suivi d'une approbation serait sinon perdu. C'est le contrôle
+        // exercé sur le rôle Bonus, il doit se relire.
+        AuditLog::record(
+            action: AuditAction::ChallengeApproved->value,
+            summary: "{$this->actor()->fullName()} a approuvé le challenge « {$this->challenge->name} ».",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: ['status_after' => $this->challenge->status->value],
+        );
+
         $this->dispatch('toast', message: __('backoffice.challenges.approved'));
     }
 
@@ -90,6 +104,16 @@ class Show extends Component
             'status' => ChallengeStatus::Rejected,
             'rejection_reason' => $this->rejectionReason,
         ]);
+
+        // Même décision que l'approbation, signe opposé ; `rejection_reason`
+        // est écrasable, le motif doit survivre ici.
+        AuditLog::record(
+            action: AuditAction::ChallengeRejected->value,
+            summary: "{$this->actor()->fullName()} a rejeté le challenge « {$this->challenge->name} ».",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: ['reason' => $this->rejectionReason],
+        );
 
         $this->showRejectForm = false;
         $this->rejectionReason = '';
@@ -121,6 +145,19 @@ class Show extends Component
         $draw->freezePool($this->challenge);
         $this->challenge->refresh();
 
+        /*
+        | Gèle le vivier : plus personne n'entre après. C'est l'ancre à
+        | laquelle `challenge.seed_regenerated` se réfère — sans elle, « la
+        | graine a été republiée après le gel » n'a pas de gel à comparer.
+        */
+        AuditLog::record(
+            action: AuditAction::ChallengePeriodClosed->value,
+            summary: "{$this->actor()->fullName()} a clos la période du challenge « {$this->challenge->name} ».",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: ['pool' => $this->challenge->tickets()->count()],
+        );
+
         if ($this->challenge->type === ChallengeType::Leaderboard) {
             $this->awardLeaderboard();
         } else {
@@ -147,7 +184,7 @@ class Show extends Component
         $this->challenge->refresh();
 
         AuditLog::record(
-            action: 'challenge.seed_regenerated',
+            action: AuditAction::ChallengeSeedRegenerated->value,
             summary: "{$this->actor()->fullName()} a republié la graine du tirage « {$this->challenge->name} ».",
             subject: $this->challenge,
             by: $this->actor(),
@@ -165,7 +202,7 @@ class Show extends Component
         $this->challenge->refresh();
 
         AuditLog::record(
-            action: 'challenge.drawn',
+            action: AuditAction::ChallengeDrawn->value,
             summary: "{$this->actor()->fullName()} a exécuté le tirage « {$this->challenge->name} ».",
             subject: $this->challenge,
             by: $this->actor(),
@@ -195,7 +232,7 @@ class Show extends Component
         ]);
 
         AuditLog::record(
-            action: 'challenge.prize_credited',
+            action: AuditAction::ChallengePrizeCredited->value,
             summary: "{$this->actor()->fullName()} a marqué un lot crédité sur « {$this->challenge->name} ».",
             subject: $this->challenge,
             by: $this->actor(),
@@ -225,7 +262,7 @@ class Show extends Component
         ]);
 
         AuditLog::record(
-            action: 'challenge.prize_credited',
+            action: AuditAction::ChallengePrizeCredited->value,
             summary: "{$this->actor()->fullName()} a marqué tous les lots crédités sur « {$this->challenge->name} ».",
             subject: $this->challenge,
             by: $this->actor(),
@@ -617,14 +654,6 @@ class Show extends Component
             'drawChallenge',
             'creditChallengePrize',
         ]);
-    }
-
-    private function actor(): User
-    {
-        /** @var User $user */
-        $user = auth()->user();
-
-        return $user;
     }
 
     public function render(): View
