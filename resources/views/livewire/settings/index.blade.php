@@ -45,6 +45,57 @@
         </x-slot:footer>
     </x-panel>
 
+    {{--
+        Accès au parc Yango. La clé n'est jamais renvoyée au navigateur : le
+        champ reste vide et ne s'enregistre que s'il est rempli.
+
+        Le test est en lecture seule et porte sur la clé *enregistrée* — d'où
+        l'ordre imposé à l'écran : enregistrer, puis tester.
+    --}}
+    <x-panel :title="__('backoffice.settings.fleet_title')" :subtitle="__('backoffice.settings.fleet_hint')" class="lg:col-span-2">
+        <form id="settings-fleet" wire:submit="saveFleet" class="grid gap-4 sm:grid-cols-2">
+            <x-field :label="__('backoffice.settings.fleet_base_url')" name="fleetBaseUrl" type="url" wire:model="fleetBaseUrl" placeholder="https://fleet-api.yango.tech" />
+            <x-field :label="__('backoffice.settings.fleet_park_id')" name="fleetParkId" wire:model="fleetParkId" />
+            <x-field
+                :label="__('backoffice.settings.fleet_api_key')"
+                name="fleetApiKey"
+                type="password"
+                wire:model="fleetApiKey"
+                autocomplete="new-password"
+                :hint="__('backoffice.settings.fleet_api_key_hint')"
+                class="sm:col-span-2"
+            />
+
+            <p @class(['sm:col-span-2 text-xs', 'text-muted' => $fleetKeyStored, 'text-err-text' => ! $fleetKeyStored])>
+                {{ $fleetKeyStored ? __('backoffice.settings.fleet_api_key_set') : __('backoffice.settings.fleet_api_key_missing') }}
+            </p>
+        </form>
+
+        @if ($fleetTestMessage !== null)
+            <p
+                role="status"
+                @class([
+                    'mt-4 rounded px-3 py-2 text-xs',
+                    'bg-ok-bg text-ok-text' => $fleetTestSucceeded,
+                    'bg-err-bg text-err-text' => ! $fleetTestSucceeded,
+                ])
+            >{{ $fleetTestMessage }}</p>
+        @endif
+
+        <x-slot:footer>
+            <div class="flex justify-end gap-2">
+                <x-button variant="secondary" wire:click="testFleet" target="testFleet" :disabled="! $fleetKeyStored">
+                    {{ __('backoffice.settings.fleet_test') }}
+                    <x-slot:loading>{{ __('backoffice.settings.fleet_testing') }}</x-slot:loading>
+                </x-button>
+                <x-button type="submit" form="settings-fleet" target="saveFleet">
+                    {{ __('backoffice.settings.save') }}
+                    <x-slot:loading>{{ __('backoffice.common.saving') }}</x-slot:loading>
+                </x-button>
+            </div>
+        </x-slot:footer>
+    </x-panel>
+
     {{-- Ce qui n'est délibérément pas modifiable ici. --}}
     <section class="rounded border border-dashed border-line bg-surface p-5 lg:col-span-2" aria-labelledby="settings-env-title">
         <h2 id="settings-env-title" class="text-sm font-semibold text-ink">{{ __('backoffice.settings.env_title') }}</h2>

@@ -3,6 +3,8 @@
 namespace App\Livewire\Settings;
 
 use App\Enums\BackOfficeModule;
+use App\Services\Fleet\FleetConnectionTester;
+use App\Settings\FleetSettings;
 use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
 use Illuminate\Contracts\View\View;
@@ -10,7 +12,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Réglages métier : barème OTP et plafonds de recharge.
+ * Réglages métier : barème OTP, plafonds de recharge et accès au parc Yango.
  *
  * Seules les valeurs que le métier ajuste sont ici. Les interrupteurs de
  * sécurité et de déploiement (contournement d'OTP, jeton de documentation,
@@ -42,7 +44,23 @@ class Index extends Component
 
     public int $rechargeBalanceTtlMinutes = 10;
 
-    public function mount(OtpSettings $otp, RechargeSettings $recharge): void
+    public string $fleetBaseUrl = '';
+
+    public string $fleetParkId = '';
+
+    /**
+     * Jamais pré-rempli avec la clé enregistrée : une clé en clair dans le HTML
+     * de la page serait lisible par toute extension du navigateur. Vide à
+     * l'affichage signifie « on garde celle déjà enregistrée ».
+     */
+    public string $fleetApiKey = '';
+
+    /** Verdict du dernier test de connexion, le temps de la requête. */
+    public ?bool $fleetTestSucceeded = null;
+
+    public ?string $fleetTestMessage = null;
+
+    public function mount(OtpSettings $otp, RechargeSettings $recharge, FleetSettings $fleet): void
     {
         $this->otpLength = $otp->length;
         $this->otpTtlMinutes = $otp->ttl_minutes;
@@ -56,6 +74,9 @@ class Index extends Component
         $this->rechargeMaxAmount = $recharge->max_amount;
         $this->rechargeDailyCap = $recharge->daily_cap;
         $this->rechargeBalanceTtlMinutes = $recharge->balance_ttl_minutes;
+
+        $this->fleetBaseUrl = $fleet->base_url;
+        $this->fleetParkId = $fleet->park_id;
     }
 
     public function saveOtp(OtpSettings $otp): void
@@ -105,8 +126,63 @@ class Index extends Component
         $this->dispatch('toast', message: __('backoffice.settings.recharge_saved'));
     }
 
-    public function render(): View
+    public function saveFleet(FleetSettings $fleet): void
     {
-        return view('livewire.settings.index');
+        $this->validate([
+            'fleetBaseUrl' => 'required|url',
+            'fleetParkId' => 'required|string|max:255',
+            // Facultative : laissée vide, la clé déjà enregistrée est conservée.
+            'fleetApiKey' => 'nullable|string|max:255',
+        ]);
+
+        $fleet->base_url = $this->fleetBaseUrl;
+        $fleet->park_id = $this->fleetParkId;
+
+        if (filled($this->fleetApiKey)) {
+            $fleet->api_key = $this->fleetApiKey;
+        }
+
+        $fleet->save();
+
+        // La clé ne repart pas vers le navigateur une fois enregistrée.
+        $this->fleetApiKey = '';
+        $this->fleetTestSucceeded = null;
+        $this->fleetTestMessage = null;
+
+        $this->dispatch('toast', message: __('backoffice.settings.fleet_saved'));
+    }
+
+    /**
+     * Teste les identifiants enregistrés en lecture seule : un conducteur
+     * demandé, rien d'écrit. Enregistrer d'abord, tester ensuite.
+     */
+    public function testFleet(FleetConnectionTester $tester): void
+    {
+        $result = $tester->test();
+
+        $this->fleetTestSucceeded = $result->succeeded;
+
+        $this->fleetTestMessage = match (true) {
+            $result->succeeded && $result->empty => (string) __('backoffice.settings.fleet_test_empty'),
+            $result->succeeded => (string) __('backoffice.settings.fleet_test_ok'),
+            $result->status !== null => (string) __('backoffice.settings.fleet_test_failed_status', [
+                'status' => $result->status,
+                'message' => $result->message ?? '',
+            ]),
+            default => $result->message,
+        };
+    }
+
+    public function render(FleetSettings $fleet): View
+    {
+        /** @var view-string $view */
+        $view = 'livewire.settings.index';
+
+        return view($view, [
+            // La clé elle-même ne quitte jamais le serveur : seule sa présence
+            // est publiée, pour dire si la synchronisation peut tourner et si
+            // le test a un sens.
+            'fleetKeyStored' => filled($fleet->api_key),
+        ]);
     }
 }

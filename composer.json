@@ -18,6 +18,7 @@
         "league/flysystem-aws-s3-v3": "^3.0",
         "livewire/blaze": "^1.0",
         "livewire/livewire": "^4.1",
+        "saloonphp/saloon": "^4.0",
         "scrivo/highlight.php": "^9.18",
         "spatie/laravel-permission": "^8.3",
         "spatie/laravel-settings": "^3.9"

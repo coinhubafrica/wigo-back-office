@@ -833,6 +833,20 @@ return [
         'recharge_balance_ttl' => 'Fraîcheur du solde Yango (minutes)',
         'recharge_saved' => 'Plafonds de recharge enregistrés.',
 
+        'fleet_title' => 'Accès au parc Yango',
+        'fleet_hint' => "Identifiants de l'API Fleet, utilisés par la synchronisation des conducteurs et des véhicules.",
+        'fleet_base_url' => "URL de l'API",
+        'fleet_park_id' => 'Identifiant du parc',
+        'fleet_api_key' => "Clé d'API",
+        'fleet_api_key_hint' => 'Laissez vide pour conserver la clé enregistrée.',
+        'fleet_api_key_set' => 'Une clé est enregistrée.',
+        'fleet_api_key_missing' => "Aucune clé enregistrée : la synchronisation ne peut pas s'exécuter.",
+        'fleet_saved' => 'Accès au parc Yango enregistré.',
+        'fleet_test' => 'Tester la connexion',
+        'fleet_testing' => 'Test en cours…',
+        'fleet_test_ok' => 'Connexion établie : Yango a répondu.',
+        'fleet_test_empty' => 'Connexion établie, mais Yango ne remonte aucun conducteur.',
+        'fleet_test_failed_status' => 'Échec (:status) : :message',
 
         'save' => 'Enregistrer',
 

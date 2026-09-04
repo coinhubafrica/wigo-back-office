@@ -10,6 +10,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/views/components/**, resources/views/layouts/**, resources/views/vendor/** | .ai/rules/components.md |
 | docs/api/**, app/Support/Docs/**, app/Http/Controllers/Docs/**, resources/views/docs/** | .ai/rules/docs.md |
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
+| app/Services/Fleet/** | .ai/rules/fleet.md |
 | app/Http/** | .ai/rules/http.md |
 | resources/js/app.js | .ai/rules/js.md |
 | app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/middleware.md |

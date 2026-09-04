@@ -5,9 +5,13 @@
  * surtout pas pouvoir changer.
  */
 
+use App\Contracts\FleetDirectory;
 use App\Enums\BackOfficeModule;
+use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Livewire\Settings\Index;
 use App\Models\User;
+use App\Services\Fleet\FakeFleetDirectory;
+use App\Settings\FleetSettings;
 use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
 use Database\Seeders\RolePermissionSeeder;
@@ -125,6 +129,112 @@ it('applies a saved otp length to the next generated code', function (): void {
 
     expect(app(OtpSettings::class)->length)->toBe(4);
 });
+
+// ------------------------------------------------------- accès au parc Yango
+
+it('saves the yango fleet credentials', function (): void {
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('fleetBaseUrl', 'https://fleet-api.yango.tech')
+        ->set('fleetParkId', 'park-123')
+        ->set('fleetApiKey', 'cle-secrete')
+        ->call('saveFleet')
+        ->assertHasNoErrors();
+
+    $fleet = app(FleetSettings::class);
+
+    expect($fleet->park_id)->toBe('park-123')
+        ->and($fleet->api_key)->toBe('cle-secrete')
+        ->and($fleet->isConfigured())->toBeTrue();
+});
+
+it('keeps the stored key when the field is left empty', function (): void {
+    settingsStoreFleetKey('cle-deja-en-place');
+
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('fleetParkId', 'park-456')
+        ->set('fleetApiKey', '')
+        ->call('saveFleet')
+        ->assertHasNoErrors();
+
+    // Enregistrer le parc ne doit pas effacer la clé au passage.
+    expect(app(FleetSettings::class)->api_key)->toBe('cle-deja-en-place');
+});
+
+it('never sends the stored key back to the browser', function (): void {
+    settingsStoreFleetKey('cle-tres-secrete');
+
+    $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        ->assertSee(__('backoffice.settings.fleet_title'))
+        ->assertDontSee('cle-tres-secrete');
+});
+
+it('encrypts the api key at rest', function (): void {
+    settingsStoreFleetKey('cle-tres-secrete');
+
+    $stored = DB::table('settings')
+        ->where('group', 'fleet')
+        ->where('name', 'api_key')
+        ->value('payload');
+
+    // Une lecture de la table ne doit pas suffire à parler au parc.
+    expect($stored)->not->toContain('cle-tres-secrete');
+});
+
+it('reports a successful connection test', function (): void {
+    settingsStoreFleetKey('cle-valide');
+
+    /** @var FakeFleetDirectory $directory */
+    $directory = app(FleetDirectory::class);
+    $directory->setDrivers([['driver_profile' => ['id' => 'YAN-001']]]);
+
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->call('testFleet')
+        ->assertSet('fleetTestSucceeded', true)
+        ->assertSet('fleetTestMessage', __('backoffice.settings.fleet_test_ok'));
+});
+
+it('reports the status when yango refuses the key', function (): void {
+    settingsStoreFleetKey('cle-invalide');
+
+    /** @var FakeFleetDirectory $directory */
+    $directory = app(FleetDirectory::class);
+    $directory->failWith(new class('Clé refusée') extends YangoFleetException
+    {
+        public function getStatusCode(): ?int
+        {
+            return 401;
+        }
+    });
+
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->call('testFleet')
+        ->assertSet('fleetTestSucceeded', false)
+        ->assertSee('401');
+});
+
+it('requires a park id and a valid url', function (): void {
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('fleetBaseUrl', 'pas-une-url')
+        ->set('fleetParkId', '')
+        ->call('saveFleet')
+        ->assertHasErrors(['fleetBaseUrl', 'fleetParkId']);
+});
+
+function settingsStoreFleetKey(string $key): void
+{
+    $fleet = app(FleetSettings::class);
+    $fleet->base_url = 'https://fleet-api.yango.tech';
+    $fleet->park_id = 'park-123';
+    $fleet->api_key = $key;
+    $fleet->save();
+}
 
 /**
  * @param  array<string, mixed>  $attributes

@@ -3,13 +3,16 @@
 namespace App\Providers;
 
 use App\Contracts\FleetClient;
+use App\Contracts\FleetDirectory;
 use App\Contracts\PushSender;
 use App\Contracts\SmsSender;
 use App\Contracts\WaveClient;
 use App\Services\Fcm\HttpPushSender;
 use App\Services\Fcm\LogPushSender;
 use App\Services\Fleet\FakeFleetClient;
+use App\Services\Fleet\FakeFleetDirectory;
 use App\Services\Fleet\HttpFleetClient;
+use App\Services\Fleet\SaloonFleetDirectory;
 use App\Services\Sms\HttpSmsSender;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Wave\FakeWaveClient;
@@ -54,6 +57,14 @@ class IntegrationServiceProvider extends ServiceProvider
             }
 
             return new HttpFleetClient;
+        });
+
+        $this->app->singleton(FleetDirectory::class, function (): FleetDirectory {
+            if ($this->app->environment('testing') || config('services.fleet.driver') === 'fake') {
+                return new FakeFleetDirectory;
+            }
+
+            return new SaloonFleetDirectory;
         });
     }
 }
