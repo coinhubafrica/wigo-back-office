@@ -72,10 +72,20 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
         ->middleware('permission:'.BackOfficeModule::Drivers->permission())
         ->name('bo.drivers.show');
 
-    // La photo de profil vit sur le disque privé : la fiche ne peut pas la
-    // pointer directement, elle passe par cette route protégée.
+    /*
+    | La photo de profil vit sur le disque privé : la fiche ne peut pas la
+    | pointer directement, elle passe par cette route protégée.
+    |
+    | Deux modules l'affichent — la fiche du conducteur et les avatars du fil
+    | de support : la route accepte l'une ou l'autre permission (spatie lit le
+    | `|` comme un « ou »). La borner aux seuls Conducteurs cassait l'avatar
+    | d'un agent qui ne fait que du support.
+    */
     Route::get('drivers/{driver}/photo', DriverPhotoController::class)
-        ->middleware('permission:'.BackOfficeModule::Drivers->permission())
+        ->middleware('permission:'.implode('|', [
+            BackOfficeModule::Drivers->permission(),
+            BackOfficeModule::SupportRequests->permission(),
+        ]))
         ->name('bo.drivers.photo');
 
     Route::livewire('vehicles', VehiclesIndex::class)

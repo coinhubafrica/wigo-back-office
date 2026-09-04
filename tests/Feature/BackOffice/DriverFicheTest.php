@@ -73,18 +73,67 @@ it('the photo route streams the file', function (): void {
         ->assertOk();
 });
 
-it('the photo route 404s without a photo', function (): void {
+it('the photo route refuses a driver without a photo, saying nothing more', function (): void {
+    // Même réponse qu'un identifiant inconnu : 404 aurait dit « ce conducteur
+    // existe, mais sans portrait ».
     $driver = Driver::factory()->create(['photo_url' => null]);
+
+    $this->actingAs(driverFicheUser('direction'))
+        ->get(route('bo.drivers.photo', $driver))
+        ->assertForbidden();
+});
+
+it('answers an unknown driver id exactly like a driver without a photo', function (): void {
+    /*
+     * Le code de statut ne doit pas permettre d'énumérer les conducteurs : un
+     * identifiant inconnu et un conducteur sans portrait répondent tous deux
+     * 403, avec le même corps.
+     */
+    $agent = driverFicheUser('direction');
+    $withoutPhoto = Driver::factory()->create(['photo_url' => null]);
+
+    $unknown = $this->actingAs($agent)
+        ->get(route('bo.drivers.photo', '01jzzzzzzzzzzzzzzzzzzzzzzz'));
+
+    $known = $this->actingAs($agent)
+        ->get(route('bo.drivers.photo', $withoutPhoto));
+
+    $unknown->assertForbidden();
+    $known->assertForbidden();
+
+    expect($unknown->getContent())->toBe($known->getContent());
+});
+
+it('the photo route 404s only once the request is authorised', function (): void {
+    // Le portrait est référencé mais absent du disque : anomalie de stockage,
+    // et l'accès est déjà accordé — la dire ne révèle rien.
+    Storage::fake('local');
+
+    $driver = Driver::factory()->create(['photo_url' => 'driver-photos/disparue.jpg']);
 
     $this->actingAs(driverFicheUser('direction'))
         ->get(route('bo.drivers.photo', $driver))
         ->assertNotFound();
 });
 
-it('the photo route is closed without the drivers permission', function (): void {
+it('opens the photo to a support agent for the thread avatars', function (): void {
+    // Le fil du support pointe ici pour ses avatars : borner la route aux
+    // seuls Conducteurs cassait l'image d'un agent qui ne fait que du support.
+    Storage::fake('local');
+    Storage::disk('local')->put('driver-photos/selfie.jpg', 'binaire');
+
     $driver = Driver::factory()->create(['photo_url' => 'driver-photos/selfie.jpg']);
 
     $this->actingAs(driverFicheUser('stock'))
+        ->get(route('bo.drivers.photo', $driver))
+        ->assertOk();
+});
+
+it('the photo route is closed to a role with neither drivers nor support', function (): void {
+    $driver = Driver::factory()->create(['photo_url' => 'driver-photos/selfie.jpg']);
+
+    // `admin` n'a ni `module.drivers` ni `module.support-requests`.
+    $this->actingAs(driverFicheUser('admin'))
         ->get(route('bo.drivers.photo', $driver))
         ->assertForbidden();
 });
