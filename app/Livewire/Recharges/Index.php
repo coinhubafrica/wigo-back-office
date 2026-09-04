@@ -5,8 +5,8 @@ namespace App\Livewire\Recharges;
 use App\Contracts\WaveClient;
 use App\Enums\BackOfficeModule;
 use App\Enums\TransactionStatus;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\Transaction;
-use App\Models\User;
 use App\Services\Recharge\RechargeService;
 use App\Settings\WaveAccount;
 use Illuminate\Contracts\View\View;
@@ -30,7 +30,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Recharges])]
 class Index extends Component
 {
-    use WithPagination;
+    use InteractsWithCurrentUser, WithPagination;
 
     #[Url]
     public string $search = '';
@@ -97,7 +97,7 @@ class Index extends Component
         $transaction = Transaction::query()->findOrFail($this->confirmingReplayId);
         $this->confirmingReplayId = null;
 
-        $recharges->replay($transaction, $this->agent());
+        $recharges->replay($transaction, $this->actor());
 
         $this->dispatch('toast', message: __('backoffice.recharges.replayed'));
     }
@@ -116,7 +116,7 @@ class Index extends Component
         $transaction = Transaction::query()->findOrFail($this->confirmingCreditId);
         $this->confirmingCreditId = null;
 
-        $recharges->markCreditedManually($transaction, $this->agent());
+        $recharges->markCreditedManually($transaction, $this->actor());
 
         $this->dispatch('toast', message: __('backoffice.recharges.marked_credited'));
     }
@@ -199,13 +199,5 @@ class Index extends Component
                 ->count(),
             'wave_balance' => $wave->businessBalance(WaveAccount::Topup),
         ];
-    }
-
-    private function agent(): User
-    {
-        /** @var User $user */
-        $user = auth('web')->user();
-
-        return $user;
     }
 }

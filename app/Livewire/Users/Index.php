@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Users;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\Permission as BackOfficePermission;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -36,7 +38,7 @@ use Spatie\Permission\Models\Role;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Users])]
 class Index extends Component
 {
-    use WithPagination;
+    use InteractsWithCurrentUser, WithPagination;
 
     #[Url]
     public string $search = '';
@@ -281,7 +283,7 @@ class Index extends Component
 
         // Se désactiver soi-même fermerait la session au prochain clic, sur un
         // écran dont on est peut-être le seul à porter les droits.
-        if ($user->is($this->currentUser())) {
+        if ($user->is($this->actor())) {
             $this->dispatch('toast', message: __('backoffice.users.cannot_disable_self'), tone: 'error');
             $this->confirmingToggleId = null;
 
@@ -292,12 +294,12 @@ class Index extends Component
         $user->save();
 
         AuditLog::record(
-            action: $user->is_active ? 'user.enabled' : 'user.disabled',
+            action: ($user->is_active ? AuditAction::UserEnabled : AuditAction::UserDisabled)->value,
             summary: $user->is_active
-                ? "{$this->currentUser()->fullName()} a réactivé le compte de {$user->fullName()}."
-                : "{$this->currentUser()->fullName()} a désactivé le compte de {$user->fullName()}.",
+                ? "{$this->actor()->fullName()} a réactivé le compte de {$user->fullName()}."
+                : "{$this->actor()->fullName()} a désactivé le compte de {$user->fullName()}.",
             subject: $user,
-            by: $this->currentUser(),
+            by: $this->actor(),
         );
 
         $this->confirmingToggleId = null;
@@ -336,10 +338,10 @@ class Index extends Component
         $user->save();
 
         AuditLog::record(
-            action: 'user.password_reset',
-            summary: "{$this->currentUser()->fullName()} a réinitialisé le mot de passe de {$user->fullName()}.",
+            action: AuditAction::UserPasswordReset->value,
+            summary: "{$this->actor()->fullName()} a réinitialisé le mot de passe de {$user->fullName()}.",
             subject: $user,
-            by: $this->currentUser(),
+            by: $this->actor(),
         );
 
         $this->resettingId = null;
@@ -379,11 +381,11 @@ class Index extends Component
      */
     private function recordSave(User $user, bool $creating, array $before, ?string $password): void
     {
-        $actor = $this->currentUser();
+        $actor = $this->actor();
 
         if ($creating) {
             AuditLog::record(
-                action: 'user.created',
+                action: AuditAction::UserCreated->value,
                 summary: "{$actor->fullName()} a créé le compte de {$user->fullName()} ({$user->email}).",
                 subject: $user,
                 by: $actor,
@@ -405,7 +407,7 @@ class Index extends Component
         ];
 
         AuditLog::record(
-            action: 'user.updated',
+            action: AuditAction::UserUpdated->value,
             summary: "{$actor->fullName()} a modifié le compte de {$user->fullName()}.",
             subject: $user,
             by: $actor,
@@ -483,14 +485,6 @@ class Index extends Component
         $this->selectedPermissions = [];
         $this->issuedPassword = null;
         $this->resetValidation();
-    }
-
-    private function currentUser(): User
-    {
-        /** @var User $user */
-        $user = auth()->user();
-
-        return $user;
     }
 
     public function render(): View

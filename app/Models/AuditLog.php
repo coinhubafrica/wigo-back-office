@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AuditAction;
 use Carbon\CarbonImmutable;
 use Database\Factories\AuditLogFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -77,6 +78,20 @@ class AuditLog extends Model
             'ip_address' => app()->runningInConsole() ? null : request()->ip(),
             'occurred_at' => now(),
         ]);
+    }
+
+    /**
+     * Le geste de cette ligne, s'il est encore au catalogue.
+     *
+     * `null` quand le slug n'y figure pas : la table est en ajout seul et
+     * jamais purgée, donc une ligne écrite par un code retiré depuis doit
+     * rester affichable. L'écran retombe alors sur le slug brut plutôt que de
+     * faire tomber la page — c'est pourquoi la lecture passe par `tryFrom()`
+     * et que `record()` garde une chaîne en paramètre.
+     */
+    public function actionEnum(): ?AuditAction
+    {
+        return AuditAction::tryFrom($this->action);
     }
 
     /**

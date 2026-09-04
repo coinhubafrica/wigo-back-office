@@ -6,6 +6,7 @@
  * mesurait 4,40:1, sous le seuil AA — `neutral-bg/text` existe pour ça.
  */
 
+use App\Enums\AuditAction;
 use App\Enums\CampaignAudience;
 use App\Enums\CampaignStatus;
 use App\Enums\ChallengeStatus;
@@ -24,6 +25,7 @@ it('returns a complete token pair for every case', function (string $enum): void
             ->not->toContain('zinc');
     }
 })->with([
+    AuditAction::class,
     CampaignAudience::class,
     CampaignStatus::class,
     ChallengeStatus::class,

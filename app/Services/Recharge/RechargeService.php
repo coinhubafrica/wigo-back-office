@@ -4,6 +4,7 @@ namespace App\Services\Recharge;
 
 use App\Contracts\FleetClient;
 use App\Contracts\WaveClient;
+use App\Enums\AuditAction;
 use App\Enums\TransactionProvider;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
@@ -153,7 +154,7 @@ class RechargeService
         }
 
         AuditLog::record(
-            action: 'recharge.replayed',
+            action: AuditAction::RechargeReplayed->value,
             summary: "Rejeu de la transaction Wave {$transaction->reference}",
             subject: $transaction,
             by: $by,
@@ -193,7 +194,7 @@ class RechargeService
             ]);
 
             AuditLog::record(
-                action: 'recharge.marked_credited',
+                action: AuditAction::RechargeMarkedCredited->value,
                 summary: "Recharge {$transaction->reference} marquée créditée à la main sur Yango",
                 subject: $transaction,
                 by: $by,
@@ -295,7 +296,7 @@ class RechargeService
             ]);
 
             AuditLog::record(
-                action: 'recharge.fleet_failed',
+                action: AuditAction::RechargeFleetFailed->value,
                 summary: "Crédit Yango refusé pour la recharge {$transaction->reference}",
                 subject: $transaction,
                 by: $by,
@@ -331,7 +332,7 @@ class RechargeService
             }
 
             AuditLog::record(
-                action: 'recharge.credited',
+                action: AuditAction::RechargeCredited->value,
                 summary: "Recharge {$transaction->reference} créditée sur le solde Yango",
                 subject: $transaction,
                 by: $by,

@@ -2,12 +2,13 @@
 
 namespace App\Livewire\Drivers;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\DriverStatus;
 use App\Http\Resources\CnpsStatementPayload;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
 use App\Models\Driver;
-use App\Models\User;
 use App\Services\Cnps\CnpsStatementService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -30,6 +31,8 @@ use Livewire\Component;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Drivers])]
 class Show extends Component
 {
+    use InteractsWithCurrentUser;
+
     /**
      * Lignes montrées par panneau. La fiche est un aperçu : au-delà, le module
      * dédié (Requêtes, Boutique, Recharges) est le bon endroit pour dérouler
@@ -75,7 +78,7 @@ class Show extends Component
         ]);
 
         AuditLog::record(
-            action: 'driver.suspended',
+            action: AuditAction::DriverSuspended->value,
             summary: "{$this->actor()->fullName()} a suspendu {$this->driver->fullName()}.",
             subject: $this->driver,
             by: $this->actor(),
@@ -111,7 +114,7 @@ class Show extends Component
         ]);
 
         AuditLog::record(
-            action: 'driver.reactivated',
+            action: AuditAction::DriverReactivated->value,
             summary: "{$this->actor()->fullName()} a réactivé {$this->driver->fullName()}.",
             subject: $this->driver,
             by: $this->actor(),
@@ -119,14 +122,6 @@ class Show extends Component
         );
 
         $this->dispatch('toast', message: __('backoffice.drivers.reactivated'));
-    }
-
-    private function actor(): User
-    {
-        /** @var User $user */
-        $user = auth()->user();
-
-        return $user;
     }
 
     /**

@@ -2,15 +2,16 @@
 
 namespace App\Livewire\Campaigns;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\CampaignAudience;
 use App\Enums\CampaignStatus;
 use App\Enums\DriverStatus;
 use App\Jobs\DispatchCampaignJob;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\Message;
-use App\Models\User;
 use App\Services\Support\CampaignAudienceResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
@@ -29,7 +30,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Campaigns])]
 class Show extends Component
 {
-    use WithPagination;
+    use InteractsWithCurrentUser, WithPagination;
 
     public Campaign $campaign;
 
@@ -79,7 +80,7 @@ class Show extends Component
         DispatchCampaignJob::dispatch($this->campaign->getKey());
 
         AuditLog::record(
-            action: 'campaign.sent',
+            action: AuditAction::CampaignSent->value,
             summary: "{$this->actor()->fullName()} a diffusé la campagne « {$this->campaign->title} ».",
             subject: $this->campaign,
             by: $this->actor(),
@@ -92,14 +93,6 @@ class Show extends Component
         $this->confirmingSend = false;
         $this->confirmingCount = null;
         $this->dispatch('toast', message: __('backoffice.campaigns.sending'));
-    }
-
-    private function actor(): User
-    {
-        /** @var User $user */
-        $user = auth()->user();
-
-        return $user;
     }
 
     public function render(CampaignAudienceResolver $audience): View

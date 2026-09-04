@@ -3,10 +3,11 @@
 namespace App\Livewire\Announcements;
 
 use App\Enums\AnnouncementMediaType;
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\Announcement;
 use App\Models\AuditLog;
-use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -22,7 +23,7 @@ use Livewire\WithFileUploads;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Announcements])]
 class Index extends Component
 {
-    use WithFileUploads;
+    use InteractsWithCurrentUser, WithFileUploads;
 
     public bool $formOpen = false;
 
@@ -130,7 +131,7 @@ class Index extends Component
         $announcement->update(['is_active' => ! $announcement->is_active]);
 
         AuditLog::record(
-            action: $announcement->is_active ? 'announcement.published' : 'announcement.withdrawn',
+            action: ($announcement->is_active ? AuditAction::AnnouncementPublished : AuditAction::AnnouncementWithdrawn)->value,
             summary: $announcement->is_active
                 ? "{$this->actor()->fullName()} a publié l'annonce « {$announcement->title} »."
                 : "{$this->actor()->fullName()} a retiré l'annonce « {$announcement->title} ».",
@@ -177,21 +178,13 @@ class Index extends Component
         $announcement->delete();
 
         AuditLog::record(
-            action: 'announcement.deleted',
+            action: AuditAction::AnnouncementDeleted->value,
             summary: "{$this->actor()->fullName()} a supprimé l'annonce « {$title} ».",
             by: $this->actor(),
         );
 
         $this->confirmingDeleteId = null;
         $this->dispatch('toast', message: __('backoffice.announcements.deleted'));
-    }
-
-    private function actor(): User
-    {
-        /** @var User $user */
-        $user = auth()->user();
-
-        return $user;
     }
 
     public function closeForm(): void

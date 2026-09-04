@@ -2,16 +2,17 @@
 
 namespace App\Livewire\Campaigns;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\CampaignAudience;
 use App\Enums\CampaignStatus;
 use App\Enums\DriverStatus;
 use App\Jobs\DispatchCampaignJob;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\Driver;
 use App\Models\Message;
-use App\Models\User;
 use App\Services\Support\CampaignAudienceResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
@@ -37,7 +38,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Campaigns])]
 class Index extends Component
 {
-    use WithPagination;
+    use InteractsWithCurrentUser, WithPagination;
 
     public bool $composerOpen = false;
 
@@ -144,7 +145,7 @@ class Index extends Component
         DispatchCampaignJob::dispatch($campaign->getKey());
 
         AuditLog::record(
-            action: 'campaign.sent',
+            action: AuditAction::CampaignSent->value,
             summary: "{$this->actor()->fullName()} a diffusé la campagne « {$campaign->title} ».",
             subject: $campaign,
             by: $this->actor(),
@@ -252,14 +253,6 @@ class Index extends Component
                 ->orWhere('phone', 'like', $term))
             ->limit(8)
             ->get();
-    }
-
-    private function actor(): User
-    {
-        /** @var User $user */
-        $user = Auth::user();
-
-        return $user;
     }
 
     private function persist(): Campaign

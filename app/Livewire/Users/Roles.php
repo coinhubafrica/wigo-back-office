@@ -2,10 +2,11 @@
 
 namespace App\Livewire\Users;
 
+use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\Permission as BackOfficePermission;
+use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
-use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -30,6 +31,8 @@ use Spatie\Permission\PermissionRegistrar;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Users])]
 class Roles extends Component
 {
+    use InteractsWithCurrentUser;
+
     public ?string $editingId = null;
 
     public bool $formOpen = false;
@@ -152,12 +155,12 @@ class Roles extends Component
         $after = collect($this->selectedPermissions)->sort()->values()->all();
 
         AuditLog::record(
-            action: $creating ? 'role.created' : 'role.updated',
+            action: ($creating ? AuditAction::RoleCreated : AuditAction::RoleUpdated)->value,
             summary: $creating
-                ? "{$this->currentUser()->fullName()} a créé le rôle « {$role->label} »."
-                : "{$this->currentUser()->fullName()} a modifié les droits du rôle « {$role->label} ».",
+                ? "{$this->actor()->fullName()} a créé le rôle « {$role->label} »."
+                : "{$this->actor()->fullName()} a modifié les droits du rôle « {$role->label} ».",
             subject: $role,
-            by: $this->currentUser(),
+            by: $this->actor(),
             context: array_filter([
                 'role' => $role->name,
                 'permissions_before' => $creating || $before === $after ? null : $before,
@@ -199,9 +202,9 @@ class Roles extends Component
         $label = $role->label ?? $role->name;
 
         AuditLog::record(
-            action: 'role.deleted',
-            summary: "{$this->currentUser()->fullName()} a supprimé le rôle « {$label} ».",
-            by: $this->currentUser(),
+            action: AuditAction::RoleDeleted->value,
+            summary: "{$this->actor()->fullName()} a supprimé le rôle « {$label} ».",
+            by: $this->actor(),
             context: ['role' => $role->name],
         );
 
@@ -239,14 +242,6 @@ class Roles extends Component
         $this->description = '';
         $this->selectedPermissions = [];
         $this->resetValidation();
-    }
-
-    private function currentUser(): User
-    {
-        /** @var User $user */
-        $user = auth()->user();
-
-        return $user;
     }
 
     public function render(): View
