@@ -4,6 +4,7 @@ use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Services\Yango\SaloonYangoDirectory;
 use App\Services\Yango\YangoConnectionTester;
 use App\Settings\YangoSettings;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Sleep;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
@@ -163,4 +164,44 @@ it('surfaces a persistent 429 as a transient refusal, not a refused key', functi
     }
 
     expect($refusal?->getStatusCode())->toBe(429);
+});
+
+it('breathes between cursor pages too, but never before the first', function (): void {
+    // La boucle à curseur est une seconde boucle : elle doit hériter du même
+    // espacement, sinon une longue période repart en rafale.
+    yangoPacingSettings();
+
+    MockClient::global([
+        yangoOrdersResponse([yangoOrderRow('ORD-1')], cursor: 'page-2'),
+        yangoOrdersResponse([yangoOrderRow('ORD-2')], cursor: 'page-3'),
+        yangoOrdersResponse([yangoOrderRow('ORD-3')]),
+    ]);
+
+    Sleep::fake();
+
+    iterator_to_array(
+        (new SaloonYangoDirectory)->orders(Carbon::parse('2026-09-03'), Carbon::parse('2026-09-03')),
+        false,
+    );
+
+    // Trois pages, deux intervalles : le premier appel ne paie rien.
+    Sleep::assertSlept(fn ($duration): bool => $duration->totalMilliseconds === 250.0, 2);
+});
+
+it('waits as Yango asks before retrying a 429 on a cursor page', function (): void {
+    yangoPacingSettings(delayMs: 0);
+
+    MockClient::global([
+        MockResponse::make(['message' => 'slow down'], 429, ['Retry-After' => '30']),
+        yangoTransactionsResponse(),
+    ]);
+
+    Sleep::fake();
+
+    iterator_to_array(
+        (new SaloonYangoDirectory)->transactions(Carbon::parse('2026-09-03'), Carbon::parse('2026-09-03')),
+        false,
+    );
+
+    Sleep::assertSlept(fn ($duration): bool => $duration->totalSeconds === 30.0, 1);
 });
