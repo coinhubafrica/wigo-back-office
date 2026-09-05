@@ -35,6 +35,18 @@ On ne change pas non plus la hiérarchie d'exceptions pour les rendre vivantes :
 
 `Retry-After` est honoré quand Yango le donne, sinon 30 s, plafonné à 120 s : un en-tête aberrant ne doit pas immobiliser un worker. L'attente passe par la façade `Sleep` et non par `usleep` — c'est la seule forme qu'un test peut feindre.
 
+## Un tour de parc s'étale sur plusieurs passes
+Yango coupe une passe bien avant la fin d'un grand parc : vingt-et-une pages, dix mille cinq cents profils, quatre cents secondes — puis 429, mesuré contre un parc de vingt-cinq mille huit cent soixante conducteurs. Ce n'est pas un débit à ralentir mais un quota sur une fenêtre : augmenter `page_delay_ms` ne fait que retarder le même mur, et réduire la taille de page l'aggrave (il faut plus de requêtes pour le même parc).
+
+La passe note donc où elle s'arrête (`YangoSettings::$drivers_offset` / `$vehicles_offset`, en base et non en cache : un cache vidé ne doit pas coûter une nuit de progression) et la suivante reprend là. Le repère est écrit dans un `finally` — **une passe coupée par un 429 doit laisser derrière elle de quoi reprendre**, c'est tout l'intérêt. Il n'avance qu'après le `yield from` : seules les lignes réellement traitées par l'appelant comptent.
+
+`YangoSyncCursor` est mutable et passé en argument plutôt que rendu : un générateur interrompu ne rend jamais sa valeur de retour.
+
+Deux conséquences sur la fraîcheur, à ne pas défaire :
+
+- **`reportStale()` ne tourne que sur un tour complet.** Un tour partiel ne peut rien dire des lignes qu'il n'a pas vues ; les compter « non remontées » accuserait Yango d'avoir oublié un conducteur que la passe n'a simplement pas encore atteint.
+- **Le repère de fraîcheur date du tour, pas de la passe** (`$lap_started_at`). Un tour s'étale sur plusieurs heures : mesuré depuis la passe, il compterait « non remontées » toutes les lignes rapprochées par les passes précédentes du même tour. Le repère s'efface quand le tour boucle.
+
 **La passe parc ne se découpe jamais en plusieurs jobs.** `reportStale()` compare `last_sync_at` à un repère posé avant la première écriture ; un second job compterait comme « non remontées » toutes les lignes que le premier n'a pas encore atteintes. Un job = une passe = un repère. L'espacement ralentit la passe, il ne la divise pas.
 
 Cette règle vaut pour le parc, **pas** pour les courses et les transactions : celles-ci sont bornées par une date et ne tiennent aucun repère. Une journée par job y est donc légitime, et souhaitable — une période d'un mois qui échoue au vingtième jour ne refait pas les dix-neuf précédents.

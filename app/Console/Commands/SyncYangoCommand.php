@@ -66,6 +66,15 @@ class SyncYangoCommand extends Command
 
         $this->components->info(sprintf('véhicules : %d sync', $result->vehiclesSynced));
 
+        if (! $result->completedLap) {
+            // Yango coupe une passe avant la fin d'un grand parc : la
+            // suivante reprendra à ce décalage plutôt qu'au début.
+            $this->components->warn(sprintf(
+                'tour incomplet : reprise au décalage %d à la prochaine passe',
+                $result->driversOffset,
+            ));
+        }
+
         if ($result->staleDrivers > 0 || $result->staleVehicles > 0) {
             $this->components->warn(sprintf(
                 'non remontés : %d conducteurs, %d véhicules (voir le journal)',
