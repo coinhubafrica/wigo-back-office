@@ -1,28 +1,28 @@
 <?php
 
-use App\Contracts\FleetDirectory;
+use App\Contracts\YangoDirectory;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Models\Driver;
-use App\Services\Fleet\FakeFleetDirectory;
-use App\Services\Fleet\FleetConnectionTester;
+use App\Services\Yango\FakeYangoDirectory;
+use App\Services\Yango\YangoConnectionTester;
 
 beforeEach(function (): void {
-    /** @var FakeFleetDirectory $directory */
-    $directory = app(FleetDirectory::class);
+    /** @var FakeYangoDirectory $directory */
+    $directory = app(YangoDirectory::class);
     $this->directory = $directory;
 });
 
 it('succeeds when Yango answers', function (): void {
     $this->directory->setDrivers([['driver_profile' => ['id' => 'YAN-001']]]);
 
-    $result = app(FleetConnectionTester::class)->test();
+    $result = app(YangoConnectionTester::class)->test();
 
     expect($result->succeeded)->toBeTrue()
         ->and($result->empty)->toBeFalse();
 });
 
 it('treats an empty park as a success, not a breakdown', function (): void {
-    $result = app(FleetConnectionTester::class)->test();
+    $result = app(YangoConnectionTester::class)->test();
 
     expect($result->succeeded)->toBeTrue()
         ->and($result->empty)->toBeTrue();
@@ -37,7 +37,7 @@ it('carries the status back when Yango refuses', function (): void {
         }
     });
 
-    $result = app(FleetConnectionTester::class)->test();
+    $result = app(YangoConnectionTester::class)->test();
 
     expect($result->succeeded)->toBeFalse()
         ->and($result->status)->toBe(401)
@@ -54,7 +54,7 @@ it('writes nothing to the park', function (): void {
         ],
     ]]);
 
-    app(FleetConnectionTester::class)->test();
+    app(YangoConnectionTester::class)->test();
 
     // Tester une saisie ne doit pas faire bouger le parc.
     $this->assertSame(0, Driver::query()->count());

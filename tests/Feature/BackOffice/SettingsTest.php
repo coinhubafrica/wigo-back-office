@@ -5,19 +5,19 @@
  * surtout pas pouvoir changer.
  */
 
-use App\Contracts\FleetDirectory;
+use App\Contracts\YangoDirectory;
 use App\Enums\BackOfficeModule;
 use App\Enums\Permission as BackOfficePermission;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Livewire\Settings\Index;
 use App\Models\AuditLog;
 use App\Models\User;
-use App\Services\Fleet\FakeFleetDirectory;
-use App\Settings\FleetSettings;
+use App\Services\Yango\FakeYangoDirectory;
 use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
 use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
+use App\Settings\YangoSettings;
 use Database\Seeders\RolePermissionSeeder;
 use Livewire\Livewire;
 
@@ -139,48 +139,48 @@ it('applies a saved otp length to the next generated code', function (): void {
 it('saves the yango fleet credentials', function (): void {
     Livewire::actingAs(settingsUser('admin'))
         ->test(Index::class)
-        ->set('fleetBaseUrl', 'https://fleet-api.yango.tech')
-        ->set('fleetParkId', 'park-123')
-        ->set('fleetApiKey', 'cle-secrete')
-        ->call('saveFleet')
+        ->set('yangoBaseUrl', 'https://fleet-api.yango.tech')
+        ->set('yangoParkId', 'park-123')
+        ->set('yangoApiKey', 'cle-secrete')
+        ->call('saveYango')
         ->assertHasNoErrors();
 
-    $fleet = app(FleetSettings::class);
+    $yango = app(YangoSettings::class);
 
-    expect($fleet->park_id)->toBe('park-123')
-        ->and($fleet->api_key)->toBe('cle-secrete')
-        ->and($fleet->isConfigured())->toBeTrue();
+    expect($yango->park_id)->toBe('park-123')
+        ->and($yango->api_key)->toBe('cle-secrete')
+        ->and($yango->isConfigured())->toBeTrue();
 });
 
 it('keeps the stored key when the field is left empty', function (): void {
-    settingsStoreFleetKey('cle-deja-en-place');
+    settingsStoreYangoKey('cle-deja-en-place');
 
     Livewire::actingAs(settingsUser('admin'))
         ->test(Index::class)
-        ->set('fleetParkId', 'park-456')
-        ->set('fleetApiKey', '')
-        ->call('saveFleet')
+        ->set('yangoParkId', 'park-456')
+        ->set('yangoApiKey', '')
+        ->call('saveYango')
         ->assertHasNoErrors();
 
     // Enregistrer le parc ne doit pas effacer la clé au passage.
-    expect(app(FleetSettings::class)->api_key)->toBe('cle-deja-en-place');
+    expect(app(YangoSettings::class)->api_key)->toBe('cle-deja-en-place');
 });
 
 it('never sends the stored key back to the browser', function (): void {
-    settingsStoreFleetKey('cle-tres-secrete');
+    settingsStoreYangoKey('cle-tres-secrete');
 
     $this->actingAs(settingsUser('admin'))
         ->get(route(BackOfficeModule::Settings->route()))
         ->assertOk()
-        ->assertSee(__('backoffice.settings.fleet_title'))
+        ->assertSee(__('backoffice.settings.yango_title'))
         ->assertDontSee('cle-tres-secrete');
 });
 
 it('encrypts the api key at rest', function (): void {
-    settingsStoreFleetKey('cle-tres-secrete');
+    settingsStoreYangoKey('cle-tres-secrete');
 
     $stored = DB::table('settings')
-        ->where('group', 'fleet')
+        ->where('group', 'yango')
         ->where('name', 'api_key')
         ->value('payload');
 
@@ -189,24 +189,24 @@ it('encrypts the api key at rest', function (): void {
 });
 
 it('reports a successful connection test', function (): void {
-    settingsStoreFleetKey('cle-valide');
+    settingsStoreYangoKey('cle-valide');
 
-    /** @var FakeFleetDirectory $directory */
-    $directory = app(FleetDirectory::class);
+    /** @var FakeYangoDirectory $directory */
+    $directory = app(YangoDirectory::class);
     $directory->setDrivers([['driver_profile' => ['id' => 'YAN-001']]]);
 
     Livewire::actingAs(settingsUser('admin'))
         ->test(Index::class)
-        ->call('testFleet')
-        ->assertSet('fleetTestSucceeded', true)
-        ->assertSet('fleetTestMessage', __('backoffice.settings.fleet_test_ok'));
+        ->call('testYango')
+        ->assertSet('yangoTestSucceeded', true)
+        ->assertSet('yangoTestMessage', __('backoffice.settings.yango_test_ok'));
 });
 
 it('reports the status when yango refuses the key', function (): void {
-    settingsStoreFleetKey('cle-invalide');
+    settingsStoreYangoKey('cle-invalide');
 
-    /** @var FakeFleetDirectory $directory */
-    $directory = app(FleetDirectory::class);
+    /** @var FakeYangoDirectory $directory */
+    $directory = app(YangoDirectory::class);
     $directory->failWith(new class('Clé refusée') extends YangoFleetException
     {
         public function getStatusCode(): ?int
@@ -217,27 +217,27 @@ it('reports the status when yango refuses the key', function (): void {
 
     Livewire::actingAs(settingsUser('admin'))
         ->test(Index::class)
-        ->call('testFleet')
-        ->assertSet('fleetTestSucceeded', false)
+        ->call('testYango')
+        ->assertSet('yangoTestSucceeded', false)
         ->assertSee('401');
 });
 
 it('requires a park id and a valid url', function (): void {
     Livewire::actingAs(settingsUser('admin'))
         ->test(Index::class)
-        ->set('fleetBaseUrl', 'pas-une-url')
-        ->set('fleetParkId', '')
-        ->call('saveFleet')
-        ->assertHasErrors(['fleetBaseUrl', 'fleetParkId']);
+        ->set('yangoBaseUrl', 'pas-une-url')
+        ->set('yangoParkId', '')
+        ->call('saveYango')
+        ->assertHasErrors(['yangoBaseUrl', 'yangoParkId']);
 });
 
-function settingsStoreFleetKey(string $key): void
+function settingsStoreYangoKey(string $key): void
 {
-    $fleet = app(FleetSettings::class);
-    $fleet->base_url = 'https://fleet-api.yango.tech';
-    $fleet->park_id = 'park-123';
-    $fleet->api_key = $key;
-    $fleet->save();
+    $yango = app(YangoSettings::class);
+    $yango->base_url = 'https://fleet-api.yango.tech';
+    $yango->park_id = 'park-123';
+    $yango->api_key = $key;
+    $yango->save();
 }
 
 /**
@@ -324,7 +324,7 @@ it('never sends the stored Wave secrets back to the browser', function (): void 
 });
 
 it('shows a masked preview of each stored secret', function (): void {
-    settingsStoreFleetKey('wave_sk_live_ABCDEFGHIJKL4821');
+    settingsStoreYangoKey('wave_sk_live_ABCDEFGHIJKL4821');
 
     $shop = app(WaveShopSettings::class);
     $shop->api_key = 'wave_sk_live_MNOPQRSTUVWX7788';
@@ -344,7 +344,7 @@ it('shows a masked preview of each stored secret', function (): void {
 });
 
 it('offers the preview as a placeholder, never as a submitted value', function (): void {
-    settingsStoreFleetKey('wave_sk_live_ABCDEFGHIJKL4821');
+    settingsStoreYangoKey('wave_sk_live_ABCDEFGHIJKL4821');
 
     $html = $this->actingAs(settingsUser('admin'))
         ->get(route(BackOfficeModule::Settings->route()))
@@ -353,7 +353,7 @@ it('offers the preview as a placeholder, never as a submitted value', function (
 
     // En `placeholder` l'aperçu est un filigrane : il ne part pas au serveur et
     // ne peut pas être pris pour une saisie au moment d'enregistrer.
-    $tag = settingsFieldTag($html, 'field-fleetapikey');
+    $tag = settingsFieldTag($html, 'field-yangoapikey');
 
     expect($tag)->toContain('placeholder="wave_sk_live_')
         ->toContain('4821"')
@@ -363,7 +363,7 @@ it('offers the preview as a placeholder, never as a submitted value', function (
     // la clé, comme avant l'aperçu.
     Livewire::actingAs(settingsUser('admin'))
         ->test(Index::class)
-        ->assertSet('fleetApiKey', '');
+        ->assertSet('yangoApiKey', '');
 });
 
 it('shows no preview for a secret that is not stored', function (): void {
@@ -372,28 +372,28 @@ it('shows no preview for a secret that is not stored', function (): void {
         ->assertOk()
         // Le message d'absence porte la conséquence. `assertSee` et non
         // `toContain` : Blade échappe l'apostrophe en `&#039;`.
-        ->assertSee(__('backoffice.settings.fleet_api_key_missing'));
+        ->assertSee(__('backoffice.settings.yango_api_key_missing'));
 
     // Aucun filigrane sur le champ.
-    expect(settingsFieldTag($response->getContent(), 'field-fleetapikey'))
+    expect(settingsFieldTag($response->getContent(), 'field-yangoapikey'))
         ->not->toContain('placeholder=');
 });
 
 it('reveals a stored secret in clear to a holder of the permission', function (): void {
-    settingsStoreFleetKey('yapi10-E5IuB_zhLWUxL1rE0p46kd45MHZ');
+    settingsStoreYangoKey('yapi10-E5IuB_zhLWUxL1rE0p46kd45MHZ');
 
     Livewire::actingAs(settingsRevealer())
         ->test(Index::class)
         ->assertSet('revealedSecrets', [])
-        ->call('reveal', 'fleetApiKey')
-        ->assertSet('revealedSecrets.fleetApiKey', 'yapi10-E5IuB_zhLWUxL1rE0p46kd45MHZ')
+        ->call('reveal', 'yangoApiKey')
+        ->assertSet('revealedSecrets.yangoApiKey', 'yapi10-E5IuB_zhLWUxL1rE0p46kd45MHZ')
         // Remasquer retire le secret de l'état, donc de la page.
-        ->call('conceal', 'fleetApiKey')
+        ->call('conceal', 'yangoApiKey')
         ->assertSet('revealedSecrets', []);
 });
 
 it('refuses to reveal without the dedicated permission', function (): void {
-    settingsStoreFleetKey('cle-tres-secrete');
+    settingsStoreYangoKey('cle-tres-secrete');
 
     // `admin` administre les Paramètres mais ne relève pas les secrets : régler
     // un plafond et lire la clé d'encaissement sont deux décisions.
@@ -403,7 +403,7 @@ it('refuses to reveal without the dedicated permission', function (): void {
 
     Livewire::actingAs($admin)
         ->test(Index::class)
-        ->call('reveal', 'fleetApiKey')
+        ->call('reveal', 'yangoApiKey')
         ->assertForbidden();
 });
 
@@ -417,18 +417,18 @@ it('refuses to reveal a setting that is not on the whitelist', function (): void
 });
 
 it('logs every reveal without writing the secret to the journal', function (): void {
-    settingsStoreFleetKey('cle-tres-secrete');
+    settingsStoreYangoKey('cle-tres-secrete');
 
     $user = settingsRevealer();
 
     Livewire::actingAs($user)
         ->test(Index::class)
-        ->call('reveal', 'fleetApiKey');
+        ->call('reveal', 'yangoApiKey');
 
     $entry = AuditLog::query()->where('action', 'settings.secret_revealed')->sole();
 
     expect($entry->user_id)->toBe($user->getKey())
-        ->and($entry->context)->toBe(['field' => 'fleetApiKey'])
+        ->and($entry->context)->toBe(['field' => 'yangoApiKey'])
         // Le journal dit qu'on a relevé, jamais quoi.
         ->and($entry->summary)->not->toContain('cle-tres-secrete')
         ->and(json_encode($entry->context))->not->toContain('cle-tres-secrete');
@@ -437,25 +437,25 @@ it('logs every reveal without writing the secret to the journal', function (): v
 it('logs nothing and reveals nothing when no secret is stored', function (): void {
     Livewire::actingAs(settingsRevealer())
         ->test(Index::class)
-        ->call('reveal', 'fleetApiKey')
+        ->call('reveal', 'yangoApiKey')
         ->assertSet('revealedSecrets', []);
 
     expect(AuditLog::query()->where('action', 'settings.secret_revealed')->count())->toBe(0);
 });
 
 it('hides the reveal control from a user without the permission', function (): void {
-    settingsStoreFleetKey('cle-tres-secrete');
+    settingsStoreYangoKey('cle-tres-secrete');
 
     $this->actingAs(settingsUser('admin'))
         ->get(route(BackOfficeModule::Settings->route()))
         ->assertOk()
         // Pas de bouton qui proposerait une action toujours refusée.
-        ->assertDontSee("reveal('fleetApiKey')", false);
+        ->assertDontSee("reveal('yangoApiKey')", false);
 
     $this->actingAs(settingsRevealer())
         ->get(route(BackOfficeModule::Settings->route()))
         ->assertOk()
-        ->assertSee("reveal('fleetApiKey')", false);
+        ->assertSee("reveal('yangoApiKey')", false);
 });
 
 it('shows the callback URL of each Wave account', function (): void {

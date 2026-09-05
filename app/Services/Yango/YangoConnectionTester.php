@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Fleet;
+namespace App\Services\Yango;
 
-use App\Contracts\FleetDirectory;
+use App\Contracts\YangoDirectory;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 
 /**
@@ -13,27 +13,27 @@ use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
  * de synchronisation, ni écrire quoi que ce soit — un agent qui teste une
  * saisie ne s'attend pas à voir le parc bouger.
  */
-class FleetConnectionTester
+class YangoConnectionTester
 {
     public function __construct(
-        private readonly FleetDirectory $directory,
+        private readonly YangoDirectory $directory,
     ) {}
 
-    public function test(): FleetConnectionResult
+    public function test(): YangoConnectionResult
     {
         try {
             foreach ($this->directory->drivers(1) as $profile) {
                 // Une ligne suffit à prouver que la clé est acceptée.
-                return FleetConnectionResult::success();
+                return YangoConnectionResult::success();
             }
         } catch (YangoFleetException $exception) {
-            return FleetConnectionResult::failure(
+            return YangoConnectionResult::failure(
                 $exception->getMessage(),
                 $exception->getStatusCode(),
             );
         }
 
         // Clé acceptée, parc vide : c'est un succès, pas une panne.
-        return FleetConnectionResult::success(empty: true);
+        return YangoConnectionResult::success(empty: true);
     }
 }

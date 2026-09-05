@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Fleet;
+namespace App\Services\Yango;
 
-use App\Contracts\FleetClient;
+use App\Contracts\YangoClient;
 use App\Models\Driver;
 use Illuminate\Support\Facades\Log;
 
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * le chemin « Wave a encaissé, Yango a refusé », donc la bascule en « à
  * vérifier » et le bouton « Rejouer » du back-office.
  */
-class FakeFleetClient implements FleetClient
+class FakeYangoClient implements YangoClient
 {
     /** @var array<string, int> */
     private array $balances = [];

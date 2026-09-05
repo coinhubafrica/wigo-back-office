@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
-use App\Services\Fleet\FleetSyncService;
+use App\Services\Yango\YangoSyncService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  * franchement plutôt que de brûler trois tentatives. Tout autre incident est
  * traité comme passager et remis en file.
  */
-class SyncFleetJob implements ShouldBeUnique, ShouldQueue
+class SyncYangoJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -38,10 +38,10 @@ class SyncFleetJob implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'fleet-sync';
+        return 'yango-sync';
     }
 
-    public function handle(FleetSyncService $sync): void
+    public function handle(YangoSyncService $sync): void
     {
         try {
             $sync->sync($this->pageSize);

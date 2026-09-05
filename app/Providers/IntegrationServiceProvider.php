@@ -2,21 +2,21 @@
 
 namespace App\Providers;
 
-use App\Contracts\FleetClient;
-use App\Contracts\FleetDirectory;
 use App\Contracts\PushSender;
 use App\Contracts\SmsSender;
 use App\Contracts\WaveClient;
+use App\Contracts\YangoClient;
+use App\Contracts\YangoDirectory;
 use App\Services\Fcm\HttpPushSender;
 use App\Services\Fcm\LogPushSender;
-use App\Services\Fleet\FakeFleetClient;
-use App\Services\Fleet\FakeFleetDirectory;
-use App\Services\Fleet\SaloonFleetClient;
-use App\Services\Fleet\SaloonFleetDirectory;
 use App\Services\Sms\HttpSmsSender;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Wave\FakeWaveClient;
 use App\Services\Wave\SaloonWaveClient;
+use App\Services\Yango\FakeYangoClient;
+use App\Services\Yango\FakeYangoDirectory;
+use App\Services\Yango\SaloonYangoClient;
+use App\Services\Yango\SaloonYangoDirectory;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -51,20 +51,20 @@ class IntegrationServiceProvider extends ServiceProvider
             return new SaloonWaveClient;
         });
 
-        $this->app->singleton(FleetClient::class, function (): FleetClient {
-            if ($this->app->environment('testing') || config('services.fleet.driver') === 'fake') {
-                return new FakeFleetClient;
+        $this->app->singleton(YangoClient::class, function (): YangoClient {
+            if ($this->app->environment('testing') || config('services.yango.driver') === 'fake') {
+                return new FakeYangoClient;
             }
 
-            return new SaloonFleetClient;
+            return new SaloonYangoClient;
         });
 
-        $this->app->singleton(FleetDirectory::class, function (): FleetDirectory {
-            if ($this->app->environment('testing') || config('services.fleet.driver') === 'fake') {
-                return new FakeFleetDirectory;
+        $this->app->singleton(YangoDirectory::class, function (): YangoDirectory {
+            if ($this->app->environment('testing') || config('services.yango.driver') === 'fake') {
+                return new FakeYangoDirectory;
             }
 
-            return new SaloonFleetDirectory;
+            return new SaloonYangoDirectory;
         });
     }
 }

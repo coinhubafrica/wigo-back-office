@@ -77,7 +77,7 @@ it('keeps layout classes on the wrapper, not the control', function (): void {
 });
 
 it('gives a password field a reveal toggle that defaults to masked', function (): void {
-    $html = Blade::render('<x-field label="Clé d\'API" name="fleetApiKey" type="password" wire:model="fleetApiKey" />');
+    $html = Blade::render('<x-field label="Clé d\'API" name="yangoApiKey" type="password" wire:model="yangoApiKey" />');
 
     // Le champ arrive masqué : c'est l'état sans JS comme au chargement.
     expect($html)->toMatch('/<input type="password"/')
@@ -87,8 +87,8 @@ it('gives a password field a reveal toggle that defaults to masked', function ()
         ->toContain('x-bind:aria-pressed="revealed.toString()"')
         ->toContain('Afficher la valeur')
         ->toContain('Masquer la valeur')
-        ->toContain('wire:model="fleetApiKey"')
-        ->toContain('id="field-fleetapikey"');
+        ->toContain('wire:model="yangoApiKey"')
+        ->toContain('id="field-yangoapikey"');
 });
 
 it('keeps the reveal toggle visible on an empty field', function (): void {
@@ -117,15 +117,15 @@ it('keeps the password label, hint and error wiring of every other field', funct
 it('falls back to the local toggle without the reveal permission', function (): void {
     // Sans permission (ici, sans utilisateur), pas d'œil « serveur » : le champ
     // garde la bascule locale, qui ne montre que ce qu'on saisit.
-    $html = Blade::render('<x-field label="Clé" name="k" type="password" reveal="fleetApiKey" />');
+    $html = Blade::render('<x-field label="Clé" name="k" type="password" reveal="yangoApiKey" />');
 
-    expect($html)->not->toContain("reveal('fleetApiKey')")
+    expect($html)->not->toContain("reveal('yangoApiKey')")
         ->and($html)->toContain('x-data="revealable"');
 });
 
 it('shows a revealed secret read only', function (): void {
     $html = Blade::render(
-        '<x-field label="Clé" name="k" type="password" reveal="fleetApiKey" :revealed="$secret" />',
+        '<x-field label="Clé" name="k" type="password" reveal="yangoApiKey" :revealed="$secret" />',
         ['secret' => 'yapi10-EnClair']
     );
 

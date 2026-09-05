@@ -1,15 +1,15 @@
 <?php
 
-use App\Contracts\FleetDirectory;
+use App\Contracts\YangoDirectory;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
-use App\Jobs\SyncFleetJob;
+use App\Jobs\SyncYangoJob;
 use App\Models\Driver;
-use App\Services\Fleet\FakeFleetDirectory;
-use App\Services\Fleet\FleetSyncService;
+use App\Services\Yango\FakeYangoDirectory;
+use App\Services\Yango\YangoSyncService;
 
 beforeEach(function (): void {
-    /** @var FakeFleetDirectory $directory */
-    $directory = app(FleetDirectory::class);
+    /** @var FakeYangoDirectory $directory */
+    $directory = app(YangoDirectory::class);
     $this->directory = $directory;
 });
 
@@ -23,7 +23,7 @@ it('runs the pass', function (): void {
         ],
     ]]);
 
-    (new SyncFleetJob)->handle(app(FleetSyncService::class));
+    (new SyncYangoJob)->handle(app(YangoSyncService::class));
 
     $this->assertSame(1, Driver::query()->where('yango_id', 'YAN-001')->count());
 });
@@ -31,31 +31,31 @@ it('runs the pass', function (): void {
 it('fails permanently when the api key is refused', function (int $status): void {
     // Une clé refusée ne se répare pas en réessayant : trois tentatives de plus
     // ne feraient que retarder l'alerte.
-    $this->directory->failWith(syncFleetJobRefusal($status));
+    $this->directory->failWith(syncYangoJobRefusal($status));
 
-    $job = Mockery::mock(SyncFleetJob::class)->makePartial();
+    $job = Mockery::mock(SyncYangoJob::class)->makePartial();
     $job->shouldReceive('fail')->once();
     $job->shouldNotReceive('release');
 
-    $job->handle(app(FleetSyncService::class));
+    $job->handle(app(YangoSyncService::class));
 })->with([401, 403]);
 
 it('releases for a later attempt when Yango is merely unwell', function (): void {
-    $this->directory->failWith(syncFleetJobRefusal(500));
+    $this->directory->failWith(syncYangoJobRefusal(500));
 
-    $job = Mockery::mock(SyncFleetJob::class)->makePartial();
+    $job = Mockery::mock(SyncYangoJob::class)->makePartial();
     $job->shouldReceive('attempts')->andReturn(1);
     $job->shouldReceive('release')->once()->with(60);
     $job->shouldNotReceive('fail');
 
-    $job->handle(app(FleetSyncService::class));
+    $job->handle(app(YangoSyncService::class));
 });
 
 /**
  * `YangoFleetException` lit son statut sur la réponse Saloon. En test on n'a
  * pas de réponse à fabriquer : on ne surcharge que le statut.
  */
-function syncFleetJobRefusal(int $status): YangoFleetException
+function syncYangoJobRefusal(int $status): YangoFleetException
 {
     return new class('Refus de Yango', $status) extends YangoFleetException
     {

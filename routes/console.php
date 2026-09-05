@@ -69,8 +69,8 @@ Schedule::call(function (): void {
 // Rapprochement du parc Yango : conducteurs, véhicules et affectations. Toutes
 // les heures — le parc bouge à la journée, et une passe manquée se rattrape
 // d'elle-même à la suivante. `withoutOverlapping` parce qu'une passe longue ne
-// doit pas croiser la suivante (cf. SyncFleetJob).
-Schedule::command('fleet:sync')
+// doit pas croiser la suivante (cf. SyncYangoJob).
+Schedule::command('yango:sync')
     ->hourly()
     ->withoutOverlapping()
-    ->name('fleet:sync');
+    ->name('yango:sync');

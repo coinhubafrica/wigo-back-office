@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Fleet;
+namespace App\Services\Yango;
 
 /**
  * Compteurs d'une passe de synchronisation, pour le résumé de la commande.
@@ -9,7 +9,7 @@ namespace App\Services\Fleet;
  * remontées : elles ne sont ni modifiées ni désactivées, seulement signalées
  * (cf. `.ai/rules/models.md`).
  */
-class FleetSyncResult
+class YangoSyncResult
 {
     public function __construct(
         public int $driversSynced = 0,

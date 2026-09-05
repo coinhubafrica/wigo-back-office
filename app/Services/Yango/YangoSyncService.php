@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Fleet;
+namespace App\Services\Yango;
 
-use App\Contracts\FleetDirectory;
+use App\Contracts\YangoDirectory;
 use App\Enums\DriverStatus;
 use App\Models\Driver;
 use App\Models\Vehicle;
@@ -24,15 +24,15 @@ use Illuminate\Support\Str;
  * la défaire), désactiver un véhicule absent, ou supprimer quoi que ce soit.
  * Ce que Yango ne remonte plus est signalé, pas effacé.
  */
-class FleetSyncService
+class YangoSyncService
 {
     public function __construct(
-        private readonly FleetDirectory $directory,
+        private readonly YangoDirectory $directory,
     ) {}
 
-    public function sync(int $pageSize = 100): FleetSyncResult
+    public function sync(int $pageSize = 100): YangoSyncResult
     {
-        $result = new FleetSyncResult;
+        $result = new YangoSyncResult;
 
         // Repère posé avant la première écriture : tout ce qui garde un
         // `last_sync_at` antérieur n'a pas été remonté par cette passe.
@@ -56,7 +56,7 @@ class FleetSyncService
     /**
      * @param  array<string, mixed>  $profile
      */
-    private function syncDriver(array $profile, FleetSyncResult $result): void
+    private function syncDriver(array $profile, YangoSyncResult $result): void
     {
         $yangoId = Arr::get($profile, 'driver_profile.id');
 
@@ -164,7 +164,7 @@ class FleetSyncService
      * fois-ci. On ne touche à rien : une absence peut venir d'une panne côté
      * Yango, pas forcément d'un départ du parc.
      */
-    private function reportStale(Carbon $startedAt, FleetSyncResult $result): void
+    private function reportStale(Carbon $startedAt, YangoSyncResult $result): void
     {
         $result->staleDrivers = Driver::query()
             ->whereNotNull('yango_id')

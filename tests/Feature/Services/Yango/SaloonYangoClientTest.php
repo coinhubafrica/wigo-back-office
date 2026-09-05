@@ -1,27 +1,27 @@
 <?php
 
 use App\Models\Driver;
-use App\Services\Fleet\SaloonFleetClient;
-use App\Settings\FleetSettings;
+use App\Services\Yango\SaloonYangoClient;
+use App\Settings\YangoSettings;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 use Saloon\Http\Request;
 
-function configuredFleet(): void
+function configuredYango(): void
 {
-    $fleet = app(FleetSettings::class);
-    $fleet->base_url = 'https://fleet-api.yango.tech';
-    $fleet->park_id = 'park-123';
-    $fleet->api_key = 'secret-key';
-    $fleet->save();
+    $yango = app(YangoSettings::class);
+    $yango->base_url = 'https://fleet-api.yango.tech';
+    $yango->park_id = 'park-123';
+    $yango->api_key = 'secret-key';
+    $yango->save();
 }
 
 it('credits a wallet through the Yango API', function (): void {
-    configuredFleet();
+    configuredYango();
     $mock = MockClient::global([MockResponse::make([], 200)]);
     $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
 
-    $credited = (new SaloonFleetClient)->creditWallet($driver, 1500, 'REF-1');
+    $credited = (new SaloonYangoClient)->creditWallet($driver, 1500, 'REF-1');
 
     expect($credited)->toBeTrue();
 
@@ -38,17 +38,17 @@ it('credits a wallet through the Yango API', function (): void {
 });
 
 it('reports a refused credit rather than throwing', function (): void {
-    configuredFleet();
+    configuredYango();
     MockClient::global([MockResponse::make(['message' => 'refusé'], 422)]);
     $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
 
     // Contrat inverse de l'annuaire : un crédit refusé bascule la transaction
     // en « à vérifier », il ne fait pas tomber la requête.
-    expect((new SaloonFleetClient)->creditWallet($driver, 1500, 'REF-1'))->toBeFalse();
+    expect((new SaloonYangoClient)->creditWallet($driver, 1500, 'REF-1'))->toBeFalse();
 });
 
 it('reads the current account balance', function (): void {
-    configuredFleet();
+    configuredYango();
     MockClient::global([MockResponse::make([
         'driver_profiles' => [[
             'driver_profile' => ['id' => 'YAN-001'],
@@ -62,41 +62,41 @@ it('reads the current account balance', function (): void {
 
     // Seul le compte `current` porte le solde utilisable, et Yango le rend en
     // chaîne décimale.
-    expect((new SaloonFleetClient)->balanceFor($driver))->toBe(1500);
+    expect((new SaloonYangoClient)->balanceFor($driver))->toBe(1500);
 });
 
 it('returns null when Yango is silent', function (): void {
-    configuredFleet();
+    configuredYango();
     MockClient::global([MockResponse::make(['message' => 'boom'], 500)]);
     $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
 
-    expect((new SaloonFleetClient)->balanceFor($driver))->toBeNull();
+    expect((new SaloonYangoClient)->balanceFor($driver))->toBeNull();
 });
 
 it('does not call out for a driver Yango does not know', function (): void {
-    configuredFleet();
+    configuredYango();
     $mock = MockClient::global([]);
     $driver = Driver::factory()->create(['yango_id' => null]);
 
-    expect((new SaloonFleetClient)->creditWallet($driver, 1500, 'REF-1'))->toBeFalse();
-    expect((new SaloonFleetClient)->balanceFor($driver))->toBeNull();
+    expect((new SaloonYangoClient)->creditWallet($driver, 1500, 'REF-1'))->toBeFalse();
+    expect((new SaloonYangoClient)->balanceFor($driver))->toBeNull();
 
     $mock->assertNothingSent();
 });
 
 it('does not call out when the credentials are missing', function (): void {
-    $fleet = app(FleetSettings::class);
-    $fleet->base_url = 'https://fleet-api.yango.tech';
-    $fleet->park_id = 'park-123';
-    $fleet->api_key = '';
-    $fleet->save();
+    $yango = app(YangoSettings::class);
+    $yango->base_url = 'https://fleet-api.yango.tech';
+    $yango->park_id = 'park-123';
+    $yango->api_key = '';
+    $yango->save();
 
     $mock = MockClient::global([]);
     $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
 
     // Le défaut d'origine : `isConfigured()` ne regardait que l'URL, si bien
     // qu'un crédit partait avec un jeton vide et échouait en silence.
-    expect((new SaloonFleetClient)->creditWallet($driver, 1500, 'REF-1'))->toBeFalse();
+    expect((new SaloonYangoClient)->creditWallet($driver, 1500, 'REF-1'))->toBeFalse();
 
     $mock->assertNothingSent();
 });

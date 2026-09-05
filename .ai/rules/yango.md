@@ -1,12 +1,12 @@
 ---
 paths:
-  - 'app/Services/Fleet/**'
+  - 'app/Services/Yango/**'
 ---
 
-# Fleet
+# Yango
 
 ## Synchronisation Yango Fleet : identifiant, adoption par téléphone, statut jamais réécrit
-`FleetSyncService` (commande `fleet:sync`, job `SyncFleetJob`, planifié à l'heure) rapproche le parc Yango via Saloon (`app/Http/Integrations/Yango/`).
+`YangoSyncService` (commande `yango:sync`, job `SyncYangoJob`, planifié à l'heure) rapproche le parc Yango via Saloon (`app/Http/Integrations/Yango/`).
 
 Décisions à ne pas redéfaire :
 
@@ -14,14 +14,14 @@ Décisions à ne pas redéfaire :
 - **Rapprochement en trois temps** : `yango_id`, sinon téléphone normalisé E.164 (*adoption* : on pose `yango_id` sur la ligne existante, créée à l'inscription mobile), sinon création. Un profil sans téléphone exploitable est ignoré et journalisé — `drivers.phone` est requis et unique.
 - **Le `status` d'un conducteur existant n'est jamais réécrit.** Une suspension est une décision du back-office (`suspension_reason`) ; Yango n'a pas à la défaire. Un conducteur créé par la synchronisation naît `Dormant` (aucune CGU acceptée).
 - **Les enregistrements que Yango ne remonte plus sont signalés, jamais modifiés** : compteurs dans le résumé de la commande + `Log::warning`. Pas de désactivation automatique — une absence peut venir d'une panne Yango.
-- **`FleetDirectory` lève, `FleetClient` rend `null`.** Contrat d'erreur volontairement inverse : une passe interrompue au milieu ne doit pas écrire un parc tronqué. D'où deux contrats séparés.
-- `SyncFleetJob` **échoue franchement sur 401/403** (clé refusée, inutile de réessayer), remet en file sinon.
+- **`YangoDirectory` lève, `YangoClient` rend `null`.** Contrat d'erreur volontairement inverse : une passe interrompue au milieu ne doit pas écrire un parc tronqué. D'où deux contrats séparés.
+- `SyncYangoJob` **échoue franchement sur 401/403** (clé refusée, inutile de réessayer), remet en file sinon.
 
 Un véhicule tient sur une seule ligne : une réaffectation déplace `driver_id` (cf. `.ai/rules/models.md`). La passe « parc » ne touche pas `driver_id`, pour ne pas détacher ce que la passe « conducteurs » vient de rattacher.
 
-## Yango : un seul chemin, Saloon + FleetSettings
-Tout appel à l'API Yango passe par Saloon (`app/Http/Integrations/Yango/`) et lit ses identifiants dans `FleetSettings` (base, chiffrés), résolus à l'appel.
+## Yango : un seul chemin, Saloon + YangoSettings
+Tout appel à l'API Yango passe par Saloon (`app/Http/Integrations/Yango/`) et lit ses identifiants dans `YangoSettings` (base, chiffrés), résolus à l'appel.
 
-`HttpFleetClient` a été supprimé : il lisait `config('services.fleet.*')`, soit une seconde source d'identifiants pour le même parc — jamais renseignée en pratique, si bien que les crédits partaient avec un jeton vide et échouaient en silence (`isConfigured()` ne regardait que l'URL). Les variables `FLEET_BASE_URL`/`FLEET_API_KEY`/`FLEET_PARK_ID` sont retirées ; seul `FLEET_DRIVER` (`fake`|autre) reste.
+`HttpFleetClient` a été supprimé : il lisait `config('services.fleet.*')`, soit une seconde source d'identifiants pour le même parc — jamais renseignée en pratique, si bien que les crédits partaient avec un jeton vide et échouaient en silence (`isConfigured()` ne regardait que l'URL). Les variables `FLEET_BASE_URL`/`FLEET_API_KEY`/`FLEET_PARK_ID` sont retirées ; seul `YANGO_DRIVER` (`fake`|autre) reste.
 
-Contrat d'erreur inchangé et volontairement inverse : `FleetDirectory` (`SaloonFleetDirectory`) lève, `FleetClient` (`SaloonFleetClient`) rend `false`/`null`.
+Contrat d'erreur inchangé et volontairement inverse : `YangoDirectory` (`SaloonYangoDirectory`) lève, `YangoClient` (`SaloonYangoClient`) rend `false`/`null`.

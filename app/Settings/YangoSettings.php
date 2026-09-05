@@ -10,7 +10,7 @@ use Spatie\LaravelSettings\Settings;
  *
  * Ces valeurs vivent en base et non dans `config/wigo.php` parce qu'elles
  * changent sans redéploiement : on doit pouvoir saisir un jeu de clés et
- * lancer `fleet:sync` pour vérifier qu'il répond. Ce n'est pas un
+ * lancer `yango:sync` pour vérifier qu'il répond. Ce n'est pas un
  * interrupteur de sécurité (cf. `.ai/rules/settings.md`) — refuser ces clés à
  * l'écran n'empêcherait personne d'entrer, cela empêcherait seulement de
  * brancher le parc.
@@ -18,11 +18,11 @@ use Spatie\LaravelSettings\Settings;
  * `api_key` est chiffrée au repos par `APP_KEY` : une lecture de la table
  * `settings` ne doit pas suffire à parler au parc au nom d'At Confort Plus.
  *
- * Vide = non configuré. `SaloonFleetDirectory` refuse alors de sortir, plutôt
+ * Vide = non configuré. `SaloonYangoDirectory` refuse alors de sortir, plutôt
  * que d'appeler une URL vide et de faire passer une configuration absente pour
  * une panne de Yango.
  */
-class FleetSettings extends Settings
+class YangoSettings extends Settings
 {
     public string $base_url;
 
@@ -33,7 +33,7 @@ class FleetSettings extends Settings
 
     public static function group(): string
     {
-        return 'fleet';
+        return 'yango';
     }
 
     /**

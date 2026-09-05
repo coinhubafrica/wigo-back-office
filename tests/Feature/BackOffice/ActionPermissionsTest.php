@@ -26,8 +26,8 @@ use App\Models\Campaign;
 use App\Models\Challenge;
 use App\Models\Driver;
 use App\Models\User;
-use App\Settings\FleetSettings;
 use App\Settings\OtpSettings;
+use App\Settings\YangoSettings;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -199,17 +199,17 @@ it('refuses saving the fleet credentials without settings.manage', function (): 
     // Le trou que ce découpage ferme : `settings.reveal-secrets` gardait la
     // lecture d'une clé, mais n'importe quel accès au module pouvait la
     // remplacer.
-    app(FleetSettings::class)->fill(['api_key' => 'clé-en-place'])->save();
+    app(YangoSettings::class)->fill(['api_key' => 'clé-en-place'])->save();
 
     Livewire::actingAs(actionUser([BackOfficeModule::Settings->permission()]))
         ->test(SettingsIndex::class)
-        ->set('fleetBaseUrl', 'https://fleet-api.yango.tech')
-        ->set('fleetParkId', 'park-1')
-        ->set('fleetApiKey', 'clé-pirate')
-        ->call('saveFleet')
+        ->set('yangoBaseUrl', 'https://fleet-api.yango.tech')
+        ->set('yangoParkId', 'park-1')
+        ->set('yangoApiKey', 'clé-pirate')
+        ->call('saveYango')
         ->assertForbidden();
 
-    expect(app(FleetSettings::class)->api_key)->toBe('clé-en-place');
+    expect(app(YangoSettings::class)->api_key)->toBe('clé-en-place');
 });
 
 it('saves the settings with settings.manage', function (): void {

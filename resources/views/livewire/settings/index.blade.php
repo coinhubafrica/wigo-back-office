@@ -52,52 +52,52 @@
         Le test est en lecture seule et porte sur la clé *enregistrée* — d'où
         l'ordre imposé à l'écran : enregistrer, puis tester.
     --}}
-    <x-panel :title="__('backoffice.settings.fleet_title')" :subtitle="__('backoffice.settings.fleet_hint')" class="lg:col-span-2">
-        <form id="settings-fleet" wire:submit="saveFleet" class="grid gap-4 sm:grid-cols-2">
-            <x-field :label="__('backoffice.settings.fleet_base_url')" name="fleetBaseUrl" type="url" wire:model="fleetBaseUrl" placeholder="https://fleet-api.yango.tech" />
-            <x-field :label="__('backoffice.settings.fleet_park_id')" name="fleetParkId" wire:model="fleetParkId" />
+    <x-panel :title="__('backoffice.settings.yango_title')" :subtitle="__('backoffice.settings.yango_hint')" class="lg:col-span-2">
+        <form id="settings-yango" wire:submit="saveYango" class="grid gap-4 sm:grid-cols-2">
+            <x-field :label="__('backoffice.settings.yango_base_url')" name="yangoBaseUrl" type="url" wire:model="yangoBaseUrl" placeholder="https://fleet-api.yango.tech" />
+            <x-field :label="__('backoffice.settings.yango_park_id')" name="yangoParkId" wire:model="yangoParkId" />
             {{-- L'aperçu masqué passe en `placeholder` : il s'affiche en filigrane,
                  n'est pas une valeur du champ (donc jamais renvoyé au serveur ni
                  confondu avec une saisie) et s'efface à la première frappe. --}}
             <x-field
-                :label="__('backoffice.settings.fleet_api_key')"
-                name="fleetApiKey"
+                :label="__('backoffice.settings.yango_api_key')"
+                name="yangoApiKey"
                 type="password"
-                reveal="fleetApiKey"
-                :revealed="$revealedSecrets['fleetApiKey'] ?? null"
-                wire:model="fleetApiKey"
+                reveal="yangoApiKey"
+                :revealed="$revealedSecrets['yangoApiKey'] ?? null"
+                wire:model="yangoApiKey"
                 autocomplete="off"
-                :placeholder="$fleetKeyPreview"
-                :hint="$fleetKeyStored ? __('backoffice.settings.key_replace_hint') : __('backoffice.settings.fleet_api_key_hint')"
+                :placeholder="$yangoKeyPreview"
+                :hint="$yangoKeyStored ? __('backoffice.settings.key_replace_hint') : __('backoffice.settings.yango_api_key_hint')"
                 class="sm:col-span-2"
             />
 
             {{-- Seule l'absence est signalée : « une clé est enregistrée » répétait
                  l'aperçu et l'aide du champ, juste au-dessus. Ce qui reste dit la
                  conséquence — ce que le module ne peut pas faire sans clé. --}}
-            @unless ($fleetKeyStored)
-                <p class="sm:col-span-2 text-xs text-err-text">{{ __('backoffice.settings.fleet_api_key_missing') }}</p>
+            @unless ($yangoKeyStored)
+                <p class="sm:col-span-2 text-xs text-err-text">{{ __('backoffice.settings.yango_api_key_missing') }}</p>
             @endunless
         </form>
 
-        @if ($fleetTestMessage !== null)
+        @if ($yangoTestMessage !== null)
             <p
                 role="status"
                 @class([
                     'mt-4 rounded px-3 py-2 text-xs',
-                    'bg-ok-bg text-ok-text' => $fleetTestSucceeded,
-                    'bg-err-bg text-err-text' => ! $fleetTestSucceeded,
+                    'bg-ok-bg text-ok-text' => $yangoTestSucceeded,
+                    'bg-err-bg text-err-text' => ! $yangoTestSucceeded,
                 ])
-            >{{ $fleetTestMessage }}</p>
+            >{{ $yangoTestMessage }}</p>
         @endif
 
         <x-slot:footer>
             <div class="flex justify-end gap-2">
-                <x-button variant="secondary" wire:click="testFleet" target="testFleet" :disabled="! $fleetKeyStored">
-                    {{ __('backoffice.settings.fleet_test') }}
-                    <x-slot:loading>{{ __('backoffice.settings.fleet_testing') }}</x-slot:loading>
+                <x-button variant="secondary" wire:click="testYango" target="testYango" :disabled="! $yangoKeyStored">
+                    {{ __('backoffice.settings.yango_test') }}
+                    <x-slot:loading>{{ __('backoffice.settings.yango_testing') }}</x-slot:loading>
                 </x-button>
-                <x-button type="submit" form="settings-fleet" target="saveFleet">
+                <x-button type="submit" form="settings-yango" target="saveYango">
                     {{ __('backoffice.settings.save') }}
                     <x-slot:loading>{{ __('backoffice.common.saving') }}</x-slot:loading>
                 </x-button>

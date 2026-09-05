@@ -7,13 +7,13 @@ use App\Enums\BackOfficeModule;
 use App\Enums\Permission as BackOfficePermission;
 use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
-use App\Services\Fleet\FleetConnectionTester;
-use App\Settings\FleetSettings;
+use App\Services\Yango\YangoConnectionTester;
 use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
 use App\Settings\WaveAccountSettings;
 use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
+use App\Settings\YangoSettings;
 use App\Support\SecretMask;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -57,9 +57,9 @@ class Index extends Component
 
     public int $rechargeBalanceTtlMinutes = 10;
 
-    public string $fleetBaseUrl = '';
+    public string $yangoBaseUrl = '';
 
-    public string $fleetParkId = '';
+    public string $yangoParkId = '';
 
     /**
      * Jamais pré-rempli avec la clé enregistrée : une clé en clair dans le HTML
@@ -70,12 +70,12 @@ class Index extends Component
      * rendu en filigrane et non comme valeur : il nomme la clé en place sans
      * la publier, et disparaît dès la première frappe.
      */
-    public string $fleetApiKey = '';
+    public string $yangoApiKey = '';
 
     /** Verdict du dernier test de connexion, le temps de la requête. */
-    public ?bool $fleetTestSucceeded = null;
+    public ?bool $yangoTestSucceeded = null;
 
-    public ?string $fleetTestMessage = null;
+    public ?string $yangoTestMessage = null;
 
     /**
      * Clés et secrets des deux comptes Wave.
@@ -95,7 +95,7 @@ class Index extends Component
 
     public string $waveTopupWebhookSecret = '';
 
-    public function mount(OtpSettings $otp, RechargeSettings $recharge, FleetSettings $fleet): void
+    public function mount(OtpSettings $otp, RechargeSettings $recharge, YangoSettings $yango): void
     {
         $this->otpLength = $otp->length;
         $this->otpTtlMinutes = $otp->ttl_minutes;
@@ -110,8 +110,8 @@ class Index extends Component
         $this->rechargeDailyCap = $recharge->daily_cap;
         $this->rechargeBalanceTtlMinutes = $recharge->balance_ttl_minutes;
 
-        $this->fleetBaseUrl = $fleet->base_url;
-        $this->fleetParkId = $fleet->park_id;
+        $this->yangoBaseUrl = $yango->base_url;
+        $this->yangoParkId = $yango->park_id;
     }
 
     /**
@@ -138,7 +138,7 @@ class Index extends Component
     private function revealableSecrets(): array
     {
         return [
-            'fleetApiKey' => fn (): string => app(FleetSettings::class)->api_key,
+            'yangoApiKey' => fn (): string => app(YangoSettings::class)->api_key,
             'waveShopApiKey' => fn (): string => app(WaveShopSettings::class)->api_key,
             'waveShopWebhookSecret' => fn (): string => app(WaveShopSettings::class)->webhook_secret,
             'waveTopupApiKey' => fn (): string => app(WaveTopupSettings::class)->api_key,
@@ -438,67 +438,67 @@ class Index extends Component
         $this->dispatch('toast', message: __('backoffice.settings.recharge_saved'));
     }
 
-    public function saveFleet(FleetSettings $fleet): void
+    public function saveYango(YangoSettings $yango): void
     {
         Gate::authorize('manageSettings');
 
         $this->validate([
-            'fleetBaseUrl' => 'required|url',
-            'fleetParkId' => 'required|string|max:255',
+            'yangoBaseUrl' => 'required|url',
+            'yangoParkId' => 'required|string|max:255',
             // Facultative : laissée vide, la clé déjà enregistrée est conservée.
-            'fleetApiKey' => 'nullable|string|max:255',
+            'yangoApiKey' => 'nullable|string|max:255',
         ]);
 
         // Avant/après de ce qui n'est pas secret : l'adresse du service et le
         // parc identifient *quel* parc on crédite, et détourner l'adresse est
         // une voie d'exfiltration. La clé, elle, n'est citée que par son nom.
-        $before = ['base_url' => $fleet->base_url, 'park_id' => $fleet->park_id];
+        $before = ['base_url' => $yango->base_url, 'park_id' => $yango->park_id];
 
-        $fleet->base_url = $this->fleetBaseUrl;
-        $fleet->park_id = $this->fleetParkId;
+        $yango->base_url = $this->yangoBaseUrl;
+        $yango->park_id = $this->yangoParkId;
 
-        if (filled($this->fleetApiKey)) {
-            $fleet->api_key = $this->fleetApiKey;
+        if (filled($this->yangoApiKey)) {
+            $yango->api_key = $this->yangoApiKey;
         }
 
-        $fleet->save();
+        $yango->save();
 
         // La clé ne repart pas vers le navigateur une fois enregistrée.
-        $replaced = $this->replacedSecretFields(['api_key' => $this->fleetApiKey]);
-        $this->fleetApiKey = '';
-        $this->fleetTestSucceeded = null;
-        $this->fleetTestMessage = null;
+        $replaced = $this->replacedSecretFields(['api_key' => $this->yangoApiKey]);
+        $this->yangoApiKey = '';
+        $this->yangoTestSucceeded = null;
+        $this->yangoTestMessage = null;
 
         AuditLog::record(
-            action: AuditAction::SettingsFleetUpdated->value,
+            action: AuditAction::SettingsYangoUpdated->value,
             summary: "{$this->actor()->fullName()} a modifié l'accès au parc Yango.",
             by: $this->actor(),
             context: array_filter([
-                'base_url' => $before['base_url'] === $fleet->base_url ? null : $fleet->base_url,
-                'park_id' => $before['park_id'] === $fleet->park_id ? null : $fleet->park_id,
+                'base_url' => $before['base_url'] === $yango->base_url ? null : $yango->base_url,
+                'park_id' => $before['park_id'] === $yango->park_id ? null : $yango->park_id,
                 'fields' => $replaced === [] ? null : $replaced,
             ]),
         );
 
-        $this->dispatch('toast', message: __('backoffice.settings.fleet_saved'));
+        $this->dispatch('toast', message: __('backoffice.settings.yango_saved'));
     }
 
     /**
      * Teste les identifiants enregistrés en lecture seule : un conducteur
      * demandé, rien d'écrit. Enregistrer d'abord, tester ensuite.
      */
-    public function testFleet(FleetConnectionTester $tester): void
+    public function testYango(YangoConnectionTester $tester): void
     {
         Gate::authorize('manageSettings');
 
         $result = $tester->test();
 
-        $this->fleetTestSucceeded = $result->succeeded;
+        $this->yangoTestSucceeded = $result->succeeded;
 
-        $this->fleetTestMessage = match (true) {
-            $result->succeeded && $result->empty => (string) __('backoffice.settings.fleet_test_empty'),
-            $result->succeeded => (string) __('backoffice.settings.fleet_test_ok'),
-            $result->status !== null => (string) __('backoffice.settings.fleet_test_failed_status', [
+        $this->yangoTestMessage = match (true) {
+            $result->succeeded && $result->empty => (string) __('backoffice.settings.yango_test_empty'),
+            $result->succeeded => (string) __('backoffice.settings.yango_test_ok'),
+            $result->status !== null => (string) __('backoffice.settings.yango_test_failed_status', [
                 'status' => $result->status,
                 'message' => $result->message ?? '',
             ]),
@@ -506,7 +506,7 @@ class Index extends Component
         };
     }
 
-    public function render(FleetSettings $fleet, WaveShopSettings $shop, WaveTopupSettings $topup): View
+    public function render(YangoSettings $yango, WaveShopSettings $shop, WaveTopupSettings $topup): View
     {
         /** @var view-string $view */
         $view = 'livewire.settings.index';
@@ -515,7 +515,7 @@ class Index extends Component
             // La clé elle-même ne quitte jamais le serveur : seule sa présence
             // est publiée, pour dire si la synchronisation peut tourner et si
             // le test a un sens.
-            'fleetKeyStored' => filled($fleet->api_key),
+            'yangoKeyStored' => filled($yango->api_key),
             'waveShopKeyStored' => $shop->isConfigured(),
             'waveShopSecretStored' => filled($shop->webhook_secret),
             'waveTopupKeyStored' => $topup->isConfigured(),
@@ -526,7 +526,7 @@ class Index extends Component
             // Wave l'un de l'autre. Passés en données de rendu et non en
             // propriétés liées : rien à renvoyer, donc rien à confondre avec
             // une saisie au moment d'enregistrer.
-            'fleetKeyPreview' => SecretMask::preview($fleet->api_key),
+            'yangoKeyPreview' => SecretMask::preview($yango->api_key),
             'waveShopKeyPreview' => SecretMask::preview($shop->api_key),
             'waveShopSecretPreview' => SecretMask::preview($shop->webhook_secret),
             'waveTopupKeyPreview' => SecretMask::preview($topup->api_key),

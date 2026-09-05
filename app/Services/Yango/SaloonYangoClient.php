@@ -1,22 +1,22 @@
 <?php
 
-namespace App\Services\Fleet;
+namespace App\Services\Yango;
 
-use App\Contracts\FleetClient;
+use App\Contracts\YangoClient;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Http\Integrations\Yango\Requests\CreateDriverTransactionRequest;
 use App\Http\Integrations\Yango\Requests\GetDriverBalanceRequest;
 use App\Http\Integrations\Yango\YangoFleetConnector;
 use App\Models\Driver;
-use App\Settings\FleetSettings;
+use App\Settings\YangoSettings;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Solde et crédit conducteur, via l'API Yango Fleet.
  *
- * Mêmes identifiants que `SaloonFleetDirectory` — les réglages en base, résolus
+ * Mêmes identifiants que `SaloonYangoDirectory` — les réglages en base, résolus
  * à l'appel — pour qu'une clé corrigée à l'écran serve aux deux sans purge de
- * cache. Auparavant cette classe lisait `config('services.fleet.*')` : deux
+ * cache. Auparavant cette classe lisait `config('services.yango.*')` : deux
  * sources pour un seul parc, dont une jamais renseignée, ce qui envoyait des
  * crédits porteurs d'un jeton vide.
  *
@@ -24,11 +24,11 @@ use Illuminate\Support\Facades\Log;
  * de lever. Un crédit refusé bascule la transaction en « à vérifier », un solde
  * muet s'affiche « — » ; ni l'un ni l'autre ne doit faire tomber la requête.
  */
-class SaloonFleetClient implements FleetClient
+class SaloonYangoClient implements YangoClient
 {
     public function creditWallet(Driver $driver, int $amount, string $reference): bool
     {
-        $settings = app(FleetSettings::class);
+        $settings = app(YangoSettings::class);
 
         if (! $settings->isConfigured() || $driver->yango_id === null) {
             Log::warning('Fleet : crédit impossible', [
@@ -62,7 +62,7 @@ class SaloonFleetClient implements FleetClient
 
     public function balanceFor(Driver $driver): ?int
     {
-        $settings = app(FleetSettings::class);
+        $settings = app(YangoSettings::class);
 
         if (! $settings->isConfigured() || $driver->yango_id === null) {
             return null;
@@ -121,7 +121,7 @@ class SaloonFleetClient implements FleetClient
         return null;
     }
 
-    private function connector(FleetSettings $settings): YangoFleetConnector
+    private function connector(YangoSettings $settings): YangoFleetConnector
     {
         return new YangoFleetConnector(
             $settings->base_url,

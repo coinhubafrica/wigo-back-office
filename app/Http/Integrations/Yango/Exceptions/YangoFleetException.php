@@ -9,7 +9,7 @@ use Throwable;
 /**
  * Échec d'un appel à l'API Yango Fleet.
  *
- * Contrairement à `FleetClient`, qui rend `null` quand le fournisseur est muet,
+ * Contrairement à `YangoClient`, qui rend `null` quand le fournisseur est muet,
  * l'annuaire lève : une passe de synchronisation interrompue au milieu ne doit
  * jamais écrire un parc tronqué, elle doit remonter pour que le job réessaie.
  *

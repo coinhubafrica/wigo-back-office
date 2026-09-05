@@ -1,13 +1,13 @@
 <?php
 
-use App\Contracts\FleetClient;
+use App\Contracts\YangoClient;
 use App\Enums\BackOfficeModule;
 use App\Enums\TransactionStatus;
 use App\Livewire\Recharges\Index;
 use App\Models\Driver;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Fleet\FakeFleetClient;
+use App\Services\Yango\FakeYangoClient;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -138,8 +138,8 @@ it('marking a pending transaction credited records the agent', function (): void
     $recharge = Transaction::factory()->forDriver($driver)->paid()->create(['amount' => 12500]);
     $agent = rechargesUser('bonus');
 
-    /** @var FakeFleetClient $fleet */
-    $fleet = app(FleetClient::class);
+    /** @var FakeYangoClient $yango */
+    $yango = app(YangoClient::class);
 
     Livewire::actingAs($agent)
         ->test(Index::class)
@@ -151,7 +151,7 @@ it('marking a pending transaction credited records the agent', function (): void
     $this->assertSame(TransactionStatus::Credited, $recharge->refresh()->status);
     // L'agent a crédité à la main sur Yango : le back-office ne fait que
     // le constater, il ne recrédite pas.
-    $this->assertCount(0, $fleet->credits());
+    $this->assertCount(0, $yango->credits());
     $this->assertDatabaseHas('audit_logs', [
         'action' => 'recharge.marked_credited',
         'user_id' => $agent->id,

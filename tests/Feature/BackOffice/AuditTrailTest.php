@@ -36,8 +36,8 @@ use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Models\User;
 use App\Services\Support\CampaignDispatcher;
-use App\Settings\FleetSettings;
 use App\Settings\RechargeSettings;
+use App\Settings\YangoSettings;
 use Database\Seeders\RolePermissionSeeder;
 use Livewire\Livewire;
 
@@ -132,15 +132,15 @@ it('records nothing when a scale is saved unchanged', function (): void {
 });
 
 it('journalises a change to the yango access without its key', function (): void {
-    app(FleetSettings::class)->fill(['base_url' => 'https://ancien.example', 'park_id' => 'PARK-1'])->save();
+    app(YangoSettings::class)->fill(['base_url' => 'https://ancien.example', 'park_id' => 'PARK-1'])->save();
 
     Livewire::actingAs(trailUser('direction'))
         ->test(SettingsIndex::class)
-        ->set('fleetBaseUrl', 'https://nouveau.example')
-        ->set('fleetApiKey', 'cle-yango-secrete')
-        ->call('saveFleet');
+        ->set('yangoBaseUrl', 'https://nouveau.example')
+        ->set('yangoApiKey', 'cle-yango-secrete')
+        ->call('saveYango');
 
-    $line = AuditLog::query()->where('action', AuditAction::SettingsFleetUpdated->value)->sole();
+    $line = AuditLog::query()->where('action', AuditAction::SettingsYangoUpdated->value)->sole();
 
     // L'adresse identifie *quel* parc on crédite : la détourner est une voie
     // d'exfiltration, elle est donc journalisée en clair. La clé, non.
@@ -154,7 +154,7 @@ it('does not journalise a fleet connection test', function (): void {
     // une clé : la journaliser enterrerait les lignes qui comptent.
     Livewire::actingAs(trailUser('direction'))
         ->test(SettingsIndex::class)
-        ->call('testFleet');
+        ->call('testYango');
 
     expect(AuditLog::query()->count())->toBe(0);
 });

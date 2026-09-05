@@ -1,13 +1,13 @@
 <?php
 
-use App\Contracts\FleetDirectory;
+use App\Contracts\YangoDirectory;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Models\Driver;
-use App\Services\Fleet\FakeFleetDirectory;
+use App\Services\Yango\FakeYangoDirectory;
 
 beforeEach(function (): void {
-    /** @var FakeFleetDirectory $directory */
-    $directory = app(FleetDirectory::class);
+    /** @var FakeYangoDirectory $directory */
+    $directory = app(YangoDirectory::class);
     $this->directory = $directory;
 });
 
@@ -22,7 +22,7 @@ it('prints what the pass reconciled', function (): void {
         'car' => ['id' => 'CAR-001', 'number' => '1234-AB-01'],
     ]]);
 
-    $this->artisan('fleet:sync')
+    $this->artisan('yango:sync')
         ->expectsOutputToContain('conducteurs : 1 sync')
         ->expectsOutputToContain('véhicules : 1 sync')
         ->assertSuccessful();
@@ -33,7 +33,7 @@ it('prints what the pass reconciled', function (): void {
 it('warns about records Yango no longer reports', function (): void {
     Driver::factory()->withYangoId('YAN-999')->staleSync(9)->create();
 
-    $this->artisan('fleet:sync')
+    $this->artisan('yango:sync')
         ->expectsOutputToContain('non remontés : 1 conducteurs')
         ->assertSuccessful();
 });
@@ -41,7 +41,7 @@ it('warns about records Yango no longer reports', function (): void {
 it('fails when Yango refuses the pass', function (): void {
     $this->directory->failWith(new YangoFleetException('Clé invalide'));
 
-    $this->artisan('fleet:sync')
+    $this->artisan('yango:sync')
         ->expectsOutputToContain('Yango Fleet a refusé la synchronisation')
         ->assertFailed();
 });

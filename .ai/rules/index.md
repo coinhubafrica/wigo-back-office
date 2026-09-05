@@ -13,7 +13,6 @@ Before planning or editing, find the row whose globs match the file's path and r
 | docs/api/**, app/Support/Docs/**, app/Http/Controllers/Docs/**, resources/views/docs/** | .ai/rules/docs.md |
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
 | app/Enums/Permission.php,app/Providers/AppServiceProvider.php | .ai/rules/enums-providers.md |
-| app/Services/Fleet/** | .ai/rules/fleet.md |
 | app/Http/** | .ai/rules/http.md |
 | resources/js/app.js | .ai/rules/js.md |
 | app/Livewire/** | .ai/rules/livewire.md |
@@ -32,3 +31,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/Vehicles/** | .ai/rules/vehicles.md |
 | resources/views/** | .ai/rules/views.md |
 | app/Services/Wave/** | .ai/rules/wave.md |
+| app/Services/Yango/** | .ai/rules/yango.md |

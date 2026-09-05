@@ -15,7 +15,7 @@ use Throwable;
  * API Yango Fleet : c'est elle qui fait foi sur le parc.
  *
  * Les identifiants sont passés au constructeur — ils viennent des réglages
- * (`FleetSettings`), pas d'une constante : le back-office n'opère qu'un seul
+ * (`YangoSettings`), pas d'une constante : le back-office n'opère qu'un seul
  * parc, mais ses clés se corrigent à l'écran. L'URL de base en fait partie,
  * pour pouvoir viser un bac à sable sans toucher au code.
  *

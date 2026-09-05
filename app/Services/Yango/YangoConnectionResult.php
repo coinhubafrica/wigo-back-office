@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Services\Fleet;
+namespace App\Services\Yango;
 
 /**
  * Verdict d'un test de connexion, destiné à l'écran des réglages.
  */
-class FleetConnectionResult
+class YangoConnectionResult
 {
     private function __construct(
         public readonly bool $succeeded,

@@ -105,7 +105,7 @@ class AuditLogSeeder extends Seeder
             [AuditAction::AnnouncementPublished, "{$second->fullName()} a publié l'annonce « Nouvelle boutique de pièces ».", $second, null, []],
             [AuditAction::RoleUpdated, "{$third->fullName()} a modifié le rôle « Responsable Bonus / Animation ».", $third, null, ['permissions_before' => ['challenges.draw'], 'permissions_after' => ['challenges.draw', 'challenges.credit']]],
             [AuditAction::ChallengeSeedRegenerated, "{$first->fullName()} a republié la graine du challenge « Semaine 35 ».", $first, null, ['seed' => 'a3f9c1']],
-            [AuditAction::RechargeFleetFailed, 'Crédit Yango refusé pour la recharge TX-88190', null, $other, ['amount' => 5000]],
+            [AuditAction::RechargeYangoFailed, 'Crédit Yango refusé pour la recharge TX-88190', null, $other, ['amount' => 5000]],
             [AuditAction::UserPasswordReset, "{$third->fullName()} a réinitialisé le mot de passe de {$second->fullName()}.", $third, null, ['password_issued' => true]],
             [AuditAction::AnnouncementWithdrawn, "{$second->fullName()} a retiré l'annonce « Maintenance du samedi ».", $second, null, []],
             [AuditAction::ChallengePrizeCredited, "{$second->fullName()} a marqué le lot « Bidon d'huile » crédité.", $second, $other, ['value' => 12000]],

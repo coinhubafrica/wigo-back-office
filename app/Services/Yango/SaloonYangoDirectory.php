@@ -1,27 +1,27 @@
 <?php
 
-namespace App\Services\Fleet;
+namespace App\Services\Yango;
 
-use App\Contracts\FleetDirectory;
+use App\Contracts\YangoDirectory;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
 use App\Http\Integrations\Yango\YangoFleetConnector;
-use App\Settings\FleetSettings;
+use App\Settings\YangoSettings;
 use Generator;
 use Saloon\Http\Request;
 
 /**
  * Annuaire réel, adossé à l'API Yango Fleet via Saloon.
  *
- * Les identifiants sont résolus au plus tard (`app(FleetSettings::class)` à
+ * Les identifiants sont résolus au plus tard (`app(YangoSettings::class)` à
  * l'appel, jamais au démarrage) : une clé corrigée à l'écran doit servir à la
  * passe suivante sans vider le cache ni redéployer.
  *
  * Pagination par décalage : Yango ne donne pas de total, on redemande tant
  * qu'une page est pleine. Une page incomplète est forcément la dernière.
  */
-class SaloonFleetDirectory implements FleetDirectory
+class SaloonYangoDirectory implements YangoDirectory
 {
     public function drivers(int $pageSize = 100): Generator
     {
@@ -49,7 +49,7 @@ class SaloonFleetDirectory implements FleetDirectory
      */
     private function paginate(callable $makeRequest, string $key, int $pageSize): Generator
     {
-        $settings = app(FleetSettings::class);
+        $settings = app(YangoSettings::class);
 
         // Sans identifiants, on ne sort pas : appeler une URL vide ferait
         // passer une configuration absente pour une panne de Yango, et la

@@ -77,7 +77,7 @@ enum AuditAction: string
     case RechargeReplayed = 'recharge.replayed';
     case RechargeMarkedCredited = 'recharge.marked_credited';
     case RechargeCredited = 'recharge.credited';
-    case RechargeFleetFailed = 'recharge.fleet_failed';
+    case RechargeYangoFailed = 'recharge.yango_failed';
 
     /*
     | Système. Les enregistrements de réglages porteurs de secrets ne
@@ -88,7 +88,7 @@ enum AuditAction: string
     case SettingsWaveShopUpdated = 'settings.wave_shop_updated';
     case SettingsWaveTopupUpdated = 'settings.wave_topup_updated';
     case SettingsRechargeUpdated = 'settings.recharge_updated';
-    case SettingsFleetUpdated = 'settings.fleet_updated';
+    case SettingsYangoUpdated = 'settings.yango_updated';
     case SettingsOtpUpdated = 'settings.otp_updated';
 
     case UserCreated = 'user.created';
@@ -144,13 +144,13 @@ enum AuditAction: string
             self::RechargeReplayed => 'Crédit rejoué',
             self::RechargeMarkedCredited => 'Recharge marquée créditée',
             self::RechargeCredited => 'Recharge créditée',
-            self::RechargeFleetFailed => 'Crédit Yango refusé',
+            self::RechargeYangoFailed => 'Crédit Yango refusé',
 
             self::SettingsSecretRevealed => 'Secret relevé en clair',
             self::SettingsWaveShopUpdated => 'Clés Wave boutique remplacées',
             self::SettingsWaveTopupUpdated => 'Clés Wave recharge remplacées',
             self::SettingsRechargeUpdated => 'Plafonds de recharge modifiés',
-            self::SettingsFleetUpdated => 'Accès Yango modifié',
+            self::SettingsYangoUpdated => 'Accès Yango modifié',
             self::SettingsOtpUpdated => 'Barème OTP modifié',
 
             self::UserCreated => 'Compte créé',
@@ -208,13 +208,13 @@ enum AuditAction: string
             self::RechargeReplayed,
             self::RechargeMarkedCredited,
             self::RechargeCredited,
-            self::RechargeFleetFailed => BackOfficeModule::Recharges,
+            self::RechargeYangoFailed => BackOfficeModule::Recharges,
 
             self::SettingsSecretRevealed,
             self::SettingsWaveShopUpdated,
             self::SettingsWaveTopupUpdated,
             self::SettingsRechargeUpdated,
-            self::SettingsFleetUpdated,
+            self::SettingsYangoUpdated,
             self::SettingsOtpUpdated => BackOfficeModule::Settings,
 
             self::UserCreated,
@@ -251,13 +251,13 @@ enum AuditAction: string
             self::ShopOrderCancelled,
             self::SupportTemplateDeleted,
             self::RoleDeleted,
-            self::RechargeFleetFailed => 'bg-err-bg text-err-text',
+            self::RechargeYangoFailed => 'bg-err-bg text-err-text',
 
             self::SettingsSecretRevealed,
             self::SettingsWaveShopUpdated,
             self::SettingsWaveTopupUpdated,
             self::SettingsRechargeUpdated,
-            self::SettingsFleetUpdated,
+            self::SettingsYangoUpdated,
             self::SettingsOtpUpdated,
             self::ChallengeSeedRegenerated,
             self::ShopPriceChanged,

@@ -7,7 +7,7 @@ use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 /**
  * Annuaire du parc Yango : conducteurs et véhicules, page après page.
  *
- * Contrat d'erreur inverse de `FleetClient`, et c'est voulu. `FleetClient` sert
+ * Contrat d'erreur inverse de `YangoClient`, et c'est voulu. `YangoClient` sert
  * une requête mobile et ne lève jamais — un fournisseur muet rend `null`, le
  * conducteur voit un solde vide plutôt qu'une erreur. Ici, une passe
  * interrompue au milieu doit lever : écrire un parc à moitié synchronisé
@@ -17,7 +17,7 @@ use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
  * Les méthodes rendent un itérable et non un tableau : le parc dépasse la
  * page, et le service consomme au fil de l'eau.
  */
-interface FleetDirectory
+interface YangoDirectory
 {
     /**
      * Profils conducteurs, véhicule affecté compris (clé `car`).

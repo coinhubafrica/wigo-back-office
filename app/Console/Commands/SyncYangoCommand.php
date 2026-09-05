@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
-use App\Services\Fleet\FleetSyncService;
+use App\Services\Yango\YangoSyncService;
 use Illuminate\Console\Command;
 
 /**
@@ -12,13 +12,13 @@ use Illuminate\Console\Command;
  * Rendue en échec quand l'API refuse : le planificateur doit voir passer une
  * clé invalide plutôt que de répéter une passe vide toutes les heures.
  */
-class SyncFleetCommand extends Command
+class SyncYangoCommand extends Command
 {
-    protected $signature = 'fleet:sync {--limit=100 : Taille de page demandée à Yango}';
+    protected $signature = 'yango:sync {--limit=100 : Taille de page demandée à Yango}';
 
     protected $description = 'Synchronise les conducteurs et véhicules depuis l\'API Yango Fleet';
 
-    public function handle(FleetSyncService $sync): int
+    public function handle(YangoSyncService $sync): int
     {
         $pageSize = max(1, (int) $this->option('limit'));
 

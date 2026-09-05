@@ -1,23 +1,23 @@
 <?php
 
-use App\Contracts\FleetClient;
 use App\Contracts\WaveClient;
+use App\Contracts\YangoClient;
 use App\Enums\TransactionStatus;
 use App\Models\Driver;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Fleet\FakeFleetClient;
 use App\Services\Recharge\RechargeService;
 use App\Services\Wave\FakeWaveClient;
+use App\Services\Yango\FakeYangoClient;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-29 10:00:00');
 
-    /** @var FakeFleetClient $fleet */
-    $fleet = app(FleetClient::class);
-    $this->fleet = $fleet;
+    /** @var FakeYangoClient $yango */
+    $yango = app(YangoClient::class);
+    $this->yango = $yango;
 
     /** @var FakeWaveClient $wave */
     $wave = app(WaveClient::class);
@@ -86,7 +86,7 @@ it('a settlement credits the driver and writes the notification', function (): v
     $this->assertSame(TransactionStatus::Credited, $recharge->status);
     $this->assertNotNull($recharge->settled_at);
     $this->assertNotNull($recharge->paid_at);
-    $this->assertCount(1, $this->fleet->credits());
+    $this->assertCount(1, $this->yango->credits());
     $this->assertSame(1, $driver->notifications()->count());
 });
 
@@ -98,7 +98,7 @@ it('settling twice never credits twice', function (): void {
     rechargeServiceInstance()->settleFromWebhook($recharge->reference, 'cos-123');
     rechargeServiceInstance()->settleFromWebhook($recharge->reference, 'cos-123');
 
-    $this->assertCount(1, $this->fleet->credits());
+    $this->assertCount(1, $this->yango->credits());
     $this->assertSame(1, $driver->notifications()->count());
     $this->assertSame(10000, $driver->refresh()->yango_balance);
 });
@@ -119,7 +119,7 @@ it('a fleet failure leaves the transaction to review', function (): void {
     $driver = Driver::factory()->create();
     $recharge = rechargeServiceInstance()->initiate($driver, 10000);
 
-    $this->fleet->failNext();
+    $this->yango->failNext();
     rechargeServiceInstance()->settleFromWebhook($recharge->reference);
 
     $recharge->refresh();
@@ -127,13 +127,13 @@ it('a fleet failure leaves the transaction to review', function (): void {
     $this->assertSame(TransactionStatus::ToReview, $recharge->status);
     $this->assertSame('Crédit du solde Yango refusé', $recharge->failure_reason);
     $this->assertSame(0, $driver->notifications()->count());
-    $this->assertDatabaseHas('audit_logs', ['action' => 'recharge.fleet_failed']);
+    $this->assertDatabaseHas('audit_logs', ['action' => 'recharge.yango_failed']);
 });
 
 it('a webhook for an unknown reference is ignored', function (): void {
     rechargeServiceInstance()->settleFromWebhook('RCH-2026-9999');
 
-    $this->assertCount(0, $this->fleet->credits());
+    $this->assertCount(0, $this->yango->credits());
 });
 
 // ---------------------------------------------------------------- rattrapage
@@ -142,7 +142,7 @@ it('replaying a to review transaction credits it and traces the agent', function
     $driver = Driver::factory()->create();
     $recharge = rechargeServiceInstance()->initiate($driver, 10000);
 
-    $this->fleet->failNext();
+    $this->yango->failNext();
     rechargeServiceInstance()->settleFromWebhook($recharge->reference);
 
     $agent = User::factory()->create();
@@ -175,7 +175,7 @@ it('marking credited by hand never calls the fleet api', function (): void {
 
     $this->assertSame(TransactionStatus::Credited, $marked->status);
     // L'agent a déjà crédité à la main : rappeler Fleet créditerait deux fois.
-    $this->assertCount(0, $this->fleet->credits());
+    $this->assertCount(0, $this->yango->credits());
     $this->assertSame(1, $driver->notifications()->count());
     $this->assertDatabaseHas('audit_logs', [
         'action' => 'recharge.marked_credited',
@@ -213,7 +213,7 @@ it('a fresh cached balance is not re read from fleet', function (): void {
 
     // Fleet annonce autre chose, mais le cache est frais : on ne le
     // relit pas pour autant.
-    $this->fleet->setBalance($driver, 999);
+    $this->yango->setBalance($driver, 999);
 
     $this->assertSame(4200, rechargeServiceInstance()->balanceFor($driver));
 });
@@ -224,7 +224,7 @@ it('a stale cached balance is refreshed from fleet', function (): void {
         'balance_read_at' => now()->subHour(),
     ]);
 
-    $this->fleet->setBalance($driver, 9100);
+    $this->yango->setBalance($driver, 9100);
 
     $this->assertSame(9100, rechargeServiceInstance()->balanceFor($driver));
     $this->assertSame(9100, $driver->refresh()->yango_balance);

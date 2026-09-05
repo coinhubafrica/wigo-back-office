@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Fleet;
+namespace App\Services\Yango;
 
-use App\Contracts\FleetDirectory;
+use App\Contracts\YangoDirectory;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use Generator;
 
@@ -13,7 +13,7 @@ use Generator;
  * chemin « Yango répond 401 » (le job échoue franchement) face à « Yango est
  * en panne » (le job réessaie), sans jamais monter de faux serveur HTTP.
  */
-class FakeFleetDirectory implements FleetDirectory
+class FakeYangoDirectory implements YangoDirectory
 {
     /** @var list<array<string, mixed>> */
     private array $drivers = [];

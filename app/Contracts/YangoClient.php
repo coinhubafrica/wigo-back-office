@@ -7,7 +7,7 @@ use App\Models\Driver;
 /**
  * API Yango Fleet : c'est elle qui fait foi sur le solde du conducteur.
  */
-interface FleetClient
+interface YangoClient
 {
     /**
      * Porte un montant au solde Yango du conducteur.

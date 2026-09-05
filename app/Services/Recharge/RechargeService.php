@@ -2,8 +2,8 @@
 
 namespace App\Services\Recharge;
 
-use App\Contracts\FleetClient;
 use App\Contracts\WaveClient;
+use App\Contracts\YangoClient;
 use App\Enums\AuditAction;
 use App\Enums\TransactionProvider;
 use App\Enums\TransactionStatus;
@@ -33,7 +33,7 @@ class RechargeService
 {
     public function __construct(
         private WaveClient $wave,
-        private FleetClient $fleet,
+        private YangoClient $yango,
         private RechargeSettings $settings,
     ) {}
 
@@ -134,7 +134,7 @@ class RechargeService
             return;
         }
 
-        $this->creditViaFleet($transaction->refresh());
+        $this->creditViaYango($transaction->refresh());
     }
 
     /**
@@ -162,7 +162,7 @@ class RechargeService
             context: ['amount' => $transaction->amount],
         );
 
-        $this->creditViaFleet($transaction, $by);
+        $this->creditViaYango($transaction, $by);
 
         return $transaction->refresh();
     }
@@ -262,7 +262,7 @@ class RechargeService
             return $driver->yango_balance;
         }
 
-        $balance = $this->fleet->balanceFor($driver);
+        $balance = $this->yango->balanceFor($driver);
 
         if ($balance === null) {
             // Fleet muet : on rend la dernière valeur connue plutôt que rien.
@@ -280,14 +280,14 @@ class RechargeService
     /**
      * Porte le montant au solde Yango, et tire les conséquences de l'échec.
      */
-    private function creditViaFleet(Transaction $transaction, ?User $by = null): void
+    private function creditViaYango(Transaction $transaction, ?User $by = null): void
     {
         if ($transaction->status === TransactionStatus::Credited) {
             return;
         }
 
         $driver = $transaction->driver;
-        $credited = $this->fleet->creditWallet($driver, $transaction->amount, $transaction->reference);
+        $credited = $this->yango->creditWallet($driver, $transaction->amount, $transaction->reference);
 
         if (! $credited) {
             $transaction->update([
@@ -296,7 +296,7 @@ class RechargeService
             ]);
 
             AuditLog::record(
-                action: AuditAction::RechargeFleetFailed->value,
+                action: AuditAction::RechargeYangoFailed->value,
                 summary: "Crédit Yango refusé pour la recharge {$transaction->reference}",
                 subject: $transaction,
                 by: $by,
@@ -322,7 +322,7 @@ class RechargeService
                 'failure_reason' => null,
             ]);
 
-            $balance = $this->fleet->balanceFor($driver);
+            $balance = $this->yango->balanceFor($driver);
 
             if ($balance !== null) {
                 $driver->forceFill([
