@@ -326,6 +326,8 @@ return [
 
         'recipients_section' => 'Destinataires',
         'column_delivery' => 'Remise',
+        'column_driver_status' => 'Statut',
+        'recipients_draft_none' => "Aucun conducteur ne correspond à cette cible pour l'instant.",
         'filter_failed' => 'Échecs',
         'replay' => 'Rejouer',
         'replay_all' => 'Rejouer les échecs',
@@ -350,6 +352,8 @@ return [
         'recipients_none' => 'Aucun destinataire',
         'recipients_none_hint' => 'Aucun message ne correspond à ce filtre.',
         'recipients_draft' => "Ce brouillon n'a pas encore de destinataires : ils seront matérialisés à l'envoi.",
+        'audience_section' => 'Destinataires visés',
+        'audience_section_hint' => "Ceux que l'envoi toucherait s'il partait maintenant. La liste est calculée à l'instant, sur les mêmes règles que l'envoi.",
 
         'send_section' => 'Envoyer la campagne',
         'send_section_hint' => 'Le message partira dans le fil de chaque conducteur visé. Cette action est définitive.',

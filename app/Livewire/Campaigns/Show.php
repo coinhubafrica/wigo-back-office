@@ -12,6 +12,7 @@ use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
+use App\Models\Driver;
 use App\Models\Message;
 use App\Services\Support\CampaignAudienceResolver;
 use App\Services\Support\CampaignDispatcher;
@@ -119,7 +120,11 @@ class Show extends Component
             'pending' => $this->campaign->status === CampaignStatus::Draft
                 ? $audience->query($this->campaign)->count()
                 : null,
-            'recipients' => $this->recipients(),
+            // Un brouillon n'a pas encore de destinataires matérialisés : on
+            // montre alors l'audience que l'envoi toucherait.
+            'recipients' => $this->campaign->status === CampaignStatus::Draft
+                ? $this->audiencePreview($audience)
+                : $this->recipients(),
             'targeted' => $this->campaign->targetedCount(),
             'failed' => $this->campaign->failedCount(),
             'canSend' => Gate::allows('sendCampaign'),
@@ -134,6 +139,28 @@ class Show extends Component
      *
      * @return LengthAwarePaginator<int, Message>
      */
+    /**
+     * Audience d'un brouillon : qui recevrait l'envoi s'il partait maintenant.
+     *
+     * Rien n'est matérialisé tant qu'on n'a pas envoyé, donc on pagine la même
+     * requête que celle qui servira à l'envoi — un agent doit pouvoir vérifier
+     * *qui* est visé avant de toucher tout le parc, pas seulement combien.
+     * Le nombre affiché plus haut sort du même résolveur : les deux ne peuvent
+     * pas se contredire.
+     *
+     * @return LengthAwarePaginator<int, Driver>
+     */
+    private function audiencePreview(CampaignAudienceResolver $audience): LengthAwarePaginator
+    {
+        /** @var LengthAwarePaginator<int, Driver> $rows */
+        $rows = $audience->query($this->campaign)
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->paginate(25);
+
+        return $rows;
+    }
+
     /**
      * Destinataires visés et l'état de leur remise.
      *
@@ -160,6 +187,28 @@ class Show extends Component
             ->paginate(25);
 
         return $rows;
+    }
+
+    /**
+     * Renvoie vers le composeur, ouvert sur ce brouillon.
+     *
+     * La retouche vit dans le composeur, qui porte déjà la validation, le
+     * téléversement de l'image et le calcul d'audience : les redire ici en
+     * ferait deux copies à tenir en phase.
+     */
+    public function edit(): void
+    {
+        Gate::authorize('manageCampaigns');
+
+        if ($this->campaign->status !== CampaignStatus::Draft) {
+            return;
+        }
+
+        $this->redirectRoute(
+            BackOfficeModule::Campaigns->route(),
+            ['brouillon' => $this->campaign->getKey()],
+            navigate: true,
+        );
     }
 
     public function confirmReplay(string $recipientId): void
@@ -250,7 +299,13 @@ class Show extends Component
 
         $copy->save();
 
-        $this->redirectRoute(BackOfficeModule::Campaigns->route(), navigate: true);
+        // Droit dans le composeur, sur la copie : dupliquer sert à repartir
+        // d'un envoi, pas à contempler une ligne de plus dans la liste.
+        $this->redirectRoute(
+            BackOfficeModule::Campaigns->route(),
+            ['brouillon' => $copy->getKey()],
+            navigate: true,
+        );
     }
 
     /**

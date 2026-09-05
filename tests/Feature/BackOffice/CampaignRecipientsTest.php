@@ -10,6 +10,7 @@
 
 use App\Enums\CampaignRecipientStatus;
 use App\Enums\CampaignStatus;
+use App\Livewire\Campaigns\Index;
 use App\Livewire\Campaigns\Show;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
@@ -236,6 +237,8 @@ it('duplicates a sent campaign into an editable draft', function (): void {
 
     $copy = Campaign::query()->where('title', 'like', '%copie%')->sole();
 
+    // Dupliquer sert à repartir d'un envoi : on atterrit dans le composeur,
+    // pas sur une ligne de plus dans la liste.
     expect($copy->status)->toBe(CampaignStatus::Draft)
         ->and($copy->sent_at)->toBeNull()
         ->and($copy->recipients_count)->toBe(0)
@@ -243,6 +246,22 @@ it('duplicates a sent campaign into an editable draft', function (): void {
         // L'original n'est pas touché : c'est une trace.
         ->and($campaign->fresh()->status)->toBe(CampaignStatus::Sent)
         ->and($campaign->messages()->count())->toBe(1);
+
+});
+
+it('lands in the composer on the fresh copy', function (): void {
+    $campaign = Campaign::factory()->create(['title' => 'Maintenance dimanche']);
+
+    Livewire::actingAs(campaignRecipientsUser('bonus'))
+        ->test(Show::class, ['campaign' => $campaign])
+        ->call('duplicate');
+
+    $copy = Campaign::query()->where('title', 'like', '%copie%')->sole();
+
+    Livewire::actingAs(campaignRecipientsUser('bonus'))
+        ->test(Index::class, ['editing' => $copy->getKey()])
+        ->assertSet('editingId', $copy->getKey())
+        ->assertSet('title', 'Maintenance dimanche (copie)');
 });
 
 it('shares the image file with the original rather than copying it', function (): void {
@@ -297,6 +316,60 @@ it('shows the bulk replay confirmation on a campaign already sent', function ():
         ->test(Show::class, ['campaign' => $campaign])
         ->call('confirmReplayAll')
         ->assertSee(__('backoffice.campaigns.confirm_replay_all_title'));
+});
+
+it('lists the audience of a draft before it is ever sent', function (): void {
+    // Vérifier *qui* est visé, et pas seulement combien, est la dernière
+    // chance de repérer une cible trop large avant d'atteindre tout le parc.
+    Driver::factory()->count(3)->create(['last_name' => 'TRAORE']);
+    $campaign = Campaign::factory()->create();
+
+    Livewire::actingAs(campaignRecipientsUser('bonus'))
+        ->test(Show::class, ['campaign' => $campaign])
+        ->assertViewHas('recipients', fn ($rows): bool => $rows->total() === 3)
+        ->assertSee('TRAORE');
+
+    // Rien n'est matérialisé pour autant : l'audience est une projection.
+    expect($campaign->targetedCount())->toBe(0);
+});
+
+it('keeps showing materialised recipients once the campaign is sent', function (): void {
+    Driver::factory()->count(2)->create();
+    $campaign = Campaign::factory()->create();
+    app(CampaignDispatcher::class)->dispatch($campaign);
+
+    Livewire::actingAs(campaignRecipientsUser('bonus'))
+        ->test(Show::class, ['campaign' => $campaign])
+        ->assertViewHas('recipients', fn ($rows): bool => $rows->total() === 2
+            && $rows->first() instanceof CampaignRecipient);
+});
+
+it('sends a draft back to the composer for editing', function (): void {
+    $campaign = Campaign::factory()->create();
+
+    Livewire::actingAs(campaignRecipientsUser('bonus'))
+        ->test(Show::class, ['campaign' => $campaign])
+        ->call('edit')
+        ->assertRedirect(route('bo.campaigns', ['brouillon' => $campaign->getKey()]));
+});
+
+it('refuses to edit a campaign already sent', function (): void {
+    $campaign = Campaign::factory()->sent()->create();
+
+    Livewire::actingAs(campaignRecipientsUser('bonus'))
+        ->test(Show::class, ['campaign' => $campaign])
+        ->call('edit')
+        ->assertNoRedirect();
+});
+
+it('opens the composer on the draft named in the url', function (): void {
+    $campaign = Campaign::factory()->create(['title' => 'Maintenance dimanche']);
+
+    Livewire::actingAs(campaignRecipientsUser('bonus'))
+        ->test(Index::class, ['editing' => $campaign->getKey()])
+        ->assertSet('editingId', $campaign->getKey())
+        ->assertSet('title', 'Maintenance dimanche')
+        ->assertSet('composerOpen', true);
 });
 
 it('filters the recipients by failure', function (): void {

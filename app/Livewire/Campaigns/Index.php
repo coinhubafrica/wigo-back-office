@@ -92,6 +92,26 @@ class Index extends Component
     #[Url]
     public ?string $status = null;
 
+    /**
+     * Brouillon à ouvrir directement dans le composeur, passé par l'URL.
+     *
+     * C'est ce qui permet à la page de détail — devenue le seul porteur des
+     * actions — de renvoyer ici pour la retouche, plutôt que de redire la
+     * validation et le calcul d'audience que le composeur porte déjà.
+     */
+    #[Url(as: 'brouillon')]
+    public ?string $editing = null;
+
+    public function mount(): void
+    {
+        if ($this->editing !== null) {
+            $this->edit($this->editing);
+            // L'identifiant a joué son rôle : le laisser dans l'URL rouvrirait
+            // le composeur à chaque rafraîchissement, même après fermeture.
+            $this->editing = null;
+        }
+    }
+
     public function compose(): void
     {
         $this->resetForm();

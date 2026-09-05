@@ -62,23 +62,26 @@
                 <x-th align="right">{{ __('backoffice.campaigns.column_read') }}</x-th>
                 <x-th>{{ __('backoffice.campaigns.column_author') }}</x-th>
                 <x-th>{{ __('backoffice.campaigns.column_date') }}</x-th>
-                <x-th><span class="sr-only">{{ __('backoffice.campaigns.send') }}</span></x-th>
             </x-slot:head>
 
             @foreach ($campaigns as $campaign)
                 {{-- `wire:key` obligatoire : la liste se réordonne dès qu'une
                      campagne part, et le diff DOM recyclerait les lignes. --}}
-                <tr wire:key="campaign-{{ $campaign->id }}" class="transition-colors hover:bg-surface">
+                <tr wire:key="campaign-{{ $campaign->id }}" class="group relative transition-colors hover:bg-surface">
                     <x-td>
-                        {{-- Le titre porte le lien plutôt que la ligne
-                             entière : une ligne cliquable avalerait le
-                             bouton « Envoyer », et ne se rejoint pas au
-                             clavier. --}}
+                        {{-- Toute la ligne mène au détail, mais la navigation
+                             reste portée par un vrai lien — celui du titre,
+                             doublé d'une surface étirée en absolu. Un
+                             `onclick` sur le `<tr>` serait inatteignable au
+                             clavier et court-circuiterait `wire:navigate`.
+                             Les actions ont quitté la ligne pour la page de
+                             détail : plus rien ici n'entre en concurrence
+                             avec ce lien. --}}
                         <a href="{{ route('bo.campaigns.show', $campaign) }}" wire:navigate
-                           class="block max-w-[280px] truncate text-[13px] font-bold text-ink hover:text-primary">
+                           class="block truncate text-[13px] font-bold text-ink after:absolute after:inset-0 after:content-[''] group-hover:text-primary-text">
                             {{ $campaign->title }}
                         </a>
-                        <span class="mt-0.5 block max-w-[280px] truncate text-xs text-muted">{{ $campaign->body }}</span>
+                        <span class="mt-0.5 block max-w-[520px] truncate text-xs text-muted">{{ $campaign->body }}</span>
                     </x-td>
                     <x-td><x-badge :classes="$campaign->audience->badgeClasses()">{{ $campaign->audience->label() }}</x-badge></x-td>
                     <x-td><x-badge :classes="$campaign->status->badgeClasses()">{{ $campaign->status->label() }}</x-badge></x-td>
@@ -105,14 +108,6 @@
                     </x-td>
                     <x-td class="text-[13px]">{{ $campaign->createdByUser?->fullName() ?? __('backoffice.campaigns.unknown_author') }}</x-td>
                     <x-td muted nowrap class="text-xs">{{ ($campaign->sent_at ?? $campaign->created_at)?->diffForHumans() }}</x-td>
-                    <x-td align="right" nowrap>
-                        @if ($campaign->status === \App\Enums\CampaignStatus::Draft)
-                            <span class="inline-flex items-center gap-1.5">
-                                <x-button size="sm" variant="secondary" wire:click="edit('{{ $campaign->id }}')" target="edit">{{ __('backoffice.campaigns.edit') }}</x-button>
-                                <x-button size="sm" wire:click="confirmSend('{{ $campaign->id }}')" target="confirmSend">{{ __('backoffice.campaigns.send') }}</x-button>
-                            </span>
-                        @endif
-                    </x-td>
                 </tr>
             @endforeach
 

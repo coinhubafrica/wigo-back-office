@@ -1,13 +1,18 @@
 {{--
     Détail d'une campagne.
 
-    L'écran est en lecture seule : ce qui a été écrit, à qui, et qui l'a lu.
     Le message vient en premier et en entier — c'est la seule trace de ce que
     les conducteurs ont réellement reçu, et le tronquer ferait perdre le sens
-    du reste de la page. Seul un brouillon porte encore une action : l'envoi.
+    du reste de la page.
+
+    C'est ici que vivent les actions d'une campagne : modifier et envoyer un
+    brouillon, dupliquer, rejouer une remise en échec. La liste, elle, ne fait
+    que mener ici — une ligne cliquable et des boutons se disputeraient le
+    clic, et l'écran de détail est le seul endroit où l'on voit ce sur quoi on
+    agit.
 --}}
 @php($isDraft = $campaign->status === \App\Enums\CampaignStatus::Draft)
-<div class="flex max-w-[860px] flex-col gap-4">
+<div class="flex flex-col gap-4">
     <x-slot:back>
         <x-back-link :href="route('bo.campaigns')">{{ __('backoffice.campaigns.back_to_list') }}</x-back-link>
     </x-slot:back>
@@ -18,6 +23,13 @@
     <x-panel :title="__('backoffice.campaigns.message_section')">
         <x-slot:actions>
             <x-badge :classes="$campaign->status->badgeClasses()">{{ $campaign->status->label() }}</x-badge>
+            {{-- Un brouillon se corrige ; le composeur porte la validation et
+                 le calcul d'audience, on y renvoie plutôt que de les redire. --}}
+            @if ($isDraft && $canManage)
+                <x-button size="sm" variant="secondary" wire:click="edit" target="edit">
+                    {{ __('backoffice.campaigns.edit') }}
+                </x-button>
+            @endif
             {{-- Dupliquer plutôt que renvoyer : l'original reste une trace,
                  la copie s'édite puis part comme un envoi neuf. --}}
             @if ($canManage)
@@ -96,7 +108,8 @@
     {{-- ---------------------------------------------------------------- --}}
     {{-- Destinataires : les messages déposés font foi.                    --}}
     {{-- ---------------------------------------------------------------- --}}
-    <x-panel :title="__('backoffice.campaigns.recipients_section')" flush>
+    <x-panel :title="$isDraft ? __('backoffice.campaigns.audience_section') : __('backoffice.campaigns.recipients_section')"
+             :subtitle="$isDraft ? __('backoffice.campaigns.audience_section_hint') : null" flush>
         @unless ($isDraft)
             <x-slot:actions>
                 @foreach (['all' => __('backoffice.campaigns.filter_all'), 'read' => __('backoffice.campaigns.filter_read'), 'unread' => __('backoffice.campaigns.filter_unread')] as $value => $label)
@@ -121,7 +134,40 @@
         @endunless
 
         @if ($isDraft)
-            <x-empty-state tone="neutral" :hint="__('backoffice.campaigns.recipients_draft')" />
+            {{-- Brouillon : rien n'est matérialisé, on montre donc qui serait
+                 touché si l'envoi partait maintenant. Vérifier *qui* est visé,
+                 et pas seulement combien, est la dernière chance de repérer
+                 une cible trop large avant d'atteindre tout le parc. --}}
+            <x-table loading="gotoPage,previousPage,nextPage">
+                <x-slot:head>
+                    <x-th>{{ __('backoffice.campaigns.column_driver') }}</x-th>
+                    <x-th>{{ __('backoffice.campaigns.column_phone') }}</x-th>
+                    <x-th>{{ __('backoffice.campaigns.column_driver_status') }}</x-th>
+                </x-slot:head>
+
+                @foreach ($recipients as $driver)
+                    <tr wire:key="audience-{{ $driver->id }}" class="group relative transition-colors hover:bg-surface">
+                        <x-td>
+                            <a href="{{ route('bo.drivers.show', $driver) }}" wire:navigate
+                               class="block text-[13px] font-semibold text-primary-text after:absolute after:inset-0 after:content-[''] hover:underline">
+                                {{ $driver->fullName() }}
+                            </a>
+                        </x-td>
+                        <x-td mono muted nowrap>{{ $driver->phone }}</x-td>
+                        <x-td><x-badge :classes="$driver->status->badgeClasses()">{{ $driver->status->label() }}</x-badge></x-td>
+                    </tr>
+                @endforeach
+
+                @if ($recipients->isEmpty())
+                    <x-slot:empty>
+                        <x-empty-state tone="neutral" :hint="__('backoffice.campaigns.recipients_draft_none')" />
+                    </x-slot:empty>
+                @endif
+
+                @if ($recipients->hasPages())
+                    <x-slot:footer>{{ $recipients->links() }}</x-slot:footer>
+                @endif
+            </x-table>
         @else
             <x-table loading="filterBy,gotoPage,previousPage,nextPage">
                 <x-slot:head>
