@@ -152,6 +152,28 @@ it('saves the yango fleet credentials', function (): void {
         ->and($yango->isConfigured())->toBeTrue();
 });
 
+it('saves the pause between pages, zero included', function (int $delay): void {
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('yangoBaseUrl', 'https://fleet-api.yango.tech')
+        ->set('yangoParkId', 'park-123')
+        ->set('yangoPageDelayMs', $delay)
+        ->call('saveYango')
+        ->assertHasNoErrors();
+
+    expect(app(YangoSettings::class)->page_delay_ms)->toBe($delay);
+})->with([0, 500]);
+
+it('refuses a pause that is negative or absurd', function (int $delay): void {
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('yangoBaseUrl', 'https://fleet-api.yango.tech')
+        ->set('yangoParkId', 'park-123')
+        ->set('yangoPageDelayMs', $delay)
+        ->call('saveYango')
+        ->assertHasErrors('yangoPageDelayMs');
+})->with([-1, 10001]);
+
 it('keeps the stored key when the field is left empty', function (): void {
     settingsStoreYangoKey('cle-deja-en-place');
 

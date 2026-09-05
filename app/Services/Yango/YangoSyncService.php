@@ -63,7 +63,7 @@ class YangoSyncService
         if (! is_string($yangoId) || $yangoId === '') {
             $result->driversSkipped++;
 
-            Log::warning('Fleet : profil sans identifiant Yango, ignoré');
+            Log::warning('Yango : profil sans identifiant, ignoré');
 
             return;
         }
@@ -90,7 +90,7 @@ class YangoSyncService
             // unique, et c'est la seule clé d'entrée de l'application mobile.
             $result->driversSkipped++;
 
-            Log::warning('Fleet : conducteur sans téléphone exploitable, ignoré', [
+            Log::warning('Yango : conducteur sans téléphone exploitable, ignoré', [
                 'yango_id' => $yangoId,
             ]);
 
@@ -181,7 +181,7 @@ class YangoSyncService
             ->count();
 
         if ($result->staleDrivers > 0 || $result->staleVehicles > 0) {
-            Log::warning('Fleet : enregistrements non remontés par Yango', [
+            Log::warning('Yango : enregistrements non remontés', [
                 'drivers' => $result->staleDrivers,
                 'vehicles' => $result->staleVehicles,
             ]);

@@ -56,6 +56,15 @@
         <form id="settings-yango" wire:submit="saveYango" class="grid gap-4 sm:grid-cols-2">
             <x-field :label="__('backoffice.settings.yango_base_url')" name="yangoBaseUrl" type="url" wire:model="yangoBaseUrl" placeholder="https://fleet-api.yango.tech" />
             <x-field :label="__('backoffice.settings.yango_park_id')" name="yangoParkId" wire:model="yangoParkId" />
+            <x-field
+                :label="__('backoffice.settings.yango_page_delay')"
+                name="yangoPageDelayMs"
+                type="number"
+                min="0"
+                max="10000"
+                wire:model="yangoPageDelayMs"
+                :hint="__('backoffice.settings.yango_page_delay_hint')"
+            />
             {{-- L'aperçu masqué passe en `placeholder` : il s'affiche en filigrane,
                  n'est pas une valeur du champ (donc jamais renvoyé au serveur ni
                  confondu avec une saisie) et s'efface à la première frappe. --}}

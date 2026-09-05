@@ -31,7 +31,7 @@ class SaloonYangoClient implements YangoClient
         $settings = app(YangoSettings::class);
 
         if (! $settings->isConfigured() || $driver->yango_id === null) {
-            Log::warning('Fleet : crédit impossible', [
+            Log::warning('Yango : crédit impossible', [
                 'reference' => $reference,
                 'driver' => $driver->getKey(),
                 'reason' => $driver->yango_id === null ? 'conducteur sans yango_id' : 'API non configurée',
@@ -48,7 +48,7 @@ class SaloonYangoClient implements YangoClient
                 $reference,
             ));
         } catch (YangoFleetException $exception) {
-            Log::error('Fleet : crédit refusé', [
+            Log::error('Yango : crédit refusé', [
                 'reference' => $reference,
                 'status' => $exception->getStatusCode(),
                 'message' => $exception->getMessage(),
@@ -74,7 +74,7 @@ class SaloonYangoClient implements YangoClient
                 $driver->yango_id,
             ));
         } catch (YangoFleetException $exception) {
-            Log::warning('Fleet : solde indisponible', [
+            Log::warning('Yango : solde indisponible', [
                 'driver' => $driver->getKey(),
                 'status' => $exception->getStatusCode(),
             ]);

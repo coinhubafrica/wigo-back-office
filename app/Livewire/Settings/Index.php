@@ -73,6 +73,8 @@ class Index extends Component
     public string $yangoApiKey = '';
 
     /** Verdict du dernier test de connexion, le temps de la requête. */
+    public int $yangoPageDelayMs = 250;
+
     public ?bool $yangoTestSucceeded = null;
 
     public ?string $yangoTestMessage = null;
@@ -112,6 +114,7 @@ class Index extends Component
 
         $this->yangoBaseUrl = $yango->base_url;
         $this->yangoParkId = $yango->park_id;
+        $this->yangoPageDelayMs = $yango->page_delay_ms;
     }
 
     /**
@@ -445,6 +448,8 @@ class Index extends Component
         $this->validate([
             'yangoBaseUrl' => 'required|url',
             'yangoParkId' => 'required|string|max:255',
+            // Zéro désactive l'espacement ; le plafond garde une passe finie.
+            'yangoPageDelayMs' => 'required|integer|min:0|max:10000',
             // Facultative : laissée vide, la clé déjà enregistrée est conservée.
             'yangoApiKey' => 'nullable|string|max:255',
         ]);
@@ -452,10 +457,15 @@ class Index extends Component
         // Avant/après de ce qui n'est pas secret : l'adresse du service et le
         // parc identifient *quel* parc on crédite, et détourner l'adresse est
         // une voie d'exfiltration. La clé, elle, n'est citée que par son nom.
-        $before = ['base_url' => $yango->base_url, 'park_id' => $yango->park_id];
+        $before = [
+            'base_url' => $yango->base_url,
+            'park_id' => $yango->park_id,
+            'page_delay_ms' => $yango->page_delay_ms,
+        ];
 
         $yango->base_url = $this->yangoBaseUrl;
         $yango->park_id = $this->yangoParkId;
+        $yango->page_delay_ms = $this->yangoPageDelayMs;
 
         if (filled($this->yangoApiKey)) {
             $yango->api_key = $this->yangoApiKey;
@@ -476,6 +486,7 @@ class Index extends Component
             context: array_filter([
                 'base_url' => $before['base_url'] === $yango->base_url ? null : $yango->base_url,
                 'park_id' => $before['park_id'] === $yango->park_id ? null : $yango->park_id,
+                'page_delay_ms' => $before['page_delay_ms'] === $yango->page_delay_ms ? null : $yango->page_delay_ms,
                 'fields' => $replaced === [] ? null : $replaced,
             ]),
         );

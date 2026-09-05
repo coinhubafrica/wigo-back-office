@@ -919,6 +919,8 @@ return [
         'yango_hint' => "Identifiants de l'API Yango Fleet, utilisés par la synchronisation des conducteurs et des véhicules.",
         'yango_base_url' => "URL de l'API",
         'yango_park_id' => 'Identifiant du parc',
+        'yango_page_delay' => 'Pause entre deux pages (ms)',
+        'yango_page_delay_hint' => 'Espace les appels pendant une synchronisation. Yango refuse les rafales ; 0 désactive la pause.',
         'yango_api_key' => "Clé d'API",
         'yango_api_key_hint' => 'Laissez vide pour conserver la clé enregistrée.',
         'yango_api_key_missing' => "Aucune clé enregistrée : la synchronisation ne peut pas s'exécuter.",

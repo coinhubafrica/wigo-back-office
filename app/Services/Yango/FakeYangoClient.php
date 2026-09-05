@@ -28,7 +28,7 @@ class FakeYangoClient implements YangoClient
         if ($this->failNext) {
             $this->failNext = false;
 
-            Log::info('Fleet (local) : crédit refusé volontairement', ['reference' => $reference]);
+            Log::info('Yango (local) : crédit refusé volontairement', ['reference' => $reference]);
 
             return false;
         }
@@ -37,7 +37,7 @@ class FakeYangoClient implements YangoClient
         $this->balances[$key] = ($this->balances[$key] ?? 0) + $amount;
         $this->credits[] = ['driver_id' => $key, 'amount' => $amount, 'reference' => $reference];
 
-        Log::info('Fleet (local) : solde crédité', [
+        Log::info('Yango (local) : solde crédité', [
             'reference' => $reference,
             'amount' => $amount,
             'balance' => $this->balances[$key],

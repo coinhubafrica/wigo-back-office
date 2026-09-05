@@ -31,6 +31,16 @@ class YangoSettings extends Settings
     #[ShouldBeEncrypted]
     public string $api_key;
 
+    /**
+     * Pause entre deux pages lors d'une passe de synchronisation.
+     *
+     * Yango répond 429 quand la passe enchaîne les appels sans reprendre son
+     * souffle. Le bon palier ne se devine pas : il s'observe contre l'API
+     * vivante, d'où un réglage en base plutôt qu'une constante. Zéro désactive
+     * l'espacement.
+     */
+    public int $page_delay_ms;
+
     public static function group(): string
     {
         return 'yango';
