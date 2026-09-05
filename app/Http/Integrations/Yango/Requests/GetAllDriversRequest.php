@@ -26,11 +26,21 @@ class GetAllDriversRequest extends Request implements HasBody
     /** Plafond imposé par Yango sur cet endpoint. */
     public const MAX_LIMIT = 1000;
 
+    /**
+     * Taille de page réellement demandée, en deçà du plafond.
+     *
+     * Le plafond dit ce que Yango accepte, pas ce qu'il supporte : une passe
+     * du parc qui réclame le maximum à chaque page se fait refuser en 429
+     * avant d'avoir fini. Observé contre l'API vivante — le plafond reste la
+     * borne, celle-ci est le régime de croisière.
+     */
+    public const DEFAULT_LIMIT = 500;
+
     protected Method $method = Method::POST;
 
     public function __construct(
         protected string $parkId,
-        protected int $limit = self::MAX_LIMIT,
+        protected int $limit = self::DEFAULT_LIMIT,
         protected int $offset = 0,
     ) {}
 

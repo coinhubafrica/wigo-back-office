@@ -24,7 +24,7 @@ class SyncYangoTransactionsCommand extends Command
     protected $signature = 'yango:sync-transactions
         {--from= : Premier jour de la période (AAAA-MM-JJ, défaut : hier)}
         {--to= : Dernier jour de la période (AAAA-MM-JJ, défaut : aujourd\'hui)}
-        {--limit=1000 : Taille de page demandée à Yango (1000 au plus)}
+        {--limit=500 : Taille de page demandée à Yango (1000 au plus)}
         {--now : Exécute la passe sur place au lieu de la mettre en file}';
 
     protected $description = 'Synchronise les transactions depuis l\'API Yango Fleet sur une période';

@@ -28,7 +28,7 @@ class SyncYangoOrdersCommand extends Command
     protected $signature = 'yango:sync-orders
         {--from= : Premier jour de la période (AAAA-MM-JJ, défaut : hier)}
         {--to= : Dernier jour de la période (AAAA-MM-JJ, défaut : aujourd\'hui)}
-        {--limit=500 : Taille de page demandée à Yango (500 au plus)}
+        {--limit=250 : Taille de page demandée à Yango (500 au plus)}
         {--now : Exécute la passe sur place au lieu de la mettre en file}';
 
     protected $description = 'Synchronise les courses depuis l\'API Yango Fleet sur une période';

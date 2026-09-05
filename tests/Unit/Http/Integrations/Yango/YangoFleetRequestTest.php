@@ -3,6 +3,8 @@
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
+use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
+use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
 use App\Http\Integrations\Yango\YangoFleetConnector;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
@@ -64,4 +66,22 @@ it('sends a refused call once, the connector carrying no replay of its own', fun
         ->toThrow(YangoFleetException::class);
 
     $mock->assertSentCount(1);
+});
+
+it('asks for less than Yango allows, the ceiling not being a régime de croisière', function (string $request): void {
+    // Le plafond dit ce que Yango accepte, pas ce qu'il supporte : réclamer le
+    // maximum à chaque page faisait refuser la passe en 429 avant la fin.
+    // Observé contre l'API vivante.
+    expect($request::DEFAULT_LIMIT)->toBeLessThan($request::MAX_LIMIT);
+})->with([
+    GetAllDriversRequest::class,
+    GetAllVehiclesRequest::class,
+    GetOrdersRequest::class,
+    GetTransactionsRequest::class,
+]);
+
+it('never sends more than the endpoint ceiling, whatever it is asked for', function (): void {
+    $request = new GetAllDriversRequest('park-123', 99999);
+
+    expect($request->defaultBody()['limit'])->toBe(GetAllDriversRequest::MAX_LIMIT);
 });

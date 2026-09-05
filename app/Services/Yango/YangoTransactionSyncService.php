@@ -32,7 +32,7 @@ class YangoTransactionSyncService
 
     public function syncDay(
         CarbonInterface $day,
-        int $pageSize = GetTransactionsRequest::MAX_LIMIT,
+        int $pageSize = GetTransactionsRequest::DEFAULT_LIMIT,
     ): YangoTransactionSyncResult {
         $result = new YangoTransactionSyncResult;
 
