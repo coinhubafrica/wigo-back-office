@@ -4,6 +4,7 @@ namespace App\Services\Yango;
 
 use App\Contracts\YangoDirectory;
 use App\Enums\DriverStatus;
+use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Models\Driver;
 use App\Models\Vehicle;
 use Illuminate\Support\Arr;
@@ -19,6 +20,10 @@ use Illuminate\Support\Str;
  * repasse sur des véhicules déjà vus par la première — l'upsert sur `yango_id`
  * rend l'opération idempotente.
  *
+ * La passe de conducteurs renseigne aussi `yango_balance` : le bloc `accounts`
+ * arrive dans la même page, autant le lire plutôt que de le jeter et de le
+ * redemander conducteur par conducteur.
+ *
  * Ce que la synchronisation ne fait jamais : réécrire le `status` d'un
  * conducteur (une suspension est une décision du back-office, Yango n'a pas à
  * la défaire), désactiver un véhicule absent, ou supprimer quoi que ce soit.
@@ -30,7 +35,7 @@ class YangoSyncService
         private readonly YangoDirectory $directory,
     ) {}
 
-    public function sync(int $pageSize = 100): YangoSyncResult
+    public function sync(int $pageSize = GetAllDriversRequest::MAX_LIMIT): YangoSyncResult
     {
         $result = new YangoSyncResult;
 
@@ -113,6 +118,17 @@ class YangoSyncService
             'license_number' => Arr::get($profile, 'driver_profile.driver_license.number', $driver->license_number),
             'last_sync_at' => Carbon::now(),
         ]);
+
+        // La page de conducteurs porte déjà les comptes : le solde de tout le
+        // parc s'écrit sans un appel de plus. Un solde absent n'est pas un
+        // solde nul — on ne réécrit rien plutôt que d'effacer ce qu'on sait.
+        $balance = YangoAccountBalance::read($profile);
+
+        if ($balance !== null) {
+            $driver->yango_balance = $balance;
+            $driver->balance_read_at = Carbon::now();
+            $result->driversBalanced++;
+        }
 
         $driver->save();
 

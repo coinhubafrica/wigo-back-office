@@ -15,6 +15,7 @@ class YangoSyncResult
         public int $driversSynced = 0,
         public int $driversAdopted = 0,
         public int $driversSkipped = 0,
+        public int $driversBalanced = 0,
         public int $vehiclesSynced = 0,
         public int $staleDrivers = 0,
         public int $staleVehicles = 0,
