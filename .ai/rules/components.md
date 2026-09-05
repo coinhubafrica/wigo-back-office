@@ -44,6 +44,15 @@ L'assistant Challenges garde sa coquille (stepper) mais reprend les mêmes class
 ## `x-kpi-card`
 `label value tone unit hint :alert href`, slots `icon`, `chart`. Le rouge (`alert`) signale un manquement — à zéro passer `false`, la carte reste neutre.
 
+## `x-trend-chart`, `x-bar-chart`
+Graphiques **rendus par le serveur** : aucune bibliothèque de graphiques n'est installée, et il ne faut pas en ajouter une pour une courbe et sept barres. Le tracé se lit sans JavaScript, s'imprime, et ne clignote pas au rafraîchissement Livewire.
+
+`x-trend-chart :points label height` — `points` est une `list<array{label, value, current?}>`. Courbe + aire, dernier point accentué (la période en cours n'est pas terminée, sa valeur n'est pas comparable), deux repères min/max en pointillés, `<title>` par point. **L'échelle est min–max, pas zéro-based** : sur des volumes qui varient de quelques pourcents, un axe partant de zéro aplatit la courbe et cache ce qu'on vient lire ; les deux repères chiffrés rétablissent l'amplitude. Séries dégénérées gardées vivantes (un seul point, série plate) — le dénominateur retombe à 1. Une liste vide rend le slot par défaut à la place du `<svg>`. `label` est obligatoire : la courbe est une image, elle porte `role="img"` + `aria-label`.
+
+`x-bar-chart :bars height` — `bars` est une `list<array{label, value}>`, `height` une classe Tailwind littérale (`h-40`). Valeurs et libellés sont du texte lisible ; seules les colonnes portent `aria-hidden`, car la hauteur ne dit rien de plus que le chiffre écrit au-dessus. Une valeur nulle garde sa colonne, en `bg-line` à 3 %, avec un tiret cadratin : un jour sans course se distingue ainsi d'un jour à zéro mesuré.
+
+Les deux formatent en espace fine insécable (`\u{202F}`), comme le reste des colonnes chiffrées.
+
 ## `x-empty-state`
 `title hint tone="ok|primary|neutral" size="md|lg"`, slots `icon`, `action`. `ok` = rien à faire (coche), `primary` = invite à choisir, `neutral` = filtre sans résultat (+ bouton réinitialiser dans `action`).
 

@@ -56,25 +56,26 @@ it('lets an authorised user reach the dashboard', function (): void {
 });
 
 it('only shows dashboard cards for modules the user can reach', function (): void {
-    // `gestionnaire` a Chauffeurs et Boutique, mais pas Recharges : la carte
-    // des recharges pointerait vers un 403 et exposerait un agrégat interdit.
+    // `gestionnaire` a Chauffeurs et CNPS, mais pas Recharges : la carte des
+    // recharges pointerait vers un 403 et exposerait un agrégat interdit.
     $this->actingAs(moduleAccessUser('gestionnaire'))
         ->get(route(BackOfficeModule::Dashboard->route()))
         ->assertOk()
         ->assertSee(__('backoffice.dashboard.active_drivers'))
-        ->assertSee(__('backoffice.dashboard.inactive_products'))
-        ->assertDontSee(__('backoffice.dashboard.recharges_to_replay'));
+        ->assertSee(__('backoffice.dashboard.cnps_month'))
+        ->assertDontSee(__('backoffice.dashboard.recharges_today'));
 });
 
 it('shows no dashboard cards when no source module is permitted', function (): void {
-    // `admin` atteint le tableau de bord mais n'a ni Chauffeurs, ni Boutique,
-    // ni Recharges : aucune carte ne doit s'afficher.
+    // `admin` atteint le tableau de bord mais n'a ni Chauffeurs, ni CNPS, ni
+    // Recharges, ni Requêtes : aucune carte ne doit s'afficher.
     $this->actingAs(moduleAccessUser('admin'))
         ->get(route(BackOfficeModule::Dashboard->route()))
         ->assertOk()
         ->assertDontSee(__('backoffice.dashboard.active_drivers'))
-        ->assertDontSee(__('backoffice.dashboard.inactive_products'))
-        ->assertDontSee(__('backoffice.dashboard.recharges_to_replay'));
+        ->assertDontSee(__('backoffice.dashboard.cnps_month'))
+        ->assertDontSee(__('backoffice.dashboard.recharges_today'))
+        ->assertSee(__('backoffice.dashboard.no_cards'));
 });
 
 it('returns 403 on direct access for a user without the permission', function (): void {

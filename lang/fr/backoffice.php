@@ -59,13 +59,54 @@ return [
 
     'dashboard' => [
         'active_drivers' => 'Chauffeurs actifs',
-        'suspended_drivers' => 'Chauffeurs suspendus',
-        'inactive_products' => 'Références fermées',
-        'recharges_to_replay' => 'Recharges à relancer',
+        'driver_reference' => 'Référentiel : :total comptes · :new nouveaux ce mois',
+        'orders_week' => 'Courses de la semaine',
+        'recharges_today' => 'Recharges du jour',
+        'recharges_credited' => '{0}aucune recharge créditée|{1}:count recharge Wave créditée|[2,*]:count recharges Wave créditées',
+        'cnps_month' => 'Cotisations CNPS du mois',
+        'cnps_declarations' => '{0}aucune déclaration|{1}:count déclaration (déclaratif)|[2,*]:count déclarations (déclaratif)',
+        'open_requests' => 'Requêtes ouvertes',
+        'requests_breached' => '{1}:count requête hors SLA|[2,*]:count requêtes hors SLA',
+        'requests_within_sla' => 'Aucun dépassement de SLA',
+
+        'period_weekly' => 'Période : hebdomadaire',
+        'week_current' => 'Semaine en cours — :period (progression)',
+        'week_range' => ':from → :to',
+        'week_in_progress' => 'Progression (lundi → aujourd\'hui)',
+        'week_closed' => 'Semaine clôturée',
+        'week_in_progress_notice' => 'Progression de la semaine en cours — les chiffres évoluent jusqu\'à dimanche 23 h 59.',
+        'week_closed_notice' => 'Les indicateurs de courses suivent la semaine sélectionnée ; les autres cartes restent en temps réel.',
+
+        'trend_12_weeks' => 'Évolution des courses — 12 dernières semaines',
+        'trend_last_point' => 'Dernier point : semaine en cours',
+        'orders_per_day' => 'Courses par jour — :period',
+
+        'latest_requests' => 'Dernières requêtes ouvertes',
+        'open_queue' => 'Ouvrir la file',
+        'column_reference' => 'Réf.',
+        'column_driver' => 'Chauffeur',
+        'column_subject' => 'Motif',
+        'column_status' => 'Statut',
+        'column_age' => 'Ancienneté',
+        'unknown_driver' => 'Conducteur inconnu',
+        'no_open_requests' => 'Aucune requête ouverte',
+
+        'alerts' => 'Alertes',
+        'alert_open' => 'Voir',
+        'no_alerts' => 'Rien à signaler',
+        'alert_sla_breached' => '{1}:count requête dépasse son délai SLA.|[2,*]:count requêtes dépassent leur délai SLA.',
+        'alert_recharges_failed' => '{1}:count recharge Wave en échec à relancer.|[2,*]:count recharges Wave en échec à relancer.',
+        'alert_products_closed' => '{1}:count référence fermée dans la boutique.|[2,*]:count références fermées dans la boutique.',
+        'alert_low_balance' => '{1}:count chauffeur à solde Yango faible.|[2,*]:count chauffeurs à solde Yango faible.',
+
+        'next_draw' => 'Prochain tirage',
+        'no_draw' => 'Aucun challenge en cours.',
+        'draw_period' => 'Période du :from au :to — le tirage se fait à la clôture, sur une graine auditable.',
+        'open_challenge' => 'Ouvrir le challenge',
+
         'see_module' => 'Ouvrir le module',
         'no_cards' => 'Aucun indicateur à afficher',
         'no_cards_hint' => 'Les modules qui alimentent le tableau de bord ne font pas partie de vos droits.',
-        'pending_modules_notice' => "Les indicateurs d'activité, les escalades SLA et la performance du support seront alimentés par les modules correspondants.",
     ],
 
     'vehicles' => [
