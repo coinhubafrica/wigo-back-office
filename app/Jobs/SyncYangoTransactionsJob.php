@@ -35,7 +35,7 @@ class SyncYangoTransactionsJob implements ShouldBeUnique, ShouldQueue
 
     public function __construct(
         public string $day,
-        public int $pageSize = GetTransactionsRequest::MAX_LIMIT,
+        public int $pageSize = GetTransactionsRequest::DEFAULT_LIMIT,
     ) {}
 
     public function uniqueId(): string

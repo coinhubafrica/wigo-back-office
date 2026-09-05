@@ -35,7 +35,7 @@ class YangoSyncService
         private readonly YangoDirectory $directory,
     ) {}
 
-    public function sync(int $pageSize = GetAllDriversRequest::MAX_LIMIT): YangoSyncResult
+    public function sync(int $pageSize = GetAllDriversRequest::DEFAULT_LIMIT): YangoSyncResult
     {
         $result = new YangoSyncResult;
 

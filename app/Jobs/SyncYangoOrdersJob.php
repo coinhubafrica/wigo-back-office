@@ -47,7 +47,7 @@ class SyncYangoOrdersJob implements ShouldBeUnique, ShouldQueue
 
     public function __construct(
         public string $day,
-        public int $pageSize = GetOrdersRequest::MAX_LIMIT,
+        public int $pageSize = GetOrdersRequest::DEFAULT_LIMIT,
     ) {}
 
     public function uniqueId(): string

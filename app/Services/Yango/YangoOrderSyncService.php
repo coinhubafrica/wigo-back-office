@@ -37,7 +37,7 @@ class YangoOrderSyncService
         private readonly DailyActivityService $activities,
     ) {}
 
-    public function syncDay(CarbonInterface $day, int $pageSize = GetOrdersRequest::MAX_LIMIT): YangoOrderSyncResult
+    public function syncDay(CarbonInterface $day, int $pageSize = GetOrdersRequest::DEFAULT_LIMIT): YangoOrderSyncResult
     {
         $result = new YangoOrderSyncResult;
 

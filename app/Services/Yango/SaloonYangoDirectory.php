@@ -52,7 +52,7 @@ class SaloonYangoDirectory implements YangoDirectory
     /** Plafond : un `Retry-After` aberrant ne doit pas immobiliser un worker. */
     private const MAX_RETRY_AFTER = 120;
 
-    public function drivers(int $pageSize = GetAllDriversRequest::MAX_LIMIT): Generator
+    public function drivers(int $pageSize = GetAllDriversRequest::DEFAULT_LIMIT): Generator
     {
         yield from $this->paginateByOffset(
             fn (string $parkId, int $offset): Request => new GetAllDriversRequest($parkId, $pageSize, $offset),
@@ -61,7 +61,7 @@ class SaloonYangoDirectory implements YangoDirectory
         );
     }
 
-    public function vehicles(int $pageSize = GetAllVehiclesRequest::MAX_LIMIT): Generator
+    public function vehicles(int $pageSize = GetAllVehiclesRequest::DEFAULT_LIMIT): Generator
     {
         yield from $this->paginateByOffset(
             fn (string $parkId, int $offset): Request => new GetAllVehiclesRequest($parkId, $pageSize, $offset),
@@ -73,7 +73,7 @@ class SaloonYangoDirectory implements YangoDirectory
     public function orders(
         CarbonInterface $from,
         CarbonInterface $to,
-        int $pageSize = GetOrdersRequest::MAX_LIMIT,
+        int $pageSize = GetOrdersRequest::DEFAULT_LIMIT,
     ): Generator {
         yield from $this->paginateByCursor(
             fn (string $parkId, ?string $cursor): Request => new GetOrdersRequest($parkId, $from, $to, $pageSize, $cursor),
@@ -84,7 +84,7 @@ class SaloonYangoDirectory implements YangoDirectory
     public function transactions(
         CarbonInterface $from,
         CarbonInterface $to,
-        int $pageSize = GetTransactionsRequest::MAX_LIMIT,
+        int $pageSize = GetTransactionsRequest::DEFAULT_LIMIT,
     ): Generator {
         yield from $this->paginateByCursor(
             fn (string $parkId, ?string $cursor): Request => new GetTransactionsRequest($parkId, $from, $to, $pageSize, $cursor),

@@ -52,9 +52,9 @@ class SyncYangoJob implements ShouldBeUnique, ShouldQueue
      */
     public int $uniqueFor = 3000;
 
-    public int $pageSize = GetAllDriversRequest::MAX_LIMIT;
+    public int $pageSize = GetAllDriversRequest::DEFAULT_LIMIT;
 
-    public function __construct(int $pageSize = GetAllDriversRequest::MAX_LIMIT)
+    public function __construct(int $pageSize = GetAllDriversRequest::DEFAULT_LIMIT)
     {
         $this->pageSize = $pageSize;
     }

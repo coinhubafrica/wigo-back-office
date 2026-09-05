@@ -29,13 +29,23 @@ class GetOrdersRequest extends Request implements HasBody
     /** Plafond imposé par Yango sur cet endpoint. */
     public const MAX_LIMIT = 500;
 
+    /**
+     * Taille de page réellement demandée, en deçà du plafond.
+     *
+     * Le plafond dit ce que Yango accepte, pas ce qu'il supporte : une passe
+     * des courses qui réclame le maximum à chaque page se fait refuser en 429
+     * avant d'avoir fini. Observé contre l'API vivante — le plafond reste la
+     * borne, celle-ci est le régime de croisière.
+     */
+    public const DEFAULT_LIMIT = 250;
+
     protected Method $method = Method::POST;
 
     public function __construct(
         protected string $parkId,
         protected CarbonInterface $from,
         protected CarbonInterface $to,
-        protected int $limit = self::MAX_LIMIT,
+        protected int $limit = self::DEFAULT_LIMIT,
         protected ?string $cursor = null,
     ) {}
 

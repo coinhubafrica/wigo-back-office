@@ -24,7 +24,7 @@ use Illuminate\Console\Command;
 class SyncYangoCommand extends Command
 {
     protected $signature = 'yango:sync
-        {--limit=1000 : Taille de page demandée à Yango (1000 au plus)}
+        {--limit=500 : Taille de page demandée à Yango (1000 au plus)}
         {--now : Exécute la passe sur place au lieu de la mettre en file}';
 
     protected $description = 'Synchronise les conducteurs et véhicules depuis l\'API Yango Fleet';

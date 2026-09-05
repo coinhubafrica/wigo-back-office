@@ -47,6 +47,10 @@ Yango en expose deux, et elles ne se ramènent pas l'une à l'autre.
 
 Plafonds à ne pas confondre : 1000 pour le parc et les transactions, **500 pour les courses**. Et le piège des transactions : `limit` y vaut **40 par défaut** côté Yango — le laisser implicite fait vingt-cinq fois trop d'appels.
 
+**Le plafond n'est pas le régime de croisière.** Chaque requête porte donc deux constantes : `MAX_LIMIT`, ce que Yango accepte, et `DEFAULT_LIMIT`, ce qu'on lui demande vraiment — la moitié. Réclamer le maximum à chaque page faisait refuser la passe en 429 avant qu'elle ait fini le parc, contre l'API vivante. `MAX_LIMIT` ne sert plus qu'à borner ce qu'un `--limit` peut réclamer ; les valeurs par défaut des jobs, services et commandes partent de `DEFAULT_LIMIT`.
+
+L'espacement se règle en base (`YangoSettings::$page_delay_ms`) et non dans le code, précisément parce que le bon palier s'observe : 250 ms ne suffisait pas sur un parc de dix mille conducteurs, 2000 ms tient. Un 429 qui persiste se corrige d'abord là, avant de toucher au code.
+
 ## Les montants Yango sont des chaînes décimales
 `amount`, `price`, `balance`, `mileage` arrivent en chaîne à quatre décimales (« 12345.1434 »), jamais en nombre. `yango_transactions.amount` est donc un `decimal(20,4)` et la valeur ne passe jamais par un `float` — ce serait perdre des centimes sur les gros montants.
 
