@@ -269,3 +269,19 @@ it('never overwrites a known balance with nothing', function (): void {
     expect(Driver::query()->where('yango_id', 'YAN-001')->firstOrFail()->yango_balance)->toBe(4200)
         ->and($result->driversBalanced)->toBe(0);
 });
+
+it('stores a negative balance, a driver owing the park being ordinary', function (): void {
+    // La colonne était `unsignedInteger` : le premier solde débiteur faisait
+    // tomber l'écriture, et la passe s'arrêtait là en laissant le parc à
+    // moitié synchronisé. Rencontré en production dès la première passe qui
+    // valorisait tout le parc.
+    $profile = yangoProfile();
+    $profile['accounts'] = [['type' => 'current', 'balance' => '-1126.0000']];
+
+    yangoSyncReturns(drivers: [$profile]);
+
+    $result = app(YangoSyncService::class)->sync();
+
+    expect($result->driversBalanced)->toBe(1)
+        ->and(Driver::query()->where('yango_id', 'YAN-001')->firstOrFail()->yango_balance)->toBe(-1126);
+});
