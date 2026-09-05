@@ -285,3 +285,16 @@ it('stores a negative balance, a driver owing the park being ordinary', function
     expect($result->driversBalanced)->toBe(1)
         ->and(Driver::query()->where('yango_id', 'YAN-001')->firstOrFail()->yango_balance)->toBe(-1126);
 });
+
+it('stores a courier token in place of a plate, Yango using the same field', function (): void {
+    // `plate_number` tenait en 32 caractères ; les véhicules de course portent
+    // un jeton synthétique bien plus long, et la passe tombait dessus.
+    $token = 'COURIER91a03e0887fa2dda7bdde5bf3ca490a5';
+
+    yangoSyncReturns(vehicles: [yangoCar('CAR-COURIER', $token)]);
+
+    app(YangoSyncService::class)->sync();
+
+    expect(Vehicle::query()->where('yango_id', 'CAR-COURIER')->firstOrFail()->plate_number)
+        ->toBe($token);
+});
