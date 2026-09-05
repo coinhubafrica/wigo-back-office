@@ -1,16 +1,18 @@
 <?php
 
-use App\Contracts\YangoClient;
 use App\Enums\BackOfficeModule;
 use App\Enums\TransactionStatus;
+use App\Http\Integrations\Yango\Requests\CreateDriverTransactionRequest;
+use App\Http\Integrations\Yango\Requests\GetDriverBalanceRequest;
 use App\Livewire\Recharges\Index;
 use App\Models\Driver;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Yango\FakeYangoClient;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
+use Saloon\Http\Faking\MockClient;
+use Saloon\Http\Faking\MockResponse;
 
 beforeEach(function (): void {
     $this->seed(RolePermissionSeeder::class);
@@ -19,6 +21,7 @@ beforeEach(function (): void {
 
 afterEach(function (): void {
     Carbon::setTestNow();
+    MockClient::destroyGlobal();
 });
 
 // ---------------------------------------------------------------- accès
@@ -113,6 +116,13 @@ it('search matches the reference and the driver', function (): void {
 // ---------------------------------------------------------------- actions
 
 it('replaying a transaction to review credits it', function (): void {
+    yangoConfigure();
+    MockClient::destroyGlobal();
+    MockClient::global([
+        CreateDriverTransactionRequest::class => MockResponse::make([], 200),
+        GetDriverBalanceRequest::class => yangoBalanceResponse(5000),
+    ]);
+
     $driver = Driver::factory()->create();
     $recharge = Transaction::factory()->forDriver($driver)->toReview()->create(['amount' => 5000]);
     $agent = rechargesUser('bonus');
@@ -138,8 +148,8 @@ it('marking a pending transaction credited records the agent', function (): void
     $recharge = Transaction::factory()->forDriver($driver)->paid()->create(['amount' => 12500]);
     $agent = rechargesUser('bonus');
 
-    /** @var FakeYangoClient $yango */
-    $yango = app(YangoClient::class);
+    MockClient::destroyGlobal();
+    $yango = MockClient::global([]);
 
     Livewire::actingAs($agent)
         ->test(Index::class)
@@ -151,7 +161,7 @@ it('marking a pending transaction credited records the agent', function (): void
     $this->assertSame(TransactionStatus::Credited, $recharge->refresh()->status);
     // L'agent a crédité à la main sur Yango : le back-office ne fait que
     // le constater, il ne recrédite pas.
-    $this->assertCount(0, $yango->credits());
+    $yango->assertNotSent(CreateDriverTransactionRequest::class);
     $this->assertDatabaseHas('audit_logs', [
         'action' => 'recharge.marked_credited',
         'user_id' => $agent->id,

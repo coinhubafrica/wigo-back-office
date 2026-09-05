@@ -68,12 +68,4 @@ return [
         'driver' => env('WAVE_DRIVER', 'fake'),
     ],
 
-    /*
-    | Yango Fleet — c'est elle qui fait foi sur le solde du conducteur.
-    | `driver` à `fake` (défaut) crédite un grand livre en mémoire.
-    */
-    'yango' => [
-        'driver' => env('YANGO_DRIVER', 'fake'),
-    ],
-
 ];

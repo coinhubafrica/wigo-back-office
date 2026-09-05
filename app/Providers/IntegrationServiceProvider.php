@@ -13,8 +13,6 @@ use App\Services\Sms\HttpSmsSender;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Wave\FakeWaveClient;
 use App\Services\Wave\SaloonWaveClient;
-use App\Services\Yango\FakeYangoClient;
-use App\Services\Yango\FakeYangoDirectory;
 use App\Services\Yango\SaloonYangoClient;
 use App\Services\Yango\SaloonYangoDirectory;
 use Illuminate\Support\ServiceProvider;
@@ -51,20 +49,11 @@ class IntegrationServiceProvider extends ServiceProvider
             return new SaloonWaveClient;
         });
 
-        $this->app->singleton(YangoClient::class, function (): YangoClient {
-            if ($this->app->environment('testing') || config('services.yango.driver') === 'fake') {
-                return new FakeYangoClient;
-            }
+        // Yango n'a pas de doublure : les tests simulent l'API par le
+        // `MockClient` de Saloon, qui exerce le connecteur et le décodage au
+        // lieu de les contourner (cf. `.ai/rules/yango.md`).
+        $this->app->singleton(YangoClient::class, fn (): YangoClient => new SaloonYangoClient);
 
-            return new SaloonYangoClient;
-        });
-
-        $this->app->singleton(YangoDirectory::class, function (): YangoDirectory {
-            if ($this->app->environment('testing') || config('services.yango.driver') === 'fake') {
-                return new FakeYangoDirectory;
-            }
-
-            return new SaloonYangoDirectory;
-        });
+        $this->app->singleton(YangoDirectory::class, fn (): YangoDirectory => new SaloonYangoDirectory);
     }
 }

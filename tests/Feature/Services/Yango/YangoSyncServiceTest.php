@@ -1,29 +1,48 @@
 <?php
 
-use App\Contracts\YangoDirectory;
 use App\Enums\DriverStatus;
+use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
+use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
 use App\Models\Driver;
 use App\Models\Vehicle;
-use App\Services\Yango\FakeYangoDirectory;
 use App\Services\Yango\YangoSyncService;
 use Illuminate\Support\Carbon;
+use Saloon\Http\Faking\MockClient;
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-09-04 10:00:00');
 
-    /** @var FakeYangoDirectory $directory */
-    $directory = app(YangoDirectory::class);
-    $this->directory = $directory;
+    yangoConfigure();
 });
 
 afterEach(function (): void {
     Carbon::setTestNow();
+    MockClient::destroyGlobal();
 });
+
+/**
+ * Ce que Yango remonte pour cette passe.
+ *
+ * Indexé par classe de requête et non en séquence : la passe demande les
+ * conducteurs puis les véhicules, et chacune trouve sa réponse quel que soit
+ * l'ordre. Les pages simulées sont plus courtes que le `pageSize` demandé, ce
+ * qui termine la pagination au premier tour.
+ *
+ * @param  list<array<string, mixed>>  $drivers
+ * @param  list<array<string, mixed>>  $vehicles
+ */
+function yangoSyncReturns(array $drivers = [], array $vehicles = []): void
+{
+    MockClient::global([
+        GetAllDriversRequest::class => yangoDriversResponse($drivers),
+        GetAllVehiclesRequest::class => yangoVehiclesResponse($vehicles),
+    ]);
+}
 
 // ------------------------------------------------------------- conducteurs
 
 it('creates a driver Yango knows and wigo does not', function (): void {
-    $this->directory->setDrivers([yangoSyncProfile()]);
+    yangoSyncReturns(drivers: [yangoSyncProfile()]);
 
     $result = yangoSyncService()->sync();
 
@@ -43,7 +62,7 @@ it('updates a driver already matched on the yango id and stamps the sync', funct
         'last_name' => 'ANCIEN',
     ]);
 
-    $this->directory->setDrivers([yangoSyncProfile()]);
+    yangoSyncReturns(drivers: [yangoSyncProfile()]);
 
     yangoSyncService()->sync();
 
@@ -59,7 +78,7 @@ it('adopts an existing driver matched on the phone number', function (): void {
         'phone' => '+2250700000001',
     ]);
 
-    $this->directory->setDrivers([yangoSyncProfile()]);
+    yangoSyncReturns(drivers: [yangoSyncProfile()]);
 
     $result = yangoSyncService()->sync();
 
@@ -75,7 +94,7 @@ it('adopts on a national number Yango sends without its country code', function 
         'phone' => '+2250700000001',
     ]);
 
-    $this->directory->setDrivers([yangoSyncProfile(phone: '0700000001')]);
+    yangoSyncReturns(drivers: [yangoSyncProfile(phone: '0700000001')]);
 
     yangoSyncService()->sync();
 
@@ -83,7 +102,7 @@ it('adopts on a national number Yango sends without its country code', function 
 });
 
 it('skips and logs a profile with no usable phone number', function (): void {
-    $this->directory->setDrivers([yangoSyncProfile(phone: null)]);
+    yangoSyncReturns(drivers: [yangoSyncProfile(phone: null)]);
 
     $result = yangoSyncService()->sync();
 
@@ -94,7 +113,7 @@ it('skips and logs a profile with no usable phone number', function (): void {
 it('never rewrites the status of a suspended driver', function (): void {
     $driver = Driver::factory()->withYangoId('YAN-001')->suspended('Documents non conformes')->create();
 
-    $this->directory->setDrivers([yangoSyncProfile()]);
+    yangoSyncReturns(drivers: [yangoSyncProfile()]);
 
     yangoSyncService()->sync();
 
@@ -108,7 +127,7 @@ it('never rewrites the status of a suspended driver', function (): void {
 // ---------------------------------------------------------------- véhicules
 
 it('syncs the vehicle carried by the driver profile', function (): void {
-    $this->directory->setDrivers([yangoSyncProfile()]);
+    yangoSyncReturns(drivers: [yangoSyncProfile()]);
 
     yangoSyncService()->sync();
 
@@ -125,7 +144,7 @@ it('moves the vehicle when Yango reassigns it, without a second row', function (
     $previous = Driver::factory()->withYangoId('YAN-000')->create();
     Vehicle::factory()->for($previous)->withYangoId('CAR-001')->create();
 
-    $this->directory->setDrivers([yangoSyncProfile()]);
+    yangoSyncReturns(drivers: [yangoSyncProfile()]);
 
     yangoSyncService()->sync();
 
@@ -137,7 +156,7 @@ it('moves the vehicle when Yango reassigns it, without a second row', function (
 });
 
 it('syncs a park vehicle assigned to nobody', function (): void {
-    $this->directory->setVehicles([yangoSyncCar(id: 'CAR-042', plate: '9999-ZZ-01')]);
+    yangoSyncReturns(vehicles: [yangoSyncCar(id: 'CAR-042', plate: '9999-ZZ-01')]);
 
     $result = yangoSyncService()->sync();
 
@@ -149,8 +168,7 @@ it('syncs a park vehicle assigned to nobody', function (): void {
 });
 
 it('does not detach a vehicle the driver pass just linked', function (): void {
-    $this->directory->setDrivers([yangoSyncProfile()]);
-    $this->directory->setVehicles([yangoSyncCar()]);
+    yangoSyncReturns(drivers: [yangoSyncProfile()], vehicles: [yangoSyncCar()]);
 
     yangoSyncService()->sync();
 
@@ -166,7 +184,7 @@ it('counts records Yango no longer reports without touching them', function (): 
     $missing = Driver::factory()->withYangoId('YAN-999')->staleSync(9)->create();
     $missingVehicle = Vehicle::factory()->withYangoId('CAR-999')->staleSync(9)->create();
 
-    $this->directory->setDrivers([yangoSyncProfile()]);
+    yangoSyncReturns(drivers: [yangoSyncProfile()]);
 
     $result = yangoSyncService()->sync();
 

@@ -41,3 +41,20 @@ La commande dispatche `SyncYangoJob` par défaut ; `--now` lance la passe en lig
 Le chemin planifié perd donc sa sortie console et son code d'échec — assumé, le planificateur la jetait déjà. `SyncYangoJob` journalise les compteurs en `Log::info`, et une clé refusée atterrit dans `failed_jobs`.
 
 `$timeout = 1800` sur le job **oblige** `retry_after` (défaut porté à 1860 dans `config/queue.php`) à rester au-dessus : en dessous, le worker reprendrait le job en cours de passe et deux passes tourneraient de front sur les mêmes lignes. Le verrou `ShouldBeUnique` passe par le magasin de **cache** — un environnement en `array` ou `file` rendrait l'unicité illusoire.
+
+## Pas de doublure Yango : `MockClient` est la seule simulation
+`FakeYangoClient` et `FakeYangoDirectory` ont été supprimés. L'API Yango ne se simule que par le `MockClient` de Saloon, qui exerce le connecteur, les requêtes et le décodage au lieu de les court-circuiter. Deux mécaniques pour feindre la même API, c'en était une de trop.
+
+Conséquence assumée : **`YANGO_DRIVER` n'existe plus**, et `config/services.php` n'a plus de bloc `yango`. Le développement local parle à la vraie API avec les identifiants saisis dans « Paramètres », ou échoue comme en production. Ce n'est pas une régression, c'est le prix payé — ne pas réintroduire de pilote `fake`. (Wave garde le sien : `FakeWaveClient` n'est pas concerné.)
+
+Écrire un test qui touche Yango :
+
+- `yangoConfigure()` d'abord, sinon `isConfigured()` refuse de sortir et aucune requête n'atteint le mock.
+- Les fabriques de charge utile vivent dans `tests/Pest.php` : `yangoProfile()`, `yangoCar()`, `yangoDriversResponse()`, `yangoVehiclesResponse()`, `yangoBalanceResponse()`, `yangoRefusal()`.
+- **Indexer par classe de requête** (`GetAllDriversRequest::class => ...`) plutôt qu'en séquence : l'ordre des appels devient sans importance, et un rejeu (429, quatre tentatives) ne vide pas la file de réponses.
+- `MockClient::destroyGlobal()` en `afterEach`, sans exception : un mock global qui fuit contamine les fichiers suivants.
+
+Deux pièges vérifiés à l'expérience :
+
+1. **`MockClient::global()` utilise `??=`** : appelé alors qu'un global existe déjà, il rend l'ancien et **ignore silencieusement** les nouvelles réponses. Pour remplacer le mock d'un `beforeEach` dans un test précis, il faut `MockClient::destroyGlobal()` juste avant.
+2. **Une réponse indexée par classe est resservie à chaque appel de cette classe.** `SaloonYangoDirectory::paginate()` redemande tant qu'une page est pleine : une page simulée qui fait exactement `pageSize` boucle à l'infini. Garder les pages simulées plus courtes, ou passer une closure pour rendre des pages successives.

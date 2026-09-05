@@ -1,23 +1,31 @@
 <?php
 
 use App\Contracts\WaveClient;
-use App\Contracts\YangoClient;
 use App\Enums\TransactionStatus;
+use App\Http\Integrations\Yango\Requests\CreateDriverTransactionRequest;
+use App\Http\Integrations\Yango\Requests\GetDriverBalanceRequest;
 use App\Models\Driver;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Recharge\RechargeService;
 use App\Services\Wave\FakeWaveClient;
-use App\Services\Yango\FakeYangoClient;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
+use Saloon\Http\Faking\MockClient;
+use Saloon\Http\Faking\MockResponse;
+use Saloon\Http\PendingRequest;
 
+/**
+ * Wave garde sa doublure, Yango non : seule l'intégration Yango est simulée
+ * par `MockClient` (cf. `.ai/rules/yango.md`). La dissymétrie est voulue —
+ * `MockClient` n'intercepte que ce qui sort par Saloon, et le faux Wave ne
+ * sort jamais.
+ */
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-29 10:00:00');
 
-    /** @var FakeYangoClient $yango */
-    $yango = app(YangoClient::class);
-    $this->yango = $yango;
+    yangoConfigure();
+    $this->yango = yangoAcceptsCredits();
 
     /** @var FakeWaveClient $wave */
     $wave = app(WaveClient::class);
@@ -26,7 +34,64 @@ beforeEach(function (): void {
 
 afterEach(function (): void {
     Carbon::setTestNow();
+    MockClient::destroyGlobal();
 });
+
+/**
+ * Yango refuse le premier crédit, puis accepte : c'est « Wave a encaissé,
+ * Yango a refusé », donc la bascule en « à vérifier » et le rejeu réussi.
+ */
+function yangoRefusesFirstCredit(): MockClient
+{
+    $seen = false;
+
+    // `MockClient::global()` rend le global existant sans regarder les nouvelles
+    // réponses (`??=`) : il faut le détruire pour le remplacer.
+    MockClient::destroyGlobal();
+
+    return MockClient::global([
+        CreateDriverTransactionRequest::class => function () use (&$seen): MockResponse {
+            if ($seen) {
+                return MockResponse::make([], 200);
+            }
+
+            $seen = true;
+
+            return MockResponse::make(['message' => 'refusé'], 422);
+        },
+        GetDriverBalanceRequest::class => yangoBalanceResponse(),
+    ]);
+}
+
+/**
+ * Yango accepte les crédits et rend le solde demandé.
+ *
+ * Indexé par classe de requête : un règlement crédite puis relit le solde,
+ * deux requêtes distinctes qu'une séquence obligerait à compter.
+ */
+function yangoAcceptsCredits(?int $balance = null): MockClient
+{
+    // La doublure d'avant tenait un grand livre : le solde relu après un
+    // règlement valait la somme créditée. On reproduit ce lien plutôt qu'un
+    // solde figé, sans quoi « le règlement rafraîchit le solde » ne prouverait
+    // plus rien.
+    $credited = 0;
+
+    MockClient::destroyGlobal();
+
+    return MockClient::global([
+        CreateDriverTransactionRequest::class => function (PendingRequest $pending) use (&$credited): MockResponse {
+            $credited += (int) ($pending->getRequest()->body()->all()['amount'] ?? 0);
+
+            return MockResponse::make([], 200);
+        },
+        // `use (&$credited)` et non une flèche : le solde doit refléter ce qui
+        // vient d'être crédité, pas la valeur figée à la définition.
+        GetDriverBalanceRequest::class => function () use (&$credited, $balance): MockResponse {
+            return yangoBalanceResponse($balance ?? $credited);
+        },
+    ]);
+}
 
 // ---------------------------------------------------------------- ouverture
 
@@ -86,7 +151,7 @@ it('a settlement credits the driver and writes the notification', function (): v
     $this->assertSame(TransactionStatus::Credited, $recharge->status);
     $this->assertNotNull($recharge->settled_at);
     $this->assertNotNull($recharge->paid_at);
-    $this->assertCount(1, $this->yango->credits());
+    $this->yango->assertSentCount(1, CreateDriverTransactionRequest::class);
     $this->assertSame(1, $driver->notifications()->count());
 });
 
@@ -98,7 +163,7 @@ it('settling twice never credits twice', function (): void {
     rechargeServiceInstance()->settleFromWebhook($recharge->reference, 'cos-123');
     rechargeServiceInstance()->settleFromWebhook($recharge->reference, 'cos-123');
 
-    $this->assertCount(1, $this->yango->credits());
+    $this->yango->assertSentCount(1, CreateDriverTransactionRequest::class);
     $this->assertSame(1, $driver->notifications()->count());
     $this->assertSame(10000, $driver->refresh()->yango_balance);
 });
@@ -119,7 +184,7 @@ it('a fleet failure leaves the transaction to review', function (): void {
     $driver = Driver::factory()->create();
     $recharge = rechargeServiceInstance()->initiate($driver, 10000);
 
-    $this->yango->failNext();
+    $this->yango = yangoRefusesFirstCredit();
     rechargeServiceInstance()->settleFromWebhook($recharge->reference);
 
     $recharge->refresh();
@@ -133,7 +198,7 @@ it('a fleet failure leaves the transaction to review', function (): void {
 it('a webhook for an unknown reference is ignored', function (): void {
     rechargeServiceInstance()->settleFromWebhook('RCH-2026-9999');
 
-    $this->assertCount(0, $this->yango->credits());
+    $this->yango->assertNotSent(CreateDriverTransactionRequest::class);
 });
 
 // ---------------------------------------------------------------- rattrapage
@@ -142,7 +207,7 @@ it('replaying a to review transaction credits it and traces the agent', function
     $driver = Driver::factory()->create();
     $recharge = rechargeServiceInstance()->initiate($driver, 10000);
 
-    $this->yango->failNext();
+    $this->yango = yangoRefusesFirstCredit();
     rechargeServiceInstance()->settleFromWebhook($recharge->reference);
 
     $agent = User::factory()->create();
@@ -175,7 +240,7 @@ it('marking credited by hand never calls the fleet api', function (): void {
 
     $this->assertSame(TransactionStatus::Credited, $marked->status);
     // L'agent a déjà crédité à la main : rappeler Fleet créditerait deux fois.
-    $this->assertCount(0, $this->yango->credits());
+    $this->yango->assertNotSent(CreateDriverTransactionRequest::class);
     $this->assertSame(1, $driver->notifications()->count());
     $this->assertDatabaseHas('audit_logs', [
         'action' => 'recharge.marked_credited',
@@ -211,11 +276,12 @@ it('a fresh cached balance is not re read from fleet', function (): void {
         'balance_read_at' => now(),
     ]);
 
-    // Fleet annonce autre chose, mais le cache est frais : on ne le
-    // relit pas pour autant.
-    $this->yango->setBalance($driver, 999);
+    // Yango annoncerait autre chose, mais le cache est frais : on ne
+    // l'interroge pas pour autant.
+    $this->yango = yangoAcceptsCredits(balance: 999);
 
     $this->assertSame(4200, rechargeServiceInstance()->balanceFor($driver));
+    $this->yango->assertNotSent(GetDriverBalanceRequest::class);
 });
 
 it('a stale cached balance is refreshed from fleet', function (): void {
@@ -224,7 +290,7 @@ it('a stale cached balance is refreshed from fleet', function (): void {
         'balance_read_at' => now()->subHour(),
     ]);
 
-    $this->yango->setBalance($driver, 9100);
+    $this->yango = yangoAcceptsCredits(balance: 9100);
 
     $this->assertSame(9100, rechargeServiceInstance()->balanceFor($driver));
     $this->assertSame(9100, $driver->refresh()->yango_balance);

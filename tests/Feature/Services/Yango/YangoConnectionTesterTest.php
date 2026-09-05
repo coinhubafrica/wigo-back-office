@@ -1,19 +1,19 @@
 <?php
 
-use App\Contracts\YangoDirectory;
-use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Models\Driver;
-use App\Services\Yango\FakeYangoDirectory;
 use App\Services\Yango\YangoConnectionTester;
+use Saloon\Http\Faking\MockClient;
 
 beforeEach(function (): void {
-    /** @var FakeYangoDirectory $directory */
-    $directory = app(YangoDirectory::class);
-    $this->directory = $directory;
+    yangoConfigure();
+});
+
+afterEach(function (): void {
+    MockClient::destroyGlobal();
 });
 
 it('succeeds when Yango answers', function (): void {
-    $this->directory->setDrivers([['driver_profile' => ['id' => 'YAN-001']]]);
+    MockClient::global([yangoDriversResponse([yangoProfile()])]);
 
     $result = app(YangoConnectionTester::class)->test();
 
@@ -22,6 +22,8 @@ it('succeeds when Yango answers', function (): void {
 });
 
 it('treats an empty park as a success, not a breakdown', function (): void {
+    MockClient::global([yangoDriversResponse()]);
+
     $result = app(YangoConnectionTester::class)->test();
 
     expect($result->succeeded)->toBeTrue()
@@ -29,13 +31,7 @@ it('treats an empty park as a success, not a breakdown', function (): void {
 });
 
 it('carries the status back when Yango refuses', function (): void {
-    $this->directory->failWith(new class('Clé refusée') extends YangoFleetException
-    {
-        public function getStatusCode(): ?int
-        {
-            return 401;
-        }
-    });
+    MockClient::global([yangoRefusal(401, 'Clé refusée')]);
 
     $result = app(YangoConnectionTester::class)->test();
 
@@ -45,14 +41,7 @@ it('carries the status back when Yango refuses', function (): void {
 });
 
 it('writes nothing to the park', function (): void {
-    $this->directory->setDrivers([[
-        'driver_profile' => [
-            'id' => 'YAN-001',
-            'first_name' => 'Kouassi',
-            'last_name' => 'KONE',
-            'phones' => ['+2250700000001'],
-        ],
-    ]]);
+    MockClient::global([yangoDriversResponse([yangoProfile()])]);
 
     app(YangoConnectionTester::class)->test();
 

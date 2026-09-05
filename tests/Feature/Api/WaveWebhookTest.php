@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\TransactionStatus;
+use App\Http\Integrations\Yango\Requests\CreateDriverTransactionRequest;
+use App\Http\Integrations\Yango\Requests\GetDriverBalanceRequest;
 use App\Jobs\CreditRechargeJob;
 use App\Models\Driver;
 use App\Models\Transaction;
@@ -9,8 +11,30 @@ use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
+use Saloon\Http\Faking\MockClient;
+use Saloon\Http\Faking\MockResponse;
+use Saloon\Http\PendingRequest;
 
 beforeEach(function (): void {
+    // Le règlement va jusqu'au crédit Yango : sans mock, l'appel réel échoue et
+    // la transaction bascule en « à vérifier ». Le solde relu suit ce qui vient
+    // d'être crédité, comme le ferait Yango.
+    yangoConfigure();
+
+    $credited = 0;
+
+    MockClient::destroyGlobal();
+    MockClient::global([
+        CreateDriverTransactionRequest::class => function (PendingRequest $pending) use (&$credited): MockResponse {
+            $credited += (int) ($pending->getRequest()->body()->all()['amount'] ?? 0);
+
+            return MockResponse::make([], 200);
+        },
+        GetDriverBalanceRequest::class => function () use (&$credited): MockResponse {
+            return yangoBalanceResponse($credited);
+        },
+    ]);
+
     // Deux secrets distincts : c'est ce qui permet de vérifier qu'un compte ne
     // valide pas la signature de l'autre.
     $shop = app(WaveShopSettings::class);
@@ -70,6 +94,10 @@ it('acknowledges an unrelated event without queueing', function (): void {
         ->assertOk();
 
     Queue::assertNothingPushed();
+});
+
+afterEach(function (): void {
+    MockClient::destroyGlobal();
 });
 
 it('credits the recharge end to end through the webhook', function (): void {

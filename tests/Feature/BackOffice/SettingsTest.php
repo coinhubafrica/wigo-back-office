@@ -5,14 +5,11 @@
  * surtout pas pouvoir changer.
  */
 
-use App\Contracts\YangoDirectory;
 use App\Enums\BackOfficeModule;
 use App\Enums\Permission as BackOfficePermission;
-use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Livewire\Settings\Index;
 use App\Models\AuditLog;
 use App\Models\User;
-use App\Services\Yango\FakeYangoDirectory;
 use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
 use App\Settings\WaveShopSettings;
@@ -20,9 +17,14 @@ use App\Settings\WaveTopupSettings;
 use App\Settings\YangoSettings;
 use Database\Seeders\RolePermissionSeeder;
 use Livewire\Livewire;
+use Saloon\Http\Faking\MockClient;
 
 beforeEach(function (): void {
     $this->seed(RolePermissionSeeder::class);
+});
+
+afterEach(function (): void {
+    MockClient::destroyGlobal();
 });
 
 it('lets an authorised user reach the settings', function (): void {
@@ -213,9 +215,8 @@ it('encrypts the api key at rest', function (): void {
 it('reports a successful connection test', function (): void {
     settingsStoreYangoKey('cle-valide');
 
-    /** @var FakeYangoDirectory $directory */
-    $directory = app(YangoDirectory::class);
-    $directory->setDrivers([['driver_profile' => ['id' => 'YAN-001']]]);
+    MockClient::destroyGlobal();
+    MockClient::global([yangoDriversResponse([yangoProfile()])]);
 
     Livewire::actingAs(settingsUser('admin'))
         ->test(Index::class)
@@ -227,15 +228,8 @@ it('reports a successful connection test', function (): void {
 it('reports the status when yango refuses the key', function (): void {
     settingsStoreYangoKey('cle-invalide');
 
-    /** @var FakeYangoDirectory $directory */
-    $directory = app(YangoDirectory::class);
-    $directory->failWith(new class('Clé refusée') extends YangoFleetException
-    {
-        public function getStatusCode(): ?int
-        {
-            return 401;
-        }
-    });
+    MockClient::destroyGlobal();
+    MockClient::global([yangoRefusal(401, 'Clé refusée')]);
 
     Livewire::actingAs(settingsUser('admin'))
         ->test(Index::class)

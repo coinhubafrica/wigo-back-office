@@ -1,28 +1,27 @@
 <?php
 
-use App\Contracts\YangoDirectory;
-use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
+use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
+use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
 use App\Jobs\SyncYangoJob;
 use App\Models\Driver;
-use App\Services\Yango\FakeYangoDirectory;
 use Illuminate\Support\Facades\Queue;
+use Saloon\Http\Faking\MockClient;
 
 beforeEach(function (): void {
-    /** @var FakeYangoDirectory $directory */
-    $directory = app(YangoDirectory::class);
-    $this->directory = $directory;
+    yangoConfigure();
+});
+
+afterEach(function (): void {
+    MockClient::destroyGlobal();
 });
 
 it('prints what the pass reconciled', function (): void {
-    $this->directory->setDrivers([[
-        'driver_profile' => [
-            'id' => 'YAN-001',
-            'first_name' => 'Kouassi',
-            'last_name' => 'KONE',
-            'phones' => ['+2250700000001'],
-        ],
-        'car' => ['id' => 'CAR-001', 'number' => '1234-AB-01'],
-    ]]);
+    MockClient::global([
+        GetAllDriversRequest::class => yangoDriversResponse([
+            yangoProfile(car: yangoCar()),
+        ]),
+        GetAllVehiclesRequest::class => yangoVehiclesResponse(),
+    ]);
 
     $this->artisan('yango:sync --now')
         ->expectsOutputToContain('conducteurs : 1 sync')
@@ -35,13 +34,18 @@ it('prints what the pass reconciled', function (): void {
 it('warns about records Yango no longer reports', function (): void {
     Driver::factory()->withYangoId('YAN-999')->staleSync(9)->create();
 
+    MockClient::global([
+        GetAllDriversRequest::class => yangoDriversResponse(),
+        GetAllVehiclesRequest::class => yangoVehiclesResponse(),
+    ]);
+
     $this->artisan('yango:sync --now')
         ->expectsOutputToContain('non remontés : 1 conducteurs')
         ->assertSuccessful();
 });
 
 it('fails when Yango refuses the pass', function (): void {
-    $this->directory->failWith(new YangoFleetException('Clé invalide'));
+    MockClient::global([yangoRefusal(401, 'Clé invalide')]);
 
     $this->artisan('yango:sync --now')
         ->expectsOutputToContain('Yango Fleet a refusé la synchronisation')
@@ -50,13 +54,6 @@ it('fails when Yango refuses the pass', function (): void {
 
 it('queues the pass instead of running it', function (): void {
     Queue::fake();
-
-    $this->directory->setDrivers([[
-        'driver_profile' => [
-            'id' => 'YAN-001',
-            'phones' => ['+2250700000001'],
-        ],
-    ]]);
 
     $this->artisan('yango:sync')
         ->expectsOutputToContain('mise en file')
