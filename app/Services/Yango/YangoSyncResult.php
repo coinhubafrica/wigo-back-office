@@ -19,5 +19,9 @@ class YangoSyncResult
         public int $vehiclesSynced = 0,
         public int $staleDrivers = 0,
         public int $staleVehicles = 0,
+        /** Décalage où la passe s'est arrêtée, repris par la suivante. */
+        public int $driversOffset = 0,
+        /** Vrai quand la passe a fait le tour complet du parc. */
+        public bool $completedLap = false,
     ) {}
 }

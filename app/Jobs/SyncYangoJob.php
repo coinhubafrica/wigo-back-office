@@ -92,6 +92,8 @@ class SyncYangoJob implements ShouldBeUnique, ShouldQueue
             'vehicles_synced' => $result->vehiclesSynced,
             'stale_drivers' => $result->staleDrivers,
             'stale_vehicles' => $result->staleVehicles,
+            'drivers_offset' => $result->driversOffset,
+            'completed_lap' => $result->completedLap,
         ]);
     }
 }

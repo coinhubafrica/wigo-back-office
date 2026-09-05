@@ -52,21 +52,27 @@ class SaloonYangoDirectory implements YangoDirectory
     /** Plafond : un `Retry-After` aberrant ne doit pas immobiliser un worker. */
     private const MAX_RETRY_AFTER = 120;
 
-    public function drivers(int $pageSize = GetAllDriversRequest::DEFAULT_LIMIT): Generator
-    {
+    public function drivers(
+        int $pageSize = GetAllDriversRequest::DEFAULT_LIMIT,
+        ?YangoSyncCursor $cursor = null,
+    ): Generator {
         yield from $this->paginateByOffset(
             fn (string $parkId, int $offset): Request => new GetAllDriversRequest($parkId, $pageSize, $offset),
             'driver_profiles',
             $pageSize,
+            $cursor ?? new YangoSyncCursor,
         );
     }
 
-    public function vehicles(int $pageSize = GetAllVehiclesRequest::DEFAULT_LIMIT): Generator
-    {
+    public function vehicles(
+        int $pageSize = GetAllVehiclesRequest::DEFAULT_LIMIT,
+        ?YangoSyncCursor $cursor = null,
+    ): Generator {
         yield from $this->paginateByOffset(
             fn (string $parkId, int $offset): Request => new GetAllVehiclesRequest($parkId, $pageSize, $offset),
             'cars',
             $pageSize,
+            $cursor ?? new YangoSyncCursor,
         );
     }
 
@@ -100,21 +106,31 @@ class SaloonYangoDirectory implements YangoDirectory
      * `total` manque — une réponse muette sur ce point doit continuer à
      * paginer comme avant, pas s'arrêter à la première page.
      *
+     * Le repère part du décalage qu'on lui donne et avance page après page,
+     * y compris quand la passe finit par lever : c'est ce qui permet à la
+     * suivante de reprendre là plutôt qu'au début du parc.
+     *
      * @param  callable(string, int): Request  $makeRequest
      * @return Generator<int, array<string, mixed>>
      *
      * @throws YangoFleetException
      */
-    private function paginateByOffset(callable $makeRequest, string $key, int $pageSize): Generator
-    {
+    private function paginateByOffset(
+        callable $makeRequest,
+        string $key,
+        int $pageSize,
+        YangoSyncCursor $cursor,
+    ): Generator {
         $settings = $this->configuredSettings();
         $connector = $this->connector($settings);
 
-        $offset = 0;
+        $start = $cursor->offset;
+        $offset = $start;
         $total = null;
+        $cursor->completed = false;
 
         do {
-            $this->breatheBetweenPages($settings, first: $offset === 0);
+            $this->breatheBetweenPages($settings, first: $offset === $start);
 
             $response = $this->fetchPage($connector, $makeRequest($settings->park_id, $offset));
 
@@ -124,13 +140,21 @@ class SaloonYangoDirectory implements YangoDirectory
             yield from $page;
 
             $offset += count($page);
+            // Écrit après le `yield from` : le repère ne doit avancer que sur
+            // des lignes que l'appelant a réellement traitées.
+            $cursor->offset = $offset;
 
             // Une page vide arrête la boucle en toutes circonstances : sans
             // cette garde, un `total` trop grand la ferait tourner sans fin.
+            // Elle marque aussi la fin du parc — il n'y a plus rien après.
             if ($page === []) {
+                $cursor->completed = true;
+
                 return;
             }
         } while ($total !== null ? $offset < $total : count($page) === $pageSize);
+
+        $cursor->completed = true;
     }
 
     /**

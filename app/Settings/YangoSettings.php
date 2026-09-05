@@ -41,6 +41,31 @@ class YangoSettings extends Settings
      */
     public int $page_delay_ms;
 
+    /**
+     * Point de reprise de la passe conducteurs, et son pendant véhicules.
+     *
+     * Yango coupe une passe avant la fin d'un grand parc : reprendre à zéro à
+     * chaque tic repasserait sans fin sur les mêmes premières pages. La passe
+     * note donc où elle s'est arrêtée et repart de là ; elle remet à zéro dès
+     * qu'un tour complet est bouclé.
+     *
+     * En base plutôt qu'en cache : un cache vidé ne doit pas faire perdre la
+     * progression d'une nuit de passes.
+     */
+    public int $drivers_offset;
+
+    public int $vehicles_offset;
+
+    /**
+     * Début du tour en cours, au format ISO 8601, ou chaîne vide.
+     *
+     * Un tour de parc s'étale désormais sur plusieurs passes et plusieurs
+     * heures. Le repère de fraîcheur doit donc dater du début du **tour**, pas
+     * de la passe : mesuré depuis la passe, il compterait « non remontées »
+     * toutes les lignes rapprochées par les passes précédentes du même tour.
+     */
+    public string $lap_started_at;
+
     public static function group(): string
     {
         return 'yango';

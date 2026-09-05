@@ -3,6 +3,7 @@
 namespace App\Contracts;
 
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
+use App\Services\Yango\YangoSyncCursor;
 use Carbon\CarbonInterface;
 
 /**
@@ -30,11 +31,15 @@ interface YangoDirectory
      * Profils conducteurs, véhicule affecté (clé `car`) et comptes (clé
      * `accounts`) compris.
      *
+     * `$cursor` dit d'où partir et note où l'on s'arrête, y compris quand la
+     * passe lève : sur un grand parc, Yango la coupe avant la fin et la
+     * suivante doit reprendre là plutôt qu'au début.
+     *
      * @return iterable<int, array<string, mixed>>
      *
      * @throws YangoFleetException
      */
-    public function drivers(int $pageSize = 1000): iterable;
+    public function drivers(int $pageSize = 500, ?YangoSyncCursor $cursor = null): iterable;
 
     /**
      * Véhicules du parc, y compris ceux qui ne sont affectés à personne.
@@ -43,7 +48,7 @@ interface YangoDirectory
      *
      * @throws YangoFleetException
      */
-    public function vehicles(int $pageSize = 1000): iterable;
+    public function vehicles(int $pageSize = 500, ?YangoSyncCursor $cursor = null): iterable;
 
     /**
      * Courses terminées dans la fenêtre, bornes comprises.
@@ -55,7 +60,7 @@ interface YangoDirectory
      *
      * @throws YangoFleetException
      */
-    public function orders(CarbonInterface $from, CarbonInterface $to, int $pageSize = 500): iterable;
+    public function orders(CarbonInterface $from, CarbonInterface $to, int $pageSize = 250): iterable;
 
     /**
      * Mouvements du grand livre du parc dans la fenêtre, bornes comprises.

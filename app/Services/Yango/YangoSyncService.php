@@ -7,6 +7,8 @@ use App\Enums\DriverStatus;
 use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Models\Driver;
 use App\Models\Vehicle;
+use App\Settings\YangoSettings;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -38,24 +40,94 @@ class YangoSyncService
     public function sync(int $pageSize = GetAllDriversRequest::DEFAULT_LIMIT): YangoSyncResult
     {
         $result = new YangoSyncResult;
+        $settings = app(YangoSettings::class);
 
-        // Repère posé avant la première écriture : tout ce qui garde un
-        // `last_sync_at` antérieur n'a pas été remonté par cette passe.
-        $startedAt = Carbon::now();
+        $drivers = new YangoSyncCursor($settings->drivers_offset);
+        $vehicles = new YangoSyncCursor($settings->vehicles_offset);
 
-        foreach ($this->directory->drivers($pageSize) as $profile) {
-            $this->syncDriver($profile, $result);
-        }
+        // Repère posé au début du **tour**, pas de la passe : un tour s'étale
+        // sur plusieurs passes et plusieurs heures, et le mesurer depuis cette
+        // passe-ci compterait « non remontées » toutes les lignes que les
+        // passes précédentes du même tour ont pourtant rapprochées.
+        $lapStartedAt = $this->lapMarker($settings, $drivers);
 
-        foreach ($this->directory->vehicles($pageSize) as $car) {
-            if ($this->syncVehicle($car, null) !== null) {
-                $result->vehiclesSynced++;
+        // La progression est enregistrée quoi qu'il arrive : une passe coupée
+        // par un 429 au milieu du parc doit laisser derrière elle de quoi
+        // reprendre, sinon la suivante repasse sur les mêmes premières pages
+        // et n'atteint jamais les dernières.
+        try {
+            foreach ($this->directory->drivers($pageSize, $drivers) as $profile) {
+                $this->syncDriver($profile, $result);
             }
+
+            foreach ($this->directory->vehicles($pageSize, $vehicles) as $car) {
+                if ($this->syncVehicle($car, null) !== null) {
+                    $result->vehiclesSynced++;
+                }
+            }
+        } finally {
+            $this->rememberProgress($settings, $drivers, $vehicles);
         }
 
-        $this->reportStale($startedAt, $result);
+        $result->driversOffset = $drivers->offset;
+        $result->completedLap = $drivers->completed && $vehicles->completed;
+
+        // Un tour partiel ne peut rien dire des lignes qu'il n'a pas vues :
+        // les compter « non remontées » accuserait Yango de ne plus connaître
+        // un conducteur que la passe n'a simplement pas encore atteint.
+        if ($result->completedLap) {
+            $this->reportStale($lapStartedAt, $result);
+        }
 
         return $result;
+    }
+
+    /**
+     * Début du tour en cours : posé maintenant si le tour commence, relu
+     * sinon. Une valeur illisible repart de maintenant plutôt que de faire
+     * tomber la passe pour un réglage abîmé.
+     */
+    private function lapMarker(YangoSettings $settings, YangoSyncCursor $drivers): Carbon
+    {
+        if ($drivers->offset === 0 || blank($settings->lap_started_at)) {
+            $startedAt = Carbon::now();
+
+            $settings->lap_started_at = $startedAt->toIso8601String();
+            $settings->save();
+
+            return $startedAt;
+        }
+
+        try {
+            return Carbon::parse($settings->lap_started_at);
+        } catch (InvalidFormatException) {
+            return Carbon::now();
+        }
+    }
+
+    /**
+     * Note où la passe s'est arrêtée, pour que la suivante reprenne là.
+     *
+     * Le parc des véhicules ne s'entame qu'une fois les conducteurs bouclés :
+     * tant que ceux-ci ne sont pas finis, le repère véhicules ne doit pas
+     * bouger, sans quoi une reprise sauterait des voitures.
+     */
+    private function rememberProgress(
+        YangoSettings $settings,
+        YangoSyncCursor $drivers,
+        YangoSyncCursor $vehicles,
+    ): void {
+        $settings->drivers_offset = $drivers->nextOffset();
+        $settings->vehicles_offset = $drivers->completed ? $vehicles->nextOffset() : $settings->vehicles_offset;
+
+        // Tour bouclé : le repère s'efface, la passe suivante en ouvrira un
+        // neuf. Sans cet effacement, tous les tours à venir se compareraient à
+        // la date du premier.
+        if ($drivers->completed && $vehicles->completed) {
+            $settings->lap_started_at = '';
+        }
+
+        $settings->save();
     }
 
     /**
