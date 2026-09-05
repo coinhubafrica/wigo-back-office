@@ -32,7 +32,12 @@ class DriverDailyActivity extends Model
     protected function casts(): array
     {
         return [
-            'activity_date' => 'date',
+            // Format explicite : sans lui, le cast `date` écrit
+            // « 2026-09-03 00:00:00 » dans une colonne `date`, et une
+            // recherche par « 2026-09-03 » ne retrouve pas la ligne qu'elle
+            // vient d'écrire. `updateOrCreate` insérait alors un doublon et
+            // butait sur l'unicité.
+            'activity_date' => 'date:Y-m-d',
             'orders_completed' => 'integer',
             'orders_total' => 'integer',
         ];

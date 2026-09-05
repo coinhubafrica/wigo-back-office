@@ -38,8 +38,14 @@ class DailyActivityService
             $previousTotal = $previousDay->orders_total ?? 0;
             $ordersTotal = $previousTotal + $ordersCompleted;
 
+            // `activity_date` est une colonne `date` : la clé de recherche doit
+            // l'être aussi. Passer un horodatage y insérait « 2026-09-03
+            // 00:00:00 », que la recherche suivante ne retrouvait pas — un
+            // second appel sur la même journée violait alors l'unicité au lieu
+            // de mettre la ligne à jour. Invisible tant que personne ne
+            // rejouait un jour ; la synchronisation des courses, elle, rejoue.
             DriverDailyActivity::query()->updateOrCreate(
-                ['driver_id' => $driver->id, 'activity_date' => $date->toDateString()],
+                ['driver_id' => $driver->id, 'activity_date' => $date->format('Y-m-d')],
                 ['orders_completed' => $ordersCompleted, 'orders_total' => $ordersTotal],
             );
 
