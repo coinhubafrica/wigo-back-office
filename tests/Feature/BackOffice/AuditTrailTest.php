@@ -291,18 +291,6 @@ it('does not journalise saving a campaign draft', function (): void {
     expect(AuditLog::query()->where('action', AuditAction::CampaignSent->value)->exists())->toBeFalse();
 });
 
-it('does not journalise duplicating a campaign', function (): void {
-    // Une copie est un brouillon : elle n'atteint personne, exactement comme
-    // l'enregistrement d'un brouillon ou la duplication d'une annonce.
-    $campaign = Campaign::factory()->create();
-
-    Livewire::actingAs(trailUser('direction'))
-        ->test(Show::class, ['campaign' => $campaign])
-        ->call('duplicate');
-
-    expect(AuditLog::query()->count())->toBe(0);
-});
-
 it('journalises replaying failed campaign deliveries', function (): void {
     // Un rejeu dépose un message chez un conducteur réel et le notifie : il
     // doit rester possible de dire qui l'a relancé.

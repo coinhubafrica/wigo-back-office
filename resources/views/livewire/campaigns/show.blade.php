@@ -30,13 +30,6 @@
                     {{ __('backoffice.campaigns.edit') }}
                 </x-button>
             @endif
-            {{-- Dupliquer plutôt que renvoyer : l'original reste une trace,
-                 la copie s'édite puis part comme un envoi neuf. --}}
-            @if ($canManage)
-                <x-button size="sm" variant="secondary" wire:click="duplicate" target="duplicate">
-                    {{ __('backoffice.campaigns.duplicate') }}
-                </x-button>
-            @endif
             @if ($isDraft)
                 <x-button size="sm" wire:click="confirmSend" target="confirmSend">{{ __('backoffice.campaigns.send') }}</x-button>
             @endif

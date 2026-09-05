@@ -272,43 +272,6 @@ class Show extends Component
     }
 
     /**
-     * Duplique la campagne en un brouillon éditable et l'ouvre.
-     *
-     * L'original n'est pas touché : c'est une trace. La copie garde le même
-     * fichier image — il est stocké une fois et personne ne le réécrit.
-     *
-     * Non journalisé : un brouillon n'atteint personne, au même titre que
-     * `saveDraft` et que la duplication d'une annonce.
-     */
-    public function duplicate(): void
-    {
-        Gate::authorize('manageCampaigns');
-
-        $copy = $this->campaign->replicate([
-            'status', 'sent_at', 'scheduled_for', 'recipients_count', 'created_by_user_id',
-        ]);
-
-        $copy->fill([
-            'title' => $this->campaign->title.' ('.__('backoffice.campaigns.copy_suffix').')',
-            'status' => CampaignStatus::Draft,
-            'sent_at' => null,
-            'scheduled_for' => null,
-            'recipients_count' => 0,
-            'created_by_user_id' => $this->actor()->getKey(),
-        ]);
-
-        $copy->save();
-
-        // Droit dans le composeur, sur la copie : dupliquer sert à repartir
-        // d'un envoi, pas à contempler une ligne de plus dans la liste.
-        $this->redirectRoute(
-            BackOfficeModule::Campaigns->route(),
-            ['brouillon' => $copy->getKey()],
-            navigate: true,
-        );
-    }
-
-    /**
      * Le segment en toutes lettres, pour que la cible se lise sans décoder du
      * JSON.
      *
