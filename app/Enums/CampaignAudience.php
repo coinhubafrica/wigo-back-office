@@ -22,6 +22,20 @@ enum CampaignAudience: string
     }
 
     /**
+     * Ce que la cible recouvre, en une ligne. Les trois libellés seuls ne
+     * disent pas leurs conséquences — « Segment » n'apprend rien tant qu'on
+     * n'a pas cliqué —, et le choix se fait au moment de l'écrire.
+     */
+    public function hint(): string
+    {
+        return match ($this) {
+            self::All => 'Tout le parc, sans exception.',
+            self::Segment => 'Par statut ou par véhicule.',
+            self::Individual => 'Un ou plusieurs, nommés.',
+        };
+    }
+
+    /**
      * Classes Tailwind du badge d'audience. Un envoi au parc entier se
      * distingue à l'œil des deux autres : c'est le seul irréversible à grande
      * échelle.

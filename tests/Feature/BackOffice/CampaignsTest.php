@@ -226,6 +226,32 @@ it('never uses the native confirm dialog', function (): void {
         ->assertDontSee('wire:confirm');
 });
 
+it('describes every audience in the composer', function (): void {
+    // Les trois libellés seuls ne disent pas leurs conséquences : « Segment »
+    // n'apprend rien tant qu'on n'a pas cliqué, or le choix se fait ici.
+    foreach (CampaignAudience::cases() as $case) {
+        expect($case->hint())->not->toBeEmpty();
+    }
+
+    Livewire::actingAs(campaignsUser('bonus'))
+        ->test(Index::class)
+        ->call('compose')
+        ->assertSee(CampaignAudience::All->hint())
+        ->assertSee(CampaignAudience::Segment->hint());
+});
+
+it('shows the driver-side preview as the message is written', function (): void {
+    Livewire::actingAs(campaignsUser('bonus'))
+        ->test(Index::class)
+        ->call('compose')
+        // Vide, l'aperçu invite à écrire plutôt que d'afficher une bulle nue.
+        ->assertSee(__('backoffice.campaigns.preview_empty'))
+        ->set('title', 'Maintenance dimanche')
+        ->set('body', 'Le service sera interrompu.')
+        ->assertDontSee(__('backoffice.campaigns.preview_empty'))
+        ->assertSee('Maintenance dimanche');
+});
+
 it('reopens a draft for editing', function (): void {
     // Sans cela un brouillon enregistré ne pouvait plus être corrigé : ni relu,
     // ni repris, seulement envoyé ou abandonné.
