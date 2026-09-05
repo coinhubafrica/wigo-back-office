@@ -76,3 +76,19 @@ Schedule::command('yango:sync')
     ->hourly()
     ->withoutOverlapping()
     ->name('yango:sync');
+
+// Courses Yango de la veille et du jour. Toutes les heures : une course
+// terminée tard n'apparaît qu'après coup, et la fenêtre glissante la rattrape
+// à la passe suivante. La commande met une journée par job en file — le
+// planificateur n'attend pas la fin de la période.
+Schedule::command('yango:sync-orders')
+    ->hourly()
+    ->withoutOverlapping()
+    ->name('yango:sync-orders');
+
+// Grand livre du parc, même cadence et même fenêtre glissante : un mouvement
+// se règle parfois après la journée qu'il concerne.
+Schedule::command('yango:sync-transactions')
+    ->hourly()
+    ->withoutOverlapping()
+    ->name('yango:sync-transactions');

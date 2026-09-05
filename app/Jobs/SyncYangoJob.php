@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
+use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Services\Yango\YangoSyncService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,9 +52,9 @@ class SyncYangoJob implements ShouldBeUnique, ShouldQueue
      */
     public int $uniqueFor = 3000;
 
-    public int $pageSize = 100;
+    public int $pageSize = GetAllDriversRequest::MAX_LIMIT;
 
-    public function __construct(int $pageSize = 100)
+    public function __construct(int $pageSize = GetAllDriversRequest::MAX_LIMIT)
     {
         $this->pageSize = $pageSize;
     }
@@ -87,6 +88,7 @@ class SyncYangoJob implements ShouldBeUnique, ShouldQueue
             'drivers_synced' => $result->driversSynced,
             'drivers_adopted' => $result->driversAdopted,
             'drivers_skipped' => $result->driversSkipped,
+            'drivers_balanced' => $result->driversBalanced,
             'vehicles_synced' => $result->vehiclesSynced,
             'stale_drivers' => $result->staleDrivers,
             'stale_vehicles' => $result->staleVehicles,

@@ -22,18 +22,45 @@ Un véhicule tient sur une seule ligne : une réaffectation déplace `driver_id`
 ## Yango : un seul chemin, Saloon + YangoSettings
 Tout appel à l'API Yango passe par Saloon (`app/Http/Integrations/Yango/`) et lit ses identifiants dans `YangoSettings` (base, chiffrés), résolus à l'appel.
 
-`HttpFleetClient` a été supprimé : il lisait `config('services.fleet.*')`, soit une seconde source d'identifiants pour le même parc — jamais renseignée en pratique, si bien que les crédits partaient avec un jeton vide et échouaient en silence (`isConfigured()` ne regardait que l'URL). Les variables `FLEET_BASE_URL`/`FLEET_API_KEY`/`FLEET_PARK_ID` sont retirées ; seul `YANGO_DRIVER` (`fake`|autre) reste.
+`HttpFleetClient` a été supprimé : il lisait `config('services.fleet.*')`, soit une seconde source d'identifiants pour le même parc — jamais renseignée en pratique, si bien que les crédits partaient avec un jeton vide et échouaient en silence (`isConfigured()` ne regardait que l'URL). Les variables `FLEET_BASE_URL`/`FLEET_API_KEY`/`FLEET_PARK_ID` sont retirées, et `YANGO_DRIVER` avec elles (cf. « Pas de doublure Yango » plus bas) : il ne reste aucune variable d'environnement Yango.
 
 Contrat d'erreur inchangé et volontairement inverse : `YangoDirectory` (`SaloonYangoDirectory`) lève, `YangoClient` (`SaloonYangoClient`) rend `false`/`null`.
 
 ## L'espacement vit dans la pagination, et la passe ne se découpe jamais
 Yango répond 429 quand une passe enchaîne ses pages sans pause. L'espacement (`YangoSettings::$page_delay_ms`, 250 ms par défaut, 0 pour désactiver) et le rejeu sur 429 vivent dans `SaloonYangoDirectory`, **pas** dans le connecteur : le 429 naît de la rafale de la boucle, pas d'un appel isolé, et le connecteur est partagé avec `YangoConnectionTester` (un appel, derrière un bouton de l'écran Paramètres) et `SaloonYangoClient` (chemin d'argent). La pause précède l'envoi plutôt que de suivre le `yield from`, si bien qu'un consommateur qui abandonne le générateur — le testeur de connexion, qui sort après une ligne — ne la paie jamais. Un test le verrouille.
 
-Piège découvert en chemin : **`$tries` sur `YangoFleetConnector` n'a jamais rejoué quoi que ce soit.** `YangoFleetException` ne descend pas de la `RequestException` de Saloon, que la boucle de rejeu interne est seule à attraper. On ne change pas cette hiérarchie — `RequestException::getResponse()` n'est pas nullable, alors que l'exception se construit aussi sans réponse (identifiants absents). Le rejeu est donc écrit dans `fetchPage()`, où notre type est attrapable.
+Piège découvert en chemin, puis supprimé : **`$tries` sur un connecteur ne rejoue rien ici.** `SendsRequests::send()` ne rattrape que `FatalRequestException|RequestException` ; `YangoFleetException` et `WaveException` descendent de `Exception` et lui échappent. Les trois propriétés (`$tries`, `$retryInterval`, `$useExponentialBackoff`) ont donc été retirées des deux connecteurs — vérifié à l'expérience : un 500 partait une fois, pas trois. **Ne pas les réintroduire** en croyant rétablir un rejeu.
+
+On ne change pas non plus la hiérarchie d'exceptions pour les rendre vivantes : `RequestException::getResponse()` n'est pas nullable, alors que nos exceptions se construisent aussi sans réponse (identifiants absents). Le rejeu est écrit dans `SaloonYangoDirectory::fetchPage()`, où notre type est attrapable, et seulement pour le 429.
 
 `Retry-After` est honoré quand Yango le donne, sinon 30 s, plafonné à 120 s : un en-tête aberrant ne doit pas immobiliser un worker. L'attente passe par la façade `Sleep` et non par `usleep` — c'est la seule forme qu'un test peut feindre.
 
-**La passe ne se découpe jamais en plusieurs jobs.** `reportStale()` compare `last_sync_at` à un repère posé avant la première écriture ; un second job compterait comme « non remontées » toutes les lignes que le premier n'a pas encore atteintes. Un job = une passe = un repère. L'espacement ralentit la passe, il ne la divise pas.
+**La passe parc ne se découpe jamais en plusieurs jobs.** `reportStale()` compare `last_sync_at` à un repère posé avant la première écriture ; un second job compterait comme « non remontées » toutes les lignes que le premier n'a pas encore atteintes. Un job = une passe = un repère. L'espacement ralentit la passe, il ne la divise pas.
+
+Cette règle vaut pour le parc, **pas** pour les courses et les transactions : celles-ci sont bornées par une date et ne tiennent aucun repère. Une journée par job y est donc légitime, et souhaitable — une période d'un mois qui échoue au vingtième jour ne refait pas les dix-neuf précédents.
+
+## Deux paginations, et rien pour les unifier
+Yango en expose deux, et elles ne se ramènent pas l'une à l'autre.
+
+- **Parc** (`/v1/parks/driver-profiles/list`, `/v1/parks/cars/list`) : décalage, `limit` **1000 au plus**, et la réponse porte un **`total`**. C'est lui qui dit où s'arrêter — on ne devine plus la fin à une page incomplète. Une réponse muette sur `total` retombe sur l'ancien critère (page pleine), et une page vide arrête la boucle en toutes circonstances, faute de quoi un `total` trop grand la ferait tourner sans fin. Le décalage avance de `count($page)` et non de `$pageSize` : une page courte au milieu sauterait sinon des lignes.
+- **Journaux datés** (`/v1/parks/orders/list`, `/v2/parks/transactions/list`) : **curseur**, aucun `total`, fenêtre de dates obligatoire pour les courses (`booked_at` ou `ended_at` — on filtre sur `ended_at`, c'est la fin de course qui décide du jour d'activité). On redemande tant qu'un curseur revient. Le premier appel part **sans** la clé `cursor` : Yango lui impose une longueur minimale de 1, une chaîne vide serait refusée.
+
+Plafonds à ne pas confondre : 1000 pour le parc et les transactions, **500 pour les courses**. Et le piège des transactions : `limit` y vaut **40 par défaut** côté Yango — le laisser implicite fait vingt-cinq fois trop d'appels.
+
+## Les montants Yango sont des chaînes décimales
+`amount`, `price`, `balance`, `mileage` arrivent en chaîne à quatre décimales (« 12345.1434 »), jamais en nombre. `yango_transactions.amount` est donc un `decimal(20,4)` et la valeur ne passe jamais par un `float` — ce serait perdre des centimes sur les gros montants.
+
+À distinguer de `transactions.amount`, entier de FCFA : c'est l'argent **local** (Wave encaisse), pas le grand livre du parc. Les deux tables se rapprochent, elles ne fusionnent pas.
+
+## Une course exige un conducteur, une transaction non
+`yango_orders.driver_id` est requis : une course dont le conducteur n'a pas de ligne locale — le plus souvent un profil écarté faute de téléphone exploitable — est comptée, journalisée, **jamais écrite**. Inventer un conducteur ferait pire que le trou qu'on comble.
+
+`yango_transactions.driver_id` est au contraire **nullable** : toutes les écritures du parc ne visent pas quelqu'un, et le grand livre doit rester complet là même où le rapprochement échoue. Une ligne sans conducteur est écrite et comptée à part.
+
+## Le solde du parc arrive gratuitement avec les conducteurs
+`GetAllDriversRequest` demande déjà `fields.account`, et la passe le jetait. `YangoSyncService` le lit désormais par `YangoAccountBalance::read()` — la même lecture que `SaloonYangoClient::balanceFor()`, extraite pour que les deux chemins ne puissent pas diverger et afficher deux soldes pour le même conducteur.
+
+Un solde absent n'écrase rien : `null` n'est pas zéro.
 
 ## `yango:sync` met en file, `--now` exécute sur place
 La commande dispatche `SyncYangoJob` par défaut ; `--now` lance la passe en ligne avec les compteurs à l'écran. Le planificateur appelle la commande sans `--now` : une passe espacée ne doit pas bloquer le processus du planificateur.
@@ -50,7 +77,7 @@ Conséquence assumée : **`YANGO_DRIVER` n'existe plus**, et `config/services.ph
 Écrire un test qui touche Yango :
 
 - `yangoConfigure()` d'abord, sinon `isConfigured()` refuse de sortir et aucune requête n'atteint le mock.
-- Les fabriques de charge utile vivent dans `tests/Pest.php` : `yangoProfile()`, `yangoCar()`, `yangoDriversResponse()`, `yangoVehiclesResponse()`, `yangoBalanceResponse()`, `yangoRefusal()`.
+- Les fabriques de charge utile vivent dans `tests/Pest.php` : `yangoProfile()`, `yangoCar()`, `yangoDriversResponse()`, `yangoVehiclesResponse()`, `yangoBalanceResponse()`, `yangoRefusal()`, `yangoOrderRow()`, `yangoOrdersResponse()`, `yangoTransactionRow()`, `yangoTransactionsResponse()`. Les deux premières listes portent un `total` (nul pour exercer le repli), les deux dernières un `cursor` (vide = dernière page).
 - **Indexer par classe de requête** (`GetAllDriversRequest::class => ...`) plutôt qu'en séquence : l'ordre des appels devient sans importance, et un rejeu (429, quatre tentatives) ne vide pas la file de réponses.
 - `MockClient::destroyGlobal()` en `afterEach`, sans exception : un mock global qui fuit contamine les fichiers suivants.
 

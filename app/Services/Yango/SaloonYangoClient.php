@@ -88,37 +88,7 @@ class SaloonYangoClient implements YangoClient
             return null;
         }
 
-        return $this->readBalance($profile);
-    }
-
-    /**
-     * Solde du compte courant du profil.
-     *
-     * Yango rend une liste de comptes par conducteur ; seul celui de type
-     * `current` porte le solde utilisable. Le montant arrive en chaîne
-     * décimale (« 1500.0000 ») et se lit en entier de FCFA.
-     *
-     * @param  array<string, mixed>  $profile
-     */
-    private function readBalance(array $profile): ?int
-    {
-        $accounts = $profile['accounts'] ?? null;
-
-        if (! is_array($accounts)) {
-            return null;
-        }
-
-        foreach ($accounts as $account) {
-            if (! is_array($account) || ($account['type'] ?? null) !== 'current') {
-                continue;
-            }
-
-            $balance = $account['balance'] ?? null;
-
-            return is_numeric($balance) ? (int) round((float) $balance) : null;
-        }
-
-        return null;
+        return YangoAccountBalance::read($profile);
     }
 
     private function connector(YangoSettings $settings): YangoFleetConnector

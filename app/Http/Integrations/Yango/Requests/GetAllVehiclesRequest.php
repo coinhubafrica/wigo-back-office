@@ -12,16 +12,21 @@ use Saloon\Traits\Body\HasJsonBody;
  *
  * La passe conducteurs ne remonte que les véhicules attribués : celle-ci est
  * la seule à voir le parc dormant.
+ *
+ * Pagination par décalage, avec un `total` dans la réponse.
  */
 class GetAllVehiclesRequest extends Request implements HasBody
 {
     use HasJsonBody;
 
+    /** Plafond imposé par Yango sur cet endpoint. */
+    public const MAX_LIMIT = 1000;
+
     protected Method $method = Method::POST;
 
     public function __construct(
         protected string $parkId,
-        protected int $limit = 100,
+        protected int $limit = self::MAX_LIMIT,
         protected int $offset = 0,
     ) {}
 
@@ -57,7 +62,7 @@ class GetAllVehiclesRequest extends Request implements HasBody
                     'vin',
                 ],
             ],
-            'limit' => $this->limit,
+            'limit' => min($this->limit, self::MAX_LIMIT),
             'offset' => $this->offset,
         ];
     }

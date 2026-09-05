@@ -216,11 +216,21 @@ function yangoCar(string $id = 'CAR-001', string $plate = '1234-AB-01'): array
 /**
  * Réponse à une page de conducteurs.
  *
+ * `total` est ce sur quoi la boucle s'arrête désormais. Le laisser nul rend
+ * une réponse « à l'ancienne », sans total : c'est ainsi qu'on exerce le repli
+ * sur la taille de page.
+ *
  * @param  list<array<string, mixed>>  $profiles
  */
-function yangoDriversResponse(array $profiles = []): MockResponse
+function yangoDriversResponse(array $profiles = [], ?int $total = null): MockResponse
 {
-    return MockResponse::make(['driver_profiles' => $profiles], 200);
+    return MockResponse::make(
+        array_filter(
+            ['driver_profiles' => $profiles, 'total' => $total ?? count($profiles)],
+            fn (mixed $value): bool => $value !== null,
+        ),
+        200,
+    );
 }
 
 /**
@@ -228,9 +238,80 @@ function yangoDriversResponse(array $profiles = []): MockResponse
  *
  * @param  list<array<string, mixed>>  $cars
  */
-function yangoVehiclesResponse(array $cars = []): MockResponse
+function yangoVehiclesResponse(array $cars = [], ?int $total = null): MockResponse
 {
-    return MockResponse::make(['cars' => $cars], 200);
+    return MockResponse::make(
+        array_filter(
+            ['cars' => $cars, 'total' => $total ?? count($cars)],
+            fn (mixed $value): bool => $value !== null,
+        ),
+        200,
+    );
+}
+
+/**
+ * Une course telle que Yango la remonte.
+ *
+ * @return array<string, mixed>
+ */
+function yangoOrderRow(
+    string $id = 'ORD-001',
+    string $driverYangoId = 'YAN-001',
+    string $status = 'complete',
+    string $endedAt = '2026-09-03T18:30:00+00:00',
+): array {
+    return [
+        'id' => $id,
+        'status' => $status,
+        'ended_at' => $endedAt,
+        'driver_profile' => ['id' => $driverYangoId, 'name' => 'KONE, Kouassi'],
+        'price' => '2500.0000',
+        'payment_method' => 'cash',
+    ];
+}
+
+/**
+ * Réponse à une page de courses. `cursor` vide = dernière page.
+ *
+ * @param  list<array<string, mixed>>  $orders
+ */
+function yangoOrdersResponse(array $orders = [], string $cursor = ''): MockResponse
+{
+    return MockResponse::make(['orders' => $orders, 'cursor' => $cursor], 200);
+}
+
+/**
+ * Un mouvement du grand livre tel que Yango le remonte. Le montant est une
+ * chaîne décimale, pas un nombre — c'est le piège de cette passe.
+ *
+ * @return array<string, mixed>
+ */
+function yangoTransactionRow(
+    string $id = 'TRX-001',
+    ?string $driverYangoId = 'YAN-001',
+    string $amount = '12345.1434',
+    string $eventAt = '2026-09-03T11:58:01+00:00',
+): array {
+    return array_filter([
+        'id' => $id,
+        'event_at' => $eventAt,
+        'category_id' => 'partner_service_manual',
+        'category_name' => 'Recurring payments',
+        'amount' => $amount,
+        'currency_code' => 'XOF',
+        'description' => 'Charging #13',
+        'driver_profile_id' => $driverYangoId,
+    ], fn (mixed $value): bool => $value !== null);
+}
+
+/**
+ * Réponse à une page de transactions. `cursor` vide = dernière page.
+ *
+ * @param  list<array<string, mixed>>  $transactions
+ */
+function yangoTransactionsResponse(array $transactions = [], string $cursor = ''): MockResponse
+{
+    return MockResponse::make(['transactions' => $transactions, 'cursor' => $cursor], 200);
 }
 
 /**

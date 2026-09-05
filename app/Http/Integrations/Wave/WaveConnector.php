@@ -20,6 +20,13 @@ use Throwable;
  *
  * L'URL de base reste fixe : les deux comptes visent la même API, seules les
  * clés diffèrent.
+ *
+ * Pas de `$tries` : la boucle de rejeu de Saloon ne rattrape que sa propre
+ * `RequestException`, et `getRequestException()` rend une `WaveException` qui
+ * descend de `Exception`. Les propriétés de rejeu figuraient ici sans jamais
+ * rejouer — les retirer ne change donc aucun comportement, cela cesse
+ * seulement de promettre ce qui n'existait pas. Un rejeu de paiement se
+ * décide de toute façon plus haut, où l'idempotence est tenue.
  */
 class WaveConnector extends Connector
 {
@@ -29,12 +36,6 @@ class WaveConnector extends Connector
     protected int $connectTimeout = 15;
 
     protected int $requestTimeout = 30;
-
-    public ?int $tries = 3;
-
-    public ?int $retryInterval = 1000;
-
-    public ?bool $useExponentialBackoff = true;
 
     public function __construct(protected string $apiKey) {}
 

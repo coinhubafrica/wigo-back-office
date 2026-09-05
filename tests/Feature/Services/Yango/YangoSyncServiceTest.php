@@ -233,3 +233,39 @@ function yangoSyncCar(string $id = 'CAR-001', string $plate = '1234-AB-01'): arr
         'number' => $plate,
     ];
 }
+
+it('reads the whole park balance from the same page, without a second call', function (): void {
+    // Le bloc `accounts` arrive déjà dans la page de conducteurs : le jeter
+    // pour le redemander conducteur par conducteur serait un appel par ligne.
+    $profile = yangoProfile();
+    $profile['accounts'] = [
+        ['type' => 'deposit', 'balance' => '999.0000'],
+        ['type' => 'current', 'balance' => '1500.0000'],
+    ];
+
+    yangoSyncReturns(drivers: [$profile]);
+
+    $result = app(YangoSyncService::class)->sync();
+
+    $driver = Driver::query()->where('yango_id', 'YAN-001')->firstOrFail();
+
+    expect($result->driversBalanced)->toBe(1)
+        ->and($driver->yango_balance)->toBe(1500)
+        ->and($driver->balance_read_at)->not->toBeNull();
+});
+
+it('never overwrites a known balance with nothing', function (): void {
+    // Un solde absent n'est pas un solde nul.
+    Driver::factory()->create([
+        'yango_id' => 'YAN-001',
+        'phone' => '+2250700000001',
+        'yango_balance' => 4200,
+    ]);
+
+    yangoSyncReturns(drivers: [yangoProfile()]);
+
+    $result = app(YangoSyncService::class)->sync();
+
+    expect(Driver::query()->where('yango_id', 'YAN-001')->firstOrFail()->yango_balance)->toBe(4200)
+        ->and($result->driversBalanced)->toBe(0);
+});

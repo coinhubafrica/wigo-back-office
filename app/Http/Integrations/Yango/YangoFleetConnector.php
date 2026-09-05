@@ -21,6 +21,15 @@ use Throwable;
  *
  * `X-Idempotency-Token` est régénéré à chaque requête : sans effet sur les
  * lectures, il protège les écritures d'un doublon si Saloon rejoue l'appel.
+ *
+ * Pas de `$tries` ici, et ce n'est pas un oubli : la boucle de rejeu de Saloon
+ * ne rattrape que sa propre `RequestException`, or `getRequestException()`
+ * rend une `YangoFleetException` qui descend de `Exception`. Les trois
+ * propriétés de rejeu ont donc longtemps figuré sans jamais rejouer quoi que
+ * ce soit. On ne change pas cette hiérarchie — `RequestException::getResponse()`
+ * n'est pas nullable, alors que l'exception se construit aussi sans réponse
+ * (identifiants absents). Le rejeu vit dans `SaloonYangoDirectory::fetchPage()`,
+ * où notre type est attrapable, et seulement pour le 429.
  */
 class YangoFleetConnector extends Connector
 {
@@ -30,12 +39,6 @@ class YangoFleetConnector extends Connector
     protected int $connectTimeout = 30;
 
     protected int $requestTimeout = 60;
-
-    public ?int $tries = 3;
-
-    public ?int $retryInterval = 1000;
-
-    public ?bool $useExponentialBackoff = true;
 
     public function __construct(
         protected string $baseUrl,

@@ -12,17 +12,25 @@ use Saloon\Traits\Body\HasJsonBody;
  *
  * La liste `fields` décide de ce que Yango renvoie : le véhicule affecté
  * (`car`) y figure, si bien qu'une seule passe alimente conducteurs et
- * véhicules. Pagination par décalage — Yango n'offre pas de curseur ici.
+ * véhicules ; le bloc `account` y figure aussi, ce qui donne le solde de tout
+ * le parc sans un appel de plus.
+ *
+ * Pagination par décalage — Yango n'offre pas de curseur ici — et la réponse
+ * porte un `total` : c'est lui, et non la taille de la dernière page, qui dit
+ * où s'arrêter.
  */
 class GetAllDriversRequest extends Request implements HasBody
 {
     use HasJsonBody;
 
+    /** Plafond imposé par Yango sur cet endpoint. */
+    public const MAX_LIMIT = 1000;
+
     protected Method $method = Method::POST;
 
     public function __construct(
         protected string $parkId,
-        protected int $limit = 100,
+        protected int $limit = self::MAX_LIMIT,
         protected int $offset = 0,
     ) {}
 
@@ -77,7 +85,7 @@ class GetAllDriversRequest extends Request implements HasBody
                     'vin',
                 ],
             ],
-            'limit' => $this->limit,
+            'limit' => min($this->limit, self::MAX_LIMIT),
             'offset' => $this->offset,
             'sort_order' => [
                 [

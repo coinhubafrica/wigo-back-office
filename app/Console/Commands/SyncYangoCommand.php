@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
+use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Jobs\SyncYangoJob;
 use App\Services\Yango\YangoSyncService;
 use Illuminate\Console\Command;
@@ -23,14 +24,17 @@ use Illuminate\Console\Command;
 class SyncYangoCommand extends Command
 {
     protected $signature = 'yango:sync
-        {--limit=100 : Taille de page demandée à Yango}
+        {--limit=1000 : Taille de page demandée à Yango (1000 au plus)}
         {--now : Exécute la passe sur place au lieu de la mettre en file}';
 
     protected $description = 'Synchronise les conducteurs et véhicules depuis l\'API Yango Fleet';
 
     public function handle(YangoSyncService $sync): int
     {
-        $pageSize = max(1, (int) $this->option('limit'));
+        $pageSize = min(
+            GetAllDriversRequest::MAX_LIMIT,
+            max(1, (int) $this->option('limit')),
+        );
 
         if (! $this->option('now')) {
             SyncYangoJob::dispatch($pageSize);
@@ -53,10 +57,11 @@ class SyncYangoCommand extends Command
         }
 
         $this->components->info(sprintf(
-            'conducteurs : %d sync, %d adoptés, %d ignorés',
+            'conducteurs : %d sync, %d adoptés, %d ignorés, %d soldes lus',
             $result->driversSynced,
             $result->driversAdopted,
             $result->driversSkipped,
+            $result->driversBalanced,
         ));
 
         $this->components->info(sprintf('véhicules : %d sync', $result->vehiclesSynced));
