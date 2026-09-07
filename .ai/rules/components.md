@@ -9,6 +9,18 @@ paths:
 
 Catalogue des composants Blade partagés. Règle générale : **on n'écrit plus de bouton, de pastille, de champ, de tableau, de carte KPI, d'état vide ni de modale à la main** — on compose ces composants, et quand un écran a besoin d'une variante on l'ajoute ici (composant + test `Blade::render` + cette page), jamais en ligne.
 
+## Namespace `site/` — le site vitrine
+
+`resources/views/components/site/**` sert **exclusivement** la page publique (`wigo.ci`). Chrome distinct : rayon 16 px (`rounded-site`), boutons en pilule, ombres portées (`shadow-lift`), dégradés verts et orange. Ce n'est pas une déclinaison du catalogue d'administration et les deux ne se croisent jamais — un écran de `livewire/**` qui importe un `<x-site.*>` est une régression, et réciproquement.
+
+Pourquoi un second catalogue plutôt que des variantes : `x-button` est un `<button>` porteur de `wire:*` et documenté « quatre intentions, deux tailles — pas plus », là où tous les appels de la vitrine sont des `<a href>` ; et les jetons divergent (8 px contre 16 px, filet contre ombre). Ajouter `variant="marketing"` aurait fait entrer deux langages visuels dans des composants que vingt écrans d'administration épinglent par leurs classes exactes.
+
+Les règles transverses ci-dessous s'appliquent à l'identique : `$attributes->class([...])`, classes littérales résolues en PHP, un test `Blade::render` par composant (`tests/Feature/Site/SiteComponentsTest.php`).
+
+Deux pièges rencontrés à l'écriture, qui valent pour tout composant :
+- **Une entité HTML passée dans une prop est ré-échappée** par `{{ }}` : `title="Roulez &amp; gagnez"` s'affiche « Roulez &amp;amp; gagnez ». Dans une prop, écrire le caractère.
+- **Une espace en bord de slot est absorbée** au rendu : `<span>🎁</span> Texte` colle. La marge appartient au pictogramme (`class="me-1"`).
+
 ## Règles transverses
 
 - **`$attributes->class([...])`, jamais `{{ $attributes }}` + `@class`** sur le même élément : cela produit deux attributs `class` et le navigateur ne garde que le premier — un `class="w-full"` passé au bouton lui faisait perdre tout son style. Pattern : `$attributes->class([...])->merge(['type' => 'button'])`.

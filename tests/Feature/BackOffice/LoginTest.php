@@ -177,13 +177,18 @@ it('an authenticated user is kept away from the login screen', function (): void
 });
 
 it('the root url does not loop for an authenticated user', function (): void {
-    // `/` redirects guests to `/login`; `/login`'s `guest` middleware then
-    // redirects an authenticated visitor away. Without an explicit
-    // `redirectUsersTo` target, that target defaults to `home` (`/`),
-    // which loops forever. Regression for ERR_TOO_MANY_REDIRECTS.
+    // `/` est maintenant le site vitrine, une page publique : elle répond
+    // pour tout le monde, connecté ou non, et la boucle
+    // ERR_TOO_MANY_REDIRECTS que gardait ce test ne peut plus se former
+    // (elle venait de ce que `home` était `/`, qui redirigeait vers
+    // `/login`, que `guest` renvoyait vers `home`).
+    //
+    // Ce qui reste à garantir, et que `redirectUsersTo` assure : `/login`
+    // renvoie un gestionnaire déjà connecté vers son tableau de bord, et non
+    // vers la vitrine publique qu'il ne demandait pas.
     $this->actingAs(loginUser('direction'))
         ->get('/')
-        ->assertRedirect('/login');
+        ->assertOk();
 
     $this->actingAs(loginUser('direction'))
         ->get('/login')

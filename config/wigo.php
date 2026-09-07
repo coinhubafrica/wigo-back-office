@@ -94,4 +94,39 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Domaines
+    |--------------------------------------------------------------------------
+    |
+    | L'application sert deux façades sur le même code : le site vitrine
+    | (`wigo.ci`) et tout le reste — back-office, API mobile, documentation,
+    | webhook Wave (`support.wigo.ci`). Les routes s'y répartissent par
+    | `Route::domain(...)`.
+    |
+    | `null` — la valeur du développement local — retire la contrainte
+    | d'hôte : les deux jeux de routes répondent alors sur `localhost`, la
+    | vitrine à `/` et le back-office sur ses propres chemins. C'est sûr :
+    | `Route::getDomain()` teste `isset()`, donc `null` laisse l'expression
+    | d'hôte compilée nulle, et `HostValidator` accepte tout.
+    |
+    | En production, une route du back-office demandée sur `wigo.ci` ne trouve
+    | plus de correspondance : 404 par le routeur, sans redirection ni fuite.
+    |
+    | ATTENTION : ces valeurs sont lues à la déclaration des routes, donc
+    | figées par `route:cache`. Les changer exige `php artisan route:clear`,
+    | et le déploiement doit les poser avant `php artisan optimize`.
+    |
+    */
+
+    'domains' => [
+        /*
+         * `?:` et non `??` : une variable présente mais vide vaut `''`, qui
+         * est `isset()`-vrai et compilerait une contrainte d'hôte ne
+         * correspondant à rien. Seul `null` retire la contrainte.
+         */
+        'site' => env('WIGO_SITE_DOMAIN') ?: null,
+        'back_office' => env('WIGO_BACK_OFFICE_DOMAIN') ?: null,
+    ],
+
 ];

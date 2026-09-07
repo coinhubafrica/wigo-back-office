@@ -276,3 +276,149 @@ document.addEventListener('alpine:init', () => {
         },
     }))
 })
+
+/**
+ * Menu de la barre d'en-tête du site vitrine.
+ *
+ * Sous `lg` la navigation est repliée derrière un bouton. Le volet se referme
+ * au choix d'une section, à Échap et au passage au format large — un menu
+ * ouvert ne doit pas survivre à une rotation d'écran.
+ *
+ * Calqué sur `appShell` : même problème, même forme. Deux différences — pas de
+ * `livewire:navigated` à écouter (la page est statique, tous les liens sont
+ * des ancres), et c'est le clic sur un lien qui referme, posé dans le gabarit.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('siteNav', () => ({
+        open: false,
+
+        init() {
+            this.media = window.matchMedia('(min-width: 1024px)')
+            this.onResize = (event) => {
+                if (event.matches) {
+                    this.close()
+                }
+            }
+            this.media.addEventListener('change', this.onResize)
+        },
+
+        destroy() {
+            this.media?.removeEventListener('change', this.onResize)
+        },
+
+        toggle() {
+            this.open = ! this.open
+        },
+
+        close() {
+            this.open = false
+        },
+    }))
+})
+
+/**
+ * Apparition au défilement du site vitrine, et compteurs animés.
+ *
+ * Un seul observateur pour les deux : les compteurs partent quand la première
+ * carte de chiffres entre dans le cadre, ils ne sont donc pas un mécanisme
+ * séparé.
+ *
+ * Les éléments partent VISIBLES et c'est ce composant qui les masque
+ * (`.site-reveal`) avant de les révéler : sans JavaScript, la page reste
+ * entièrement lisible. Les chiffres sont d'ailleurs rendus par le serveur à
+ * leur valeur finale — l'animation les ramène à zéro puis les recompte, elle
+ * n'est jamais la source de la valeur affichée.
+ *
+ * `prefers-reduced-motion` court-circuite tout : rien n'est masqué, rien n'est
+ * compté. La transition CSS est déjà neutralisée par la règle globale
+ * d'`app.css`, mais un compteur en JavaScript ne l'est pas.
+ *
+ * L'adhésion se fait par attribut (`data-site-reveal`, `data-site-counter`) et
+ * non par une liste de sélecteurs de classes : renommer un utilitaire Tailwind
+ * ne doit pas éteindre l'animation en silence.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('siteReveal', () => ({
+        counted: false,
+
+        init() {
+            const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+            if (reduced || ! ('IntersectionObserver' in window)) {
+                return
+            }
+
+            /*
+             * Onglet en arrière-plan : le navigateur bride `requestAnimationFrame`
+             * et les transitions. Masquer maintenant figerait la page à
+             * `opacity: 0` jusqu'à ce que le visiteur l'active. On attend donc
+             * que le document soit visible pour armer quoi que ce soit.
+             */
+            if (document.hidden) {
+                document.addEventListener('visibilitychange', () => this.arm(), { once: true })
+
+                return
+            }
+
+            this.arm()
+        },
+
+        /** Masque les cibles puis les révèle à leur entrée dans le cadre. */
+        arm() {
+            const targets = [...this.$el.querySelectorAll('[data-site-reveal]')]
+            targets.forEach((el) => el.classList.add('site-reveal'))
+
+            this.observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (! entry.isIntersecting) {
+                        return
+                    }
+
+                    entry.target.classList.add('site-reveal--visible')
+                    this.observer.unobserve(entry.target)
+
+                    if (! this.counted && entry.target.hasAttribute('data-site-counter')) {
+                        this.counted = true
+                        this.countUp()
+                    }
+                })
+            }, { threshold: 0.15 })
+
+            targets.forEach((el) => this.observer.observe(el))
+        },
+
+        destroy() {
+            this.observer?.disconnect()
+        },
+
+        /** Rampe cubique sur 1400 ms, mise en forme comme le reste de l'app. */
+        countUp() {
+            const format = new Intl.NumberFormat('fr-FR')
+
+            this.$el.querySelectorAll('[data-site-target]').forEach((el) => {
+                const target = Number.parseInt(el.dataset.siteTarget, 10) || 0
+                const duration = 1400
+                let started = null
+
+                const step = (now) => {
+                    if (started === null) {
+                        started = now
+                    }
+
+                    const progress = Math.min((now - started) / duration, 1)
+                    const value = Math.round(target * (1 - Math.pow(1 - progress, 3)))
+
+                    // Espace fine insécable, comme les colonnes chiffrées du
+                    // back-office : `Intl` pose une espace insécable normale.
+                    el.textContent = format.format(value).replace(/ /g, ' ')
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step)
+                    }
+                }
+
+                requestAnimationFrame(step)
+            })
+        },
+    }))
+})

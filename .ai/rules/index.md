@@ -13,6 +13,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Services/Cnps/** | .ai/rules/cnps.md |
 | resources/views/components/**, resources/views/layouts/**, resources/views/vendor/** | .ai/rules/components.md |
 | docs/api/**, app/Support/Docs/**, app/Http/Controllers/Docs/**, resources/views/docs/** | .ai/rules/docs.md |
+| routes/web.php, routes/api.php | .ai/rules/routing-domains.md |
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
 | app/Enums/Permission.php,app/Providers/AppServiceProvider.php | .ai/rules/enums-providers.md |
 | app/Http/** | .ai/rules/http.md |
@@ -25,6 +26,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Providers/AppServiceProvider.php | .ai/rules/providers.md |
 | routes/channels.php | .ai/rules/routes.md |
 | database/seeders/** | .ai/rules/seeders.md |
+| resources/views/site/**, resources/views/components/site/**, resources/views/layouts/site.blade.php | .ai/rules/site.md |
 | app/Settings/** | .ai/rules/settings.md |
 | app/Http/Controllers/Api/V1/ShopController.php,app/Services/Shop/**,app/Models/ShopOrderDocument.php,app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/shop-models.md |
 | app/Livewire/Shop/** | .ai/rules/shop.md |
