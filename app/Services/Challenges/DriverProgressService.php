@@ -36,14 +36,29 @@ class DriverProgressService
     }
 
     /**
-     * Tickets détenus par le conducteur sur ce challenge.
+     * Tickets détenus par le conducteur sur ce challenge, du plus ancien au
+     * plus récent.
+     *
+     * `range_number` reste `null` tant que le vivier du tirage n'est pas gelé :
+     * le numéro n'est attribué qu'à ce moment-là, et c'est lui que le
+     * conducteur compare au ticket gagnant.
+     *
+     * @return list<array{id: string, date: string, range_number: int|null}>
      */
-    public function ticketsHeld(Driver $driver, Challenge $challenge): int
+    public function tickets(Driver $driver, Challenge $challenge): array
     {
         return ChallengeTicket::query()
             ->where('challenge_id', $challenge->id)
             ->where('driver_id', $driver->id)
-            ->count();
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get(['id', 'date', 'range_number'])
+            ->map(fn (ChallengeTicket $ticket): array => [
+                'id' => $ticket->id,
+                'date' => $ticket->date->toDateString(),
+                'range_number' => $ticket->range_number,
+            ])
+            ->all();
     }
 
     /**
@@ -56,6 +71,7 @@ class DriverProgressService
      *     tickets_held: int,
      *     progress_in_block: int,
      *     orders_to_next_ticket: int,
+     *     tickets: list<array{id: string, date: string, range_number: int|null}>,
      * }|null  null si le challenge n'attribue pas de tickets
      */
     public function ticketing(Driver $driver, Challenge $challenge): ?array
@@ -68,13 +84,17 @@ class DriverProgressService
 
         $orders = $this->completedOrders($driver, $challenge);
         $progress = $orders % $ratio;
+        // La liste sert aussi de compteur : les tickets d'un conducteur sur un
+        // challenge se comptent sur les doigts, inutile d'ajouter un `count()`.
+        $tickets = $this->tickets($driver, $challenge);
 
         return [
             'trips_per_ticket' => $ratio,
             'orders_completed' => $orders,
-            'tickets_held' => $this->ticketsHeld($driver, $challenge),
+            'tickets_held' => count($tickets),
             'progress_in_block' => $progress,
             'orders_to_next_ticket' => $ratio - $progress,
+            'tickets' => $tickets,
         ];
     }
 
