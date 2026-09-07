@@ -19,6 +19,10 @@ use Illuminate\Support\Str;
  * mois. Le montant de référence appartient au mois, pas au versement : deux
  * versements d'août partagent le même, et un reliquat réglé en septembre reste
  * jugé au montant d'août.
+ *
+ * Un mois ne se lit pas seul : l'excédent versé au-delà de sa référence solde
+ * le mois suivant, de proche en proche (`allocateWithCarryOver`). Le report est
+ * calculé à la lecture, jamais stocké — comme l'état du mois.
  */
 class CnpsStatementService
 {
@@ -75,6 +79,112 @@ class CnpsStatementService
     }
 
     /**
+     * Répartit les versements mois par mois, du plus ancien au plus récent, en
+     * reportant l'excédent d'un mois sur le suivant.
+     *
+     * Un conducteur qui règle 15 000 en août sur une référence de 9 000 n'a pas
+     * « payé 167 % d'août » : il a soldé août et pris 6 000 d'avance sur
+     * septembre. Le trop-perçu descend donc la chronologie, mois après mois,
+     * tant qu'il reste quelque chose à couvrir.
+     *
+     * Le report est **calculé, jamais stocké** — comme le statut. Les
+     * déclarations gardent le mois que le conducteur a saisi ; seule leur
+     * lecture cumulée bouge.
+     *
+     * Deux garde-fous :
+     *  - un mois sans référence n'absorbe rien (aucun repère pour dire
+     *    « soldé »), il retient ce qui lui a été déclaré et laisse passer
+     *    l'excédent des mois d'avant ;
+     *  - le report ne remonte pas le temps : il ne descend que vers l'avenir.
+     *
+     * @param  list<string>  $periods  périodes à couvrir, ordre indifférent
+     * @param  array<string, int>  $totals  période => somme brute déclarée
+     * @param  array<string, int|null>  $references  période => référence en vigueur
+     * @return array<string, array{applied: int, carry_in: int, carry_out: int}>
+     */
+    public function allocateWithCarryOver(array $periods, array $totals, array $references): array
+    {
+        $chronological = $periods;
+        sort($chronological);
+
+        $allocation = [];
+        $carry = 0;
+
+        foreach ($chronological as $period) {
+            $declared = $totals[$period] ?? 0;
+            $reference = $references[$period] ?? null;
+            $available = $declared + $carry;
+
+            // Sans référence, rien à solder : le mois montre ce qu'il a reçu et
+            // l'excédent hérité poursuit sa route intact.
+            if ($reference === null || $reference <= 0) {
+                $allocation[$period] = [
+                    'applied' => $available,
+                    'carry_in' => $carry,
+                    'carry_out' => $carry,
+                ];
+
+                continue;
+            }
+
+            $applied = min($available, $reference);
+
+            $allocation[$period] = [
+                'applied' => $applied,
+                'carry_in' => $carry,
+                'carry_out' => $available - $applied,
+            ];
+
+            $carry = $available - $applied;
+        }
+
+        return $allocation;
+    }
+
+    /**
+     * Référence en vigueur pour chacune des périodes demandées.
+     *
+     * Une seule requête pour toute la fenêtre : le relevé couvre treize mois et
+     * `referenceFor()` appelé en boucle en ferait autant d'allers-retours.
+     *
+     * @param  list<string>  $periods
+     * @return array<string, int|null>
+     */
+    public function referenceTotals(Driver $driver, array $periods): array
+    {
+        if ($periods === []) {
+            return [];
+        }
+
+        $chronological = $periods;
+        sort($chronological);
+
+        /** @var EloquentCollection<int, CnpsReference> $references */
+        $references = CnpsReference::query()
+            ->where('driver_id', $driver->id)
+            ->where('effective_from', '<=', $this->endOfPeriod((string) end($chronological)))
+            ->orderBy('effective_from')
+            ->orderBy('created_at')
+            ->get();
+
+        $resolved = [];
+
+        foreach ($chronological as $period) {
+            $end = $this->endOfPeriod($period);
+
+            // Les références sont triées croissant : la dernière qui entre en
+            // vigueur avant la fin du mois est celle qui le juge.
+            $inForce = $references->last(
+                fn (CnpsReference $reference): bool => $reference->effective_from <= $end,
+            );
+
+            $resolved[$period] = $inForce?->amount;
+        }
+
+        return $resolved;
+    }
+
+    /**
      * Déclarations d'un conducteur sur les périodes demandées, regroupées par
      * mois et classées du versement le plus récent au plus ancien.
      *
@@ -101,6 +211,10 @@ class CnpsStatementService
      *
      * Le mois en cours n'est jamais « en retard » : le conducteur a encore le
      * temps de payer.
+     *
+     * `$declared` attend le montant **imputé** au mois (`allocateWithCarryOver`),
+     * pas la somme brute saisie : un mois soldé par l'avance du mois précédent
+     * est payé, même sans versement propre.
      */
     public function statusFor(int $declared, ?int $reference, string $period): CnpsMonthStatus
     {

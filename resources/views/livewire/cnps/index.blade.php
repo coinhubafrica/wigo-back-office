@@ -56,7 +56,9 @@
                 @php
                     $declared = (int) $row->period_declared;
                     $reference = $row->period_reference === null ? null : (int) $row->period_reference;
-                    $status = $this->statusOf($declared, $reference);
+                    // Montant imputé au mois, avance des mois précédents comprise.
+                    $allocation = $allocations[$row->id] ?? ['applied' => $declared, 'carry_in' => 0, 'carry_out' => 0];
+                    $status = $this->statusOf($allocation['applied'], $reference);
                 @endphp
                 <tr wire:key="cnps-{{ $row->id }}" class="transition-colors hover:bg-surface">
                     <x-td>
@@ -64,8 +66,18 @@
                         <span class="ml-2 font-mono text-[11px] text-muted">{{ $row->yango_id ?? '—' }}</span>
                     </x-td>
                     <x-td align="right" nowrap>
-                        <b @class(['font-semibold tabular-nums', 'text-ink' => $declared > 0, 'text-muted' => $declared === 0])>{{ $declared > 0 ? number_format($declared, 0, ',', ' ') : '—' }}</b>
+                        <b @class(['font-semibold tabular-nums', 'text-ink' => $allocation['applied'] > 0, 'text-muted' => $allocation['applied'] === 0])>{{ $allocation['applied'] > 0 ? number_format($allocation['applied'], 0, ',', ' ') : '—' }}</b>
                         <span class="text-muted tabular-nums"> / {{ $reference === null ? '—' : number_format($reference, 0, ',', ' ') }}</span>
+                        @if ($allocation['carry_in'] > 0)
+                            <span class="block text-[11px] text-muted tabular-nums">
+                                {{ __('backoffice.cnps.carried_in', ['amount' => number_format($allocation['carry_in'], 0, ',', ' ')]) }}
+                            </span>
+                        @endif
+                        @if ($allocation['carry_out'] > 0)
+                            <span class="block text-[11px] text-muted tabular-nums">
+                                {{ __('backoffice.cnps.carried_out', ['amount' => number_format($allocation['carry_out'], 0, ',', ' ')]) }}
+                            </span>
+                        @endif
                     </x-td>
                     <x-td><x-badge :classes="$status->badgeClasses()">{{ $status->label() }}</x-badge></x-td>
                     <x-td muted class="text-[13px]">

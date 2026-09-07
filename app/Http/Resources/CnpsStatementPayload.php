@@ -26,14 +26,20 @@ class CnpsStatementPayload
         $current = $periods[0];
 
         $totals = $service->declaredTotals($driver, $periods);
+        $references = $service->referenceTotals($driver, $periods);
         $declarations = $service->declarationsByPeriod($driver, $periods);
         $reference = $service->currentReference($driver);
+
+        // L'excédent d'un mois solde le suivant : le relevé lit donc les mois
+        // dans l'ordre, pas chacun pour soi.
+        $allocation = $service->allocateWithCarryOver($periods, $totals, $references);
 
         $months = array_map(
             fn (string $period): array => self::month(
                 $period,
                 $totals[$period] ?? 0,
-                $service->referenceFor($driver, $period)?->amount,
+                $references[$period] ?? null,
+                $allocation[$period],
                 $declarations->get($period),
                 $service,
             ),
@@ -55,6 +61,7 @@ class CnpsStatementPayload
     }
 
     /**
+     * @param  array{applied: int, carry_in: int, carry_out: int}  $allocation
      * @param  EloquentCollection<int, CnpsDeclaration>|null  $declarations
      * @return array<string, mixed>
      */
@@ -62,18 +69,28 @@ class CnpsStatementPayload
         string $period,
         int $declared,
         ?int $reference,
+        array $allocation,
         ?EloquentCollection $declarations,
         CnpsStatementService $service,
     ): array {
+        // `declared_amount` reste la somme saisie sur le mois — c'est ce que le
+        // conducteur reconnaît avoir versé. L'avancement, lui, se juge sur le
+        // montant imputé, report inclus.
+        $applied = $allocation['applied'];
+
         return [
             'period' => $period,
             'label' => $service->labelFor($period),
             'reference_amount' => $reference,
             'declared_amount' => $declared,
-            'remaining' => $service->remainingFor($declared, $reference),
-            'progress' => $service->progressFor($declared, $reference),
+            // Avance héritée du mois précédent, et excédent transmis au suivant.
+            'carried_in' => $allocation['carry_in'],
+            'carried_out' => $allocation['carry_out'],
+            'covered_amount' => $applied,
+            'remaining' => $service->remainingFor($applied, $reference),
+            'progress' => $service->progressFor($applied, $reference),
             /** @var 'paid'|'partial'|'late'|'pending' */
-            'status' => $service->statusFor($declared, $reference, $period)->value,
+            'status' => $service->statusFor($applied, $reference, $period)->value,
             'declarations' => $declarations === null
                 ? []
                 : $declarations->map(fn (CnpsDeclaration $declaration): array => [

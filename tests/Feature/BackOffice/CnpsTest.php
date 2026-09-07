@@ -280,3 +280,55 @@ function cnpsUser(string $role): User
 
     return $user;
 }
+
+it('a month settled by the previous month excess shows as paid', function (): void {
+    $driver = Driver::factory()->create(['last_name' => 'KONE', 'first_name' => 'Awa']);
+    CnpsReference::factory()->effectiveFrom('2026-01', 9000)->create(['driver_id' => $driver->id]);
+    // 18 000 en juillet : juillet et août soldés, sans versement en août.
+    CnpsDeclaration::factory()->forPeriod('2026-07', 18000)->create(['driver_id' => $driver->id]);
+
+    Livewire::actingAs(cnpsUser('gestionnaire'))
+        ->test(Index::class, ['period' => '2026-08'])
+        ->assertSee('Awa KONE')
+        ->assertSee('Payé')
+        // Août n'a aucun versement propre : sans report il serait « À déclarer ».
+        ->assertSee('dont 9 000 reportés du mois précédent');
+});
+
+it('the state filter agrees with the badge on a carried over month', function (): void {
+    $carried = Driver::factory()->create(['last_name' => 'KONE', 'first_name' => 'Awa']);
+    CnpsReference::factory()->effectiveFrom('2026-01', 9000)->create(['driver_id' => $carried->id]);
+    CnpsDeclaration::factory()->forPeriod('2026-07', 18000)->create(['driver_id' => $carried->id]);
+
+    $empty = Driver::factory()->create(['last_name' => 'TRAORE', 'first_name' => 'Bakary']);
+    CnpsReference::factory()->effectiveFrom('2026-01', 9000)->create(['driver_id' => $empty->id]);
+
+    // Le filtre « Payé » retient celui que l'avance solde…
+    Livewire::actingAs(cnpsUser('gestionnaire'))
+        ->test(Index::class, ['period' => '2026-08'])
+        ->call('filterByState', 'paid')
+        ->assertSee('Awa KONE')
+        ->assertDontSee('Bakary TRAORE');
+
+    // …et « À déclarer » ne le reprend pas, contrairement au mois vide.
+    Livewire::actingAs(cnpsUser('gestionnaire'))
+        ->test(Index::class, ['period' => '2026-08'])
+        ->call('filterByState', 'pending')
+        ->assertSee('Bakary TRAORE')
+        ->assertDontSee('Awa KONE');
+});
+
+it('the carried amount is shown on the row', function (): void {
+    $driver = Driver::factory()->create(['last_name' => 'KONE', 'first_name' => 'Awa']);
+    CnpsReference::factory()->effectiveFrom('2026-01', 9000)->create(['driver_id' => $driver->id]);
+    // 15 000 en juillet : 6 000 reportés sur août.
+    CnpsDeclaration::factory()->forPeriod('2026-07', 15000)->create(['driver_id' => $driver->id]);
+
+    Livewire::actingAs(cnpsUser('gestionnaire'))
+        ->test(Index::class, ['period' => '2026-08'])
+        ->assertSee('reportés du mois précédent');
+
+    Livewire::actingAs(cnpsUser('gestionnaire'))
+        ->test(Index::class, ['period' => '2026-07'])
+        ->assertSee('reportés sur le mois suivant');
+});

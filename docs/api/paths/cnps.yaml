@@ -10,6 +10,18 @@
       `status` se déduit du cumul déclaré face à la référence en vigueur ce
       mois-là — le mois en cours vaut `pending`, jamais `late`.
 
+      Un mois ne se lit pas seul : ce qui est versé au-delà de sa référence
+      est **reporté sur le mois suivant**, de proche en proche. Un conducteur
+      qui verse 15 000 en août sur une référence de 9 000 solde août et prend
+      6 000 d'avance sur septembre — septembre affiche alors
+      `carried_in: 6000` et `covered_amount: 6000` sans versement propre.
+
+      `declared_amount` reste la somme saisie sur le mois ;
+      `covered_amount` est ce qui lui est imputé, report compris. Ce sont
+      `remaining`, `progress` et `status` qui suivent `covered_amount`.
+      Le report ne remonte jamais vers un mois antérieur : un arriéré se
+      règle en déclarant son propre mois.
+
       `reference` est `null` tant que le conducteur n'a fixé aucun montant ;
       `reference_amount` l'est pour les mois antérieurs au premier montant fixé.
 
@@ -68,6 +80,29 @@
                           examples:
                             - 9000
                         declared_amount:
+                          description: |-
+                            Somme des versements saisis sur ce mois, telle que le
+                            conducteur l'a déclarée.
+                          type: integer
+                          examples:
+                            - 7200
+                        carried_in:
+                          description: |-
+                            Avance héritée du mois précédent, imputée à ce mois-ci.
+                          type: integer
+                          examples:
+                            - 0
+                        carried_out:
+                          description: |-
+                            Excédent transmis au mois suivant : ce que le conducteur a
+                            versé au-delà de la référence de ce mois.
+                          type: integer
+                          examples:
+                            - 0
+                        covered_amount:
+                          description: |-
+                            Montant réellement imputé au mois, report compris — c'est
+                            lui que `remaining`, `progress` et `status` reflètent.
                           type: integer
                           examples:
                             - 7200
@@ -115,6 +150,9 @@
                         - label
                         - reference_amount
                         - declared_amount
+                        - carried_in
+                        - carried_out
+                        - covered_amount
                         - remaining
                         - progress
                         - status
@@ -139,6 +177,29 @@
                             examples:
                               - 9000
                           declared_amount:
+                            description: |-
+                              Somme des versements saisis sur ce mois, telle que le
+                              conducteur l'a déclarée.
+                            type: integer
+                            examples:
+                              - 9000
+                          carried_in:
+                            description: |-
+                              Avance héritée du mois précédent, imputée à ce mois-ci.
+                            type: integer
+                            examples:
+                              - 0
+                          carried_out:
+                            description: |-
+                              Excédent transmis au mois suivant : ce que le conducteur a
+                              versé au-delà de la référence de ce mois.
+                            type: integer
+                            examples:
+                              - 0
+                          covered_amount:
+                            description: |-
+                              Montant réellement imputé au mois, report compris — c'est
+                              lui que `remaining`, `progress` et `status` reflètent.
                             type: integer
                             examples:
                               - 9000
@@ -186,6 +247,9 @@
                           - label
                           - reference_amount
                           - declared_amount
+                          - carried_in
+                          - carried_out
+                          - covered_amount
                           - remaining
                           - progress
                           - status

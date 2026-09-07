@@ -162,3 +162,120 @@ it('declarations are grouped by month newest payment first', function (): void {
     $this->assertCount(2, $grouped['2026-08']);
     $this->assertSame('2026-08-20', $grouped['2026-08']->first()->payment_date->toDateString());
 });
+
+it('an excess rolls forward onto the next month', function (): void {
+    // Référence 9 000 : 15 000 versés en août soldent août et laissent 6 000
+    // d'avance sur septembre.
+    $allocation = $this->service->allocateWithCarryOver(
+        ['2026-08', '2026-09'],
+        ['2026-08' => 15000],
+        ['2026-08' => 9000, '2026-09' => 9000],
+    );
+
+    $this->assertSame(9000, $allocation['2026-08']['applied']);
+    $this->assertSame(6000, $allocation['2026-08']['carry_out']);
+    $this->assertSame(6000, $allocation['2026-09']['carry_in']);
+    $this->assertSame(6000, $allocation['2026-09']['applied']);
+    $this->assertSame(0, $allocation['2026-09']['carry_out']);
+});
+
+it('an excess cascades across several months', function (): void {
+    // 30 000 sur une référence de 9 000 : trois mois soldés, 3 000 sur le
+    // quatrième.
+    $allocation = $this->service->allocateWithCarryOver(
+        ['2026-06', '2026-07', '2026-08', '2026-09'],
+        ['2026-06' => 30000],
+        ['2026-06' => 9000, '2026-07' => 9000, '2026-08' => 9000, '2026-09' => 9000],
+    );
+
+    $this->assertSame(9000, $allocation['2026-06']['applied']);
+    $this->assertSame(9000, $allocation['2026-07']['applied']);
+    $this->assertSame(9000, $allocation['2026-08']['applied']);
+    $this->assertSame(3000, $allocation['2026-09']['applied']);
+    $this->assertSame(0, $allocation['2026-09']['carry_out']);
+});
+
+it('a month settled by a carry over is paid without a payment of its own', function (): void {
+    $allocation = $this->service->allocateWithCarryOver(
+        ['2026-06', '2026-07'],
+        ['2026-06' => 18000],
+        ['2026-06' => 9000, '2026-07' => 9000],
+    );
+
+    // Juillet n'a reçu aucun versement, mais l'avance de juin le solde.
+    $this->assertSame(
+        CnpsMonthStatus::Paid,
+        $this->service->statusFor($allocation['2026-07']['applied'], 9000, '2026-07'),
+    );
+});
+
+it('a carry over answers to each month own reference', function (): void {
+    // La hausse de septembre s'applique au report : 6 000 d'avance ne soldent
+    // pas un mois passé à 12 000.
+    $allocation = $this->service->allocateWithCarryOver(
+        ['2026-08', '2026-09'],
+        ['2026-08' => 15000],
+        ['2026-08' => 9000, '2026-09' => 12000],
+    );
+
+    $this->assertSame(6000, $allocation['2026-09']['applied']);
+    $this->assertSame(6000, $this->service->remainingFor($allocation['2026-09']['applied'], 12000));
+    $this->assertSame(
+        CnpsMonthStatus::Partial,
+        $this->service->statusFor($allocation['2026-09']['applied'], 12000, '2026-09'),
+    );
+});
+
+it('the carry over does not travel backwards', function (): void {
+    // Un excédent d'août ne solde pas juillet resté vide.
+    $allocation = $this->service->allocateWithCarryOver(
+        ['2026-07', '2026-08'],
+        ['2026-08' => 18000],
+        ['2026-07' => 9000, '2026-08' => 9000],
+    );
+
+    $this->assertSame(0, $allocation['2026-07']['applied']);
+    $this->assertSame(
+        CnpsMonthStatus::Late,
+        $this->service->statusFor($allocation['2026-07']['applied'], 9000, '2026-07'),
+    );
+});
+
+it('a month without a reference absorbs nothing and lets the carry over through', function (): void {
+    $allocation = $this->service->allocateWithCarryOver(
+        ['2026-07', '2026-08', '2026-09'],
+        ['2026-07' => 18000],
+        ['2026-07' => 9000, '2026-08' => null, '2026-09' => 9000],
+    );
+
+    // Août n'a aucun repère : il ne retient rien, l'avance passe à septembre.
+    $this->assertSame(9000, $allocation['2026-08']['carry_out']);
+    $this->assertSame(9000, $allocation['2026-09']['applied']);
+});
+
+it('periods given out of order are allocated chronologically', function (): void {
+    // Le relevé liste les mois du plus récent au plus ancien : le report doit
+    // suivre la chronologie, pas l'ordre du tableau.
+    $allocation = $this->service->allocateWithCarryOver(
+        ['2026-09', '2026-08'],
+        ['2026-08' => 15000],
+        ['2026-08' => 9000, '2026-09' => 9000],
+    );
+
+    $this->assertSame(9000, $allocation['2026-08']['applied']);
+    $this->assertSame(6000, $allocation['2026-09']['applied']);
+});
+
+it('reference totals resolve every month in one pass', function (): void {
+    $driver = Driver::factory()->create();
+
+    CnpsReference::factory()->effectiveFrom('2026-01', 6000)->create(['driver_id' => $driver->id]);
+    CnpsReference::factory()->effectiveFrom('2026-03', 9000)->create(['driver_id' => $driver->id]);
+
+    $references = $this->service->referenceTotals($driver, ['2026-04', '2026-02', '2025-12']);
+
+    $this->assertSame(6000, $references['2026-02']);
+    $this->assertSame(9000, $references['2026-04']);
+    // Avant toute référence : aucun repère.
+    $this->assertNull($references['2025-12']);
+});
