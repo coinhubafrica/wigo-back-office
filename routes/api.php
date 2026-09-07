@@ -64,6 +64,12 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
 
         Route::get('challenges', [ChallengeController::class, 'index'])->name('challenges');
 
+        // Règlement d'un challenge : lecture par URL signée, comme la photo de
+        // profil et la carte grise — le fichier vit sur le disque privé.
+        Route::get('challenges/{challenge}/rules', [ChallengeController::class, 'rulesDocument'])
+            ->middleware('signed')
+            ->name('challenges.rules');
+
         // Cotisations CNPS : la lecture reste ouverte à un conducteur
         // suspendu, comme le profil — ses versements passés le regardent.
         Route::get('cnps', [CnpsController::class, 'show'])->name('cnps.show');

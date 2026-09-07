@@ -103,6 +103,7 @@ class RolePermissionSeeder extends Seeder
                     BackOfficePermission::ChallengesDraw,
                     BackOfficePermission::ChallengesCredit,
                     BackOfficePermission::ChallengesManagePrizes,
+                    BackOfficePermission::ChallengesManageRules,
 
                     BackOfficePermission::AnnouncementsManage,
                     BackOfficePermission::AnnouncementsPublish,

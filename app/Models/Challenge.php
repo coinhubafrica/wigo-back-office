@@ -86,6 +86,8 @@ class Challenge extends Model
             'min_active_days_enabled' => 'boolean',
             'min_rating' => 'decimal:1',
             'is_ticket_based' => 'boolean',
+            'rules_document_size' => 'integer',
+            'rules_document_uploaded_at' => 'datetime',
             'drawn_at' => 'datetime',
             'approved_at' => 'datetime',
         ];
@@ -129,6 +131,28 @@ class Challenge extends Model
     public function winners(): HasMany
     {
         return $this->hasMany(ChallengeWinner::class);
+    }
+
+    /**
+     * Un règlement est joint à ce challenge.
+     */
+    public function hasRulesDocument(): bool
+    {
+        return $this->rules_document_path !== null;
+    }
+
+    /**
+     * Taille lisible du règlement : « 1,2 Mo », pas « 1258291 ».
+     */
+    public function rulesDocumentHumanSize(): string
+    {
+        $bytes = (int) $this->rules_document_size;
+
+        return match (true) {
+            $bytes >= 1_048_576 => number_format($bytes / 1_048_576, 1, ',', ' ').' Mo',
+            $bytes >= 1_024 => number_format($bytes / 1_024, 0, ',', ' ').' Ko',
+            default => $bytes.' o',
+        };
     }
 
     public function isTicketBasedRaffle(): bool

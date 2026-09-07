@@ -833,6 +833,19 @@ return [
         'hide_definition' => 'Masquer la définition complète',
         'no_criteria_defined' => 'Aucun critère défini',
         'physical_prize' => 'Lot physique',
+
+        // Règlement joint au challenge, publié aux conducteurs.
+        'rules_document' => 'Règlement du challenge',
+        'no_rules_document' => "Aucun règlement n'est joint. Les conducteurs ne voient donc aucun document dans l'application.",
+        'attach_rules' => 'Joindre le règlement',
+        'replace_rules' => 'Remplacer le règlement',
+        'remove_rules' => 'Retirer le règlement',
+        'rules_document_hint' => 'PDF ou photo de la feuille imprimée (JPG, PNG, WEBP), 5 Mo maximum.',
+        'rules_uploading' => 'Envoi du règlement…',
+        'rules_attached' => 'Le règlement a été joint au challenge.',
+        'rules_removed' => 'Le règlement a été retiré du challenge.',
+        'rules_attached_on' => 'joint le :date',
+        'confirm_remove_rules' => "Le document disparaîtra de l'application des conducteurs et sera supprimé du disque. Cette action est définitive.",
         'cash_transfer' => 'Cash — transfert Yango',
         'value' => 'Valeur',
 

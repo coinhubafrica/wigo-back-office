@@ -3,6 +3,7 @@
 use App\Enums\BackOfficeModule;
 use App\Http\Controllers\BackOffice\AuditExportController;
 use App\Http\Controllers\BackOffice\CampaignImageController;
+use App\Http\Controllers\BackOffice\ChallengeRulesDocumentController;
 use App\Http\Controllers\BackOffice\DriverPhotoController;
 use App\Http\Controllers\BackOffice\MessageAttachmentController;
 use App\Http\Controllers\BackOffice\ShopOrderDocumentController;
@@ -111,6 +112,13 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('challenges/lots', ChallengesPrizes::class)
         ->middleware('permission:'.BackOfficeModule::Challenges->permission())
         ->name('bo.challenges.prizes');
+
+    // Le règlement joint à un challenge vit sur un disque privé : l'écran ne
+    // peut pas le pointer directement, il passe par cette route protégée.
+    // Déclarée avant la route de détail, sinon `{challenge}` l'absorbe.
+    Route::get('challenges/{challenge}/reglement', ChallengeRulesDocumentController::class)
+        ->middleware('permission:'.BackOfficeModule::Challenges->permission())
+        ->name('bo.challenges.rules-document');
 
     Route::livewire('challenges/{challenge}', ChallengesShow::class)
         ->middleware('permission:'.BackOfficeModule::Challenges->permission())

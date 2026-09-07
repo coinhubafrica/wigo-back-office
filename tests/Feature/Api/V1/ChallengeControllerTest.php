@@ -10,6 +10,9 @@ use App\Models\DriverDailyActivity;
 use App\Models\Prize;
 use App\Models\YangoOrder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 
 it('requires authentication', function (): void {
@@ -147,6 +150,168 @@ it('gives a non winner no won block', function (): void {
         ->assertJsonMissingPath('data.0.won');
 });
 
+it('lists the tickets held with their date and draw number', function (): void {
+    $driver = Driver::factory()->create();
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $challenge = raffle();
+    completeOrders($driver, $challenge, 100);
+
+    // Le premier ticket porte déjà son numéro (vivier gelé), le second pas.
+    ChallengeTicket::factory()->create([
+        'challenge_id' => $challenge->id,
+        'driver_id' => $driver->id,
+        'date' => $challenge->period_start->toDateString(),
+        'range_number' => 1043,
+    ]);
+    ChallengeTicket::factory()->create([
+        'challenge_id' => $challenge->id,
+        'driver_id' => $driver->id,
+        'date' => $challenge->period_start->addDays(2)->toDateString(),
+        'range_number' => null,
+    ]);
+
+    $response = $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    $response->assertJsonCount(2, 'data.0.ticketing.tickets');
+    $response->assertJsonPath('data.0.ticketing.tickets_held', 2);
+    // Du plus ancien au plus récent.
+    $response->assertJsonPath('data.0.ticketing.tickets.0.date', $challenge->period_start->toDateString());
+    $response->assertJsonPath('data.0.ticketing.tickets.0.range_number', 1043);
+    $response->assertJsonPath('data.0.ticketing.tickets.1.date', $challenge->period_start->addDays(2)->toDateString());
+    $response->assertJsonPath('data.0.ticketing.tickets.1.range_number', null);
+});
+
+it('lists no ticket for a driver holding none', function (): void {
+    $driver = Driver::factory()->create();
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $challenge = raffle();
+    completeOrders($driver, $challenge, 12);
+
+    $this->getJson(route('api.v1.challenges'))
+        ->assertOk()
+        ->assertJsonCount(0, 'data.0.ticketing.tickets');
+});
+
+it('never lists another drivers tickets', function (): void {
+    $mine = Driver::factory()->create();
+    $other = Driver::factory()->create();
+
+    $challenge = raffle();
+    completeOrders($mine, $challenge, 100);
+
+    ChallengeTicket::factory()->create([
+        'challenge_id' => $challenge->id,
+        'driver_id' => $mine->id,
+        'date' => $challenge->period_start->toDateString(),
+    ]);
+    ChallengeTicket::factory()->count(3)->create([
+        'challenge_id' => $challenge->id,
+        'driver_id' => $other->id,
+        'date' => $challenge->period_start->toDateString(),
+    ]);
+
+    Sanctum::actingAs($mine, ['mobile:*']);
+
+    $this->getJson(route('api.v1.challenges'))
+        ->assertOk()
+        ->assertJsonCount(1, 'data.0.ticketing.tickets')
+        ->assertJsonPath('data.0.ticketing.tickets_held', 1);
+});
+
+it('carries no rules document when the challenge has none', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+    raffle();
+
+    $this->getJson(route('api.v1.challenges'))
+        ->assertOk()
+        ->assertJsonPath('data.0.rules_document', null);
+});
+
+it('exposes the rules document behind a signed url', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+    $challenge = challengeWithRules();
+
+    $document = $this->getJson(route('api.v1.challenges'))
+        ->assertOk()
+        ->assertJsonPath('data.0.rules_document.original_name', 'reglement.pdf')
+        ->assertJsonPath('data.0.rules_document.mime_type', 'application/pdf')
+        ->json('data.0.rules_document');
+
+    $this->assertSame(strlen('contenu du reglement'), $document['size_bytes']);
+    // Le chemin de stockage ne fuit jamais : seule l'URL signée est publiée.
+    $this->assertStringContainsString('signature=', $document['url']);
+    $this->assertStringNotContainsString($challenge->rules_document_path, $document['url']);
+});
+
+it('serves the rules document from its signed url', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+    challengeWithRules();
+
+    $url = $this->getJson(route('api.v1.challenges'))->assertOk()->json('data.0.rules_document.url');
+
+    $this->get($url)
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+it('refuses the rules document without a signature', function (): void {
+    $challenge = challengeWithRules();
+
+    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+    $this->getJson(route('api.v1.challenges.rules', ['challenge' => $challenge->id]))
+        ->assertForbidden();
+});
+
+it('answers 403 rather than 404 for a challenge with no rules document', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+    // Un challenge sans règlement et un identifiant inconnu répondent la même
+    // chose : l'écart entre 403 et 404 dirait quels challenges existent.
+    $without = raffle();
+    $unknown = (string) Str::ulid();
+
+    foreach ([$without->id, $unknown] as $id) {
+        $this->getJson(URL::temporarySignedRoute(
+            'api.v1.challenges.rules',
+            now()->addHour(),
+            ['challenge' => $id],
+        ))
+            ->assertForbidden()
+            ->assertJsonPath('message', __('api.forbidden'));
+    }
+});
+
+it('answers 404 once authorised when the rules file left the disk', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+    $challenge = challengeWithRules();
+    Storage::disk('local')->delete((string) $challenge->rules_document_path);
+
+    $url = $this->getJson(route('api.v1.challenges'))->assertOk()->json('data.0.rules_document.url');
+
+    // L'enveloppe d'erreur aplatit tout 404 sur `api.not_found`, comme pour
+    // les autres pièces privées du contrat.
+    $this->getJson($url)
+        ->assertNotFound()
+        ->assertJsonPath('message', __('api.not_found'));
+});
+
+it('requires authentication to read the rules document', function (): void {
+    $challenge = challengeWithRules();
+
+    $this->getJson(URL::temporarySignedRoute(
+        'api.v1.challenges.rules',
+        now()->addHour(),
+        ['challenge' => $challenge->id],
+    ))->assertUnauthorized();
+});
+
 it('covers twelve weeks oldest first in the weekly history', function (): void {
     $driver = Driver::factory()->create();
     Sanctum::actingAs($driver, ['mobile:*']);
@@ -217,6 +382,30 @@ it('excludes challenges that are not live', function (): void {
         ->assertOk()
         ->assertJsonCount(0, 'data');
 });
+
+/**
+ * Un challenge portant un règlement, le fichier réellement posé sur le disque
+ * privé.
+ */
+function challengeWithRules(): Challenge
+{
+    Storage::fake('local');
+
+    $challenge = raffle();
+    $path = 'challenge-rules/'.$challenge->id.'/reglement.pdf';
+    Storage::disk('local')->put($path, 'contenu du reglement');
+
+    $challenge->forceFill([
+        'rules_document_disk' => 'local',
+        'rules_document_path' => $path,
+        'rules_document_name' => 'reglement.pdf',
+        'rules_document_mime' => 'application/pdf',
+        'rules_document_size' => strlen('contenu du reglement'),
+        'rules_document_uploaded_at' => now(),
+    ])->save();
+
+    return $challenge;
+}
 
 function raffle(): Challenge
 {

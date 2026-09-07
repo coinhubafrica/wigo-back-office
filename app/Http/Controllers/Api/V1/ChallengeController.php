@@ -10,6 +10,8 @@ use App\Models\Challenge;
 use App\Services\Challenges\DriverProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChallengeController extends Controller
 {
@@ -25,6 +27,13 @@ class ChallengeController extends Controller
      * une tombola, rang et prime pour un classement, gain éventuel. Les blocs
      * `ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils
      * s'appliquent au challenge.
+     *
+     * `ticketing.tickets` détaille les tickets détenus, du plus ancien au plus
+     * récent : leur date d'obtention et leur numéro de tirage, ce dernier
+     * n'étant attribué qu'au gel du vivier.
+     *
+     * `rules_document` porte le règlement du challenge quand il en a un, par
+     * URL signée valable une heure.
      *
      * `meta.weekly_history` porte les douze dernières semaines de courses
      * terminées, de la plus ancienne à la semaine en cours.
@@ -43,12 +52,23 @@ class ChallengeController extends Controller
      *         criteria_summary: string,
      *         period: array{start: string, end: string, week_iso: string|null},
      *         prize: array{name: string, photo_url: string|null}|null,
+     *         rules_document: array{
+     *             url: string,
+     *             original_name: string,
+     *             mime_type: string,
+     *             size_bytes: int,
+     *         }|null,
      *         ticketing?: array{
      *             trips_per_ticket: int,
      *             orders_completed: int,
      *             tickets_held: int,
      *             progress_in_block: int,
      *             orders_to_next_ticket: int,
+     *             tickets: array<int, array{
+     *                 id: string,
+     *                 date: string,
+     *                 range_number: int|null,
+     *             }>,
      *         },
      *         leaderboard?: array{
      *             rank: int|null,
@@ -104,6 +124,43 @@ class ChallengeController extends Controller
         return $this->okApiResponse(
             $data,
             meta: ['weekly_history' => $this->progress->weeklyHistory($driver)],
+        );
+    }
+
+    /**
+     * Télécharger le règlement d'un challenge
+     *
+     * Accessible par URL signée seulement : le fichier vit sur le disque privé
+     * et n'a pas d'URL publique. Un challenge inconnu ou sans règlement répond
+     * 403, jamais 404 — l'écart entre les deux dirait quels challenges
+     * existent.
+     */
+    public function rulesDocument(Request $request, string $challenge): StreamedResponse
+    {
+        // Le conducteur est résolu pour la même raison que sur les autres
+        // pièces privées : la signature atteste de l'origine du lien, le jeton
+        // atteste de qui le présente.
+        $this->driver($request);
+
+        /*
+        | Le modèle est résolu ici, pas par liaison de route : la liaison
+        | s'exécute avant le middleware `signed`, et un challenge inexistant
+        | répondrait alors 404 à une requête non signée — de quoi énumérer les
+        | challenges sans jamais présenter de signature.
+        */
+        $found = Challenge::query()->find($challenge);
+
+        abort_if($found === null || ! $found->hasRulesDocument(), 403, __('api.forbidden'));
+
+        $disk = Storage::disk((string) $found->rules_document_disk);
+
+        // Après autorisation seulement : un fichier absent du disque est une
+        // anomalie de stockage, la dire ne révèle rien.
+        abort_unless($disk->exists((string) $found->rules_document_path), 404);
+
+        return $disk->response(
+            (string) $found->rules_document_path,
+            (string) $found->rules_document_name,
         );
     }
 }

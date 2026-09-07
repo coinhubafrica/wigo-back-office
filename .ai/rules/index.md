@@ -9,6 +9,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Services/Auth/** | .ai/rules/auth.md |
 | app/Http/Controllers/BackOffice/** | .ai/rules/back-office.md |
 | app/Services/Challenges/**,app/Models/DriverDailyActivity.php | .ai/rules/challenges-models.md |
+| app/Http/Controllers/Api/V1/ChallengeController.php,app/Http/Resources/DriverChallengePayload.php,app/Services/Challenges/** | .ai/rules/challenges.md |
 | app/Services/Cnps/** | .ai/rules/cnps.md |
 | resources/views/components/**, resources/views/layouts/**, resources/views/vendor/** | .ai/rules/components.md |
 | docs/api/**, app/Support/Docs/**, app/Http/Controllers/Docs/**, resources/views/docs/** | .ai/rules/docs.md |
@@ -24,7 +25,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | routes/channels.php | .ai/rules/routes.md |
 | database/seeders/** | .ai/rules/seeders.md |
 | app/Settings/** | .ai/rules/settings.md |
-| app/Http/Controllers/Api/V1/ShopController.php,app/Services/Shop/**,app/Models/ShopOrderDocument.php | .ai/rules/shop-models.md |
+| app/Http/Controllers/Api/V1/ShopController.php,app/Services/Shop/**,app/Models/ShopOrderDocument.php,app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/shop-models.md |
 | app/Livewire/Shop/** | .ai/rules/shop.md |
 | app/Livewire/Audit/**,app/Enums/AuditAction.php,app/Support/AuditLogFilter.php,app/Models/AuditLog.php | .ai/rules/support-models.md |
 | app/Services/Support/**, app/Services/Support/BroadcastDispatcher.php, app/Services/Support/CampaignDispatcher.php | .ai/rules/support.md |

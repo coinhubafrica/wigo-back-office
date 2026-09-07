@@ -145,6 +145,58 @@
         @endif
     </x-panel>
 
+    {{-- Règlement : le document sur lequel le conducteur se fonde pour savoir
+         ce qui lui est promis. Servi par une route protégée, jamais par son
+         chemin de stockage. --}}
+    <x-panel :title="__('backoffice.challenges.rules_document')">
+        @if ($challenge->hasRulesDocument())
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex min-w-0 items-center gap-3">
+                    <span class="flex size-10 shrink-0 items-center justify-center rounded border border-line bg-surface text-muted">
+                        <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h6"/>
+                        </svg>
+                    </span>
+                    <div class="min-w-0">
+                        <a href="{{ route('bo.challenges.rules-document', $challenge) }}" target="_blank" rel="noopener"
+                           class="block truncate text-[14px] font-semibold text-primary-text underline decoration-line underline-offset-2 hover:decoration-current">
+                            {{ $challenge->rules_document_name }}
+                        </a>
+                        <p class="mt-0.5 text-xs text-muted">
+                            {{ $challenge->rulesDocumentHumanSize() }}
+                            @if ($challenge->rules_document_uploaded_at)
+                                · {{ __('backoffice.challenges.rules_attached_on', ['date' => $challenge->rules_document_uploaded_at->translatedFormat('j M Y \à H\hi')]) }}
+                            @endif
+                        </p>
+                    </div>
+                </div>
+
+                @if ($canManageRules)
+                    <x-button type="button" variant="secondary" wire:click="confirmRulesRemoval">
+                        {{ __('backoffice.challenges.remove_rules') }}
+                    </x-button>
+                @endif
+            </div>
+        @else
+            <p class="text-[13px] leading-relaxed text-muted">{{ __('backoffice.challenges.no_rules_document') }}</p>
+        @endif
+
+        @if ($canManageRules)
+            <form wire:submit="uploadRulesDocument" @class(['mt-4 border-t border-line pt-4' => $challenge->hasRulesDocument()])>
+                <x-field :label="$challenge->hasRulesDocument() ? __('backoffice.challenges.replace_rules') : __('backoffice.challenges.attach_rules')"
+                         name="rulesDocument" id="challenge-rules-document" type="file"
+                         wire:model="rulesDocument" accept=".pdf,image/jpeg,image/png,image/webp"
+                         :hint="__('backoffice.challenges.rules_document_hint')" />
+                <p wire:loading wire:target="rulesDocument" class="mt-1 text-xs text-muted">{{ __('backoffice.challenges.rules_uploading') }}</p>
+
+                <x-button type="submit" class="mt-3" target="uploadRulesDocument">
+                    {{ $challenge->hasRulesDocument() ? __('backoffice.challenges.replace_rules') : __('backoffice.challenges.attach_rules') }}
+                    <x-slot:loading>{{ __('backoffice.common.working') }}</x-slot:loading>
+                </x-button>
+            </form>
+        @endif
+    </x-panel>
+
     {{-- Tirage : panneau mis en avant quand il reste à exécuter --}}
     @if ($isRaffleOrSurprise)
         <x-panel @class(['border-primary' => $challenge->status === ChallengeStatus::DrawPending])
@@ -426,6 +478,13 @@
         @endphp
         <x-confirm close="cancelAction" :action="$isClosePeriod ? 'closePeriod' : 'creditAll'"
                    :title="$confirmLabel" :body="$confirmBody" :confirm-label="$confirmLabel" />
+    @endif
+
+    @if ($confirmingRulesRemoval)
+        <x-confirm close="cancelRulesRemoval" action="removeRulesDocument" variant="danger"
+                   :title="__('backoffice.challenges.remove_rules')"
+                   :body="__('backoffice.challenges.confirm_remove_rules')"
+                   :confirm-label="__('backoffice.challenges.remove_rules')" />
     @endif
 
     <livewire:challenges.wizard wire:key="challenge-wizard-show" />

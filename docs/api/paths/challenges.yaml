@@ -8,6 +8,13 @@
       `ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils
       s'appliquent au challenge.
 
+      `ticketing.tickets` détaille les tickets détenus, du plus ancien au plus
+      récent : leur date d'obtention et leur numéro de tirage, ce dernier
+      n'étant attribué qu'au gel du vivier.
+
+      `rules_document` porte le règlement du challenge quand il en a un, par
+      URL signée valable une heure.
+
       `meta.weekly_history` porte les douze dernières semaines de courses
       terminées, de la plus ancienne à la semaine en cours.
 
@@ -96,6 +103,35 @@
                         required:
                           - name
                           - photo_url
+                      rules_document:
+                        type:
+                          - object
+                          - 'null'
+                        description: "Règlement du challenge, ou `null` s'il n'en a pas."
+                        properties:
+                          url:
+                            type: string
+                            description: 'URL signée, valable une heure.'
+                            examples:
+                              - 'https://api.wigopro.example/api/v1/challenges/01HZY3M4N5P6Q7R8S9T0V1W2X3/rules?signature=…'
+                          original_name:
+                            type: string
+                            examples:
+                              - reglement-CH-2026-039.pdf
+                          mime_type:
+                            type: string
+                            examples:
+                              - application/pdf
+                          size_bytes:
+                            type: integer
+                            description: 'Taille en octets.'
+                            examples:
+                              - 184320
+                        required:
+                          - url
+                          - original_name
+                          - mime_type
+                          - size_bytes
                       ticketing:
                         type: object
                         properties:
@@ -119,12 +155,42 @@
                             type: integer
                             examples:
                               - 6
+                          tickets:
+                            type: array
+                            description: |-
+                              Tickets détenus, du plus ancien au plus récent.
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  examples:
+                                    - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+                                date:
+                                  type: string
+                                  description: "Jour où le ticket a été gagné."
+                                  examples:
+                                    - '2026-08-26'
+                                range_number:
+                                  type:
+                                    - integer
+                                    - 'null'
+                                  description: |-
+                                    Numéro de tirage, attribué au gel du vivier
+                                    seulement : `null` avant.
+                                  examples:
+                                    - 1043
+                              required:
+                                - id
+                                - date
+                                - range_number
                         required:
                           - trips_per_ticket
                           - orders_completed
                           - tickets_held
                           - progress_in_block
                           - orders_to_next_ticket
+                          - tickets
                       leaderboard:
                         type: object
                         properties:
@@ -192,6 +258,7 @@
                       - criteria_summary
                       - period
                       - prize
+                      - rules_document
                 meta:
                   type: object
                   properties:
@@ -227,5 +294,44 @@
                 - message
                 - data
                 - meta
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
+'/challenges/{challenge}/rules':
+  get:
+    operationId: v1.challenges.rules
+    description: |-
+      Accessible par URL signée seulement : le fichier vit sur le disque privé
+      et n'a pas d'URL publique. Un challenge inconnu ou sans règlement répond
+      403, jamais 404 — l'écart entre les deux dirait quels challenges
+      existent.
+    summary: "Télécharger le règlement d'un challenge"
+    parameters:
+      -
+        name: challenge
+        in: path
+        required: true
+        description: 'The challenge ID'
+        schema:
+          type: string
+    responses:
+      200:
+        description: 'Le fichier, servi depuis le disque privé.'
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      403:
+        description: 'An error'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+              required:
+                - message
       401:
         $ref: ../components/responses/AuthenticationException.yaml
