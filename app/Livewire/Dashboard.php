@@ -36,6 +36,11 @@ use Livewire\Component;
  * Les indicateurs de courses suivent la semaine choisie ; les autres — solde
  * du jour, cotisations du mois, file du support — restent au temps réel, car
  * ils décrivent un état actuel et non une période révolue.
+ *
+ * Les deux graphiques, eux, glissent : la courbe couvre les douze dernières
+ * semaines et l'histogramme les sept derniers jours. Une fenêtre glissante
+ * garde toujours ses sept repères, là où la semaine calendaire n'en montrait
+ * qu'un le lundi matin.
  */
 #[Layout('layouts.app', ['module' => BackOfficeModule::Dashboard])]
 class Dashboard extends Component
@@ -59,17 +64,25 @@ class Dashboard extends Component
      */
     private const TREND_WEEKS = 12;
 
+    /**
+     * Profondeur de l'histogramme journalier.
+     */
+    private const DAILY_DAYS = 7;
+
     public function render(): View
     {
         $user = $this->actor();
         $start = $this->selectedWeekStart();
+        $dailyEnd = $this->dailyWindowEnd($start);
 
         return view('livewire.dashboard', [
             'cards' => $this->cards($user, $start),
             'weekOptions' => $this->weekOptions(),
             'weekLabel' => $this->weekLabel($start),
             'weekInProgress' => $this->isCurrentWeek($start),
-            'dailyOrders' => $this->mayReadOrders($user) ? $this->dailyOrders($start) : [],
+            'dailyOrders' => $this->mayReadOrders($user) ? $this->dailyOrders($dailyEnd) : [],
+            'dailyLabel' => $this->dayRangeLabel($dailyEnd),
+            'dailyToToday' => $dailyEnd->isSameDay(CarbonImmutable::now()),
             'weeklyTrend' => $this->mayReadOrders($user) ? $this->weeklyTrend() : [],
             'latestRequests' => $this->latestRequests($user),
             'alerts' => app(DashboardAlerts::class)->for($user),
@@ -150,16 +163,23 @@ class Dashboard extends Component
     }
 
     /**
-     * Les sept jours de la semaine observée, lundi en tête.
+     * Les sept derniers jours observés, le plus ancien en tête.
+     *
+     * La fenêtre glisse et déborde sur la semaine précédente si besoin : sept
+     * barres se comparent, deux ne disent rien. Un seul jour porte chaque nom
+     * de la semaine dans une fenêtre de sept, le libellé court reste donc sans
+     * ambiguïté.
      *
      * Une seule requête groupée, pas sept : la table cumule déjà par jour et
      * par conducteur, il ne reste qu'à sommer.
      *
      * @return list<array{label: string, value: int}>
      */
-    private function dailyOrders(CarbonImmutable $start): array
+    private function dailyOrders(CarbonImmutable $end): array
     {
-        $totals = $this->ordersBetween($start, $start->endOfWeek())
+        $start = $end->subDays(self::DAILY_DAYS - 1);
+
+        $totals = $this->ordersBetween($start, $end)
             ->groupBy(fn (DriverDailyActivity $activity): string => $activity->activity_date->format('Y-m-d'))
             ->map(fn (Collection $group): int => (int) $group->sum('orders_completed'));
 
@@ -170,7 +190,29 @@ class Dashboard extends Component
                 'label' => $day->translatedFormat('D'),
                 'value' => $totals[$day->format('Y-m-d')] ?? 0,
             ];
-        }, range(0, 6));
+        }, range(0, self::DAILY_DAYS - 1));
+    }
+
+    /**
+     * Le dernier jour de l'histogramme : aujourd'hui sur la semaine en cours —
+     * un jour à venir n'a pas de courses et écraserait l'échelle d'une colonne
+     * vide —, le dimanche sur une semaine révolue, où la fenêtre coïncide alors
+     * avec la semaine choisie.
+     */
+    private function dailyWindowEnd(CarbonImmutable $weekStart): CarbonImmutable
+    {
+        $today = CarbonImmutable::now()->startOfDay();
+        $weekEnd = $weekStart->endOfWeek()->startOfDay();
+
+        return $weekEnd->greaterThan($today) ? $today : $weekEnd;
+    }
+
+    private function dayRangeLabel(CarbonImmutable $end): string
+    {
+        return __('backoffice.dashboard.day_range', [
+            'from' => $end->subDays(self::DAILY_DAYS - 1)->translatedFormat('j M'),
+            'to' => $end->translatedFormat('j M Y'),
+        ]);
     }
 
     /**
