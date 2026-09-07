@@ -412,3 +412,47 @@ function proofUrl(CnpsDeclaration $declaration): string
         ['declaration' => $declaration->id],
     );
 }
+
+it('an excess declared on a month rolls forward onto the next one', function (): void {
+    $driver = Driver::factory()->create();
+    CnpsReference::factory()->effectiveFrom('2026-01', 9000)->create(['driver_id' => $driver->id]);
+    // 15 000 versés en juillet : juillet soldé, 6 000 d'avance sur août.
+    CnpsDeclaration::factory()->forPeriod('2026-07', 15000)->create(['driver_id' => $driver->id]);
+
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $response = $this->getJson('/api/v1/cnps')->assertOk();
+
+    $current = $response->json('data.current');
+    $july = collect($response->json('data.history'))->firstWhere('period', '2026-07');
+
+    // Juillet garde les 15 000 déclarés, mais n'en impute que 9 000.
+    $this->assertSame(15000, $july['declared_amount']);
+    $this->assertSame(9000, $july['covered_amount']);
+    $this->assertSame(6000, $july['carried_out']);
+    $this->assertSame('paid', $july['status']);
+
+    // Août n'a aucun versement propre et se retrouve pourtant à 67 %.
+    $this->assertSame('2026-08', $current['period']);
+    $this->assertSame(0, $current['declared_amount']);
+    $this->assertSame(6000, $current['carried_in']);
+    $this->assertSame(6000, $current['covered_amount']);
+    $this->assertSame(3000, $current['remaining']);
+    $this->assertSame(67, $current['progress']);
+    $this->assertSame('partial', $current['status']);
+});
+
+it('an excess large enough settles the following month entirely', function (): void {
+    $driver = Driver::factory()->create();
+    CnpsReference::factory()->effectiveFrom('2026-01', 9000)->create(['driver_id' => $driver->id]);
+    CnpsDeclaration::factory()->forPeriod('2026-07', 18000)->create(['driver_id' => $driver->id]);
+
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $current = $this->getJson('/api/v1/cnps')->assertOk()->json('data.current');
+
+    $this->assertSame(9000, $current['carried_in']);
+    $this->assertSame(0, $current['remaining']);
+    $this->assertSame(100, $current['progress']);
+    $this->assertSame('paid', $current['status']);
+});

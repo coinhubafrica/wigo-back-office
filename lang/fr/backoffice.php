@@ -475,6 +475,8 @@ return [
         'proof_available' => 'Justificatif joint',
         'payments_count' => '{0} aucun|{1} 1 versement|[2,*] :count versements',
         'view_driver' => 'Voir la fiche',
+        'carried_in' => 'dont :amount reportés du mois précédent',
+        'carried_out' => ':amount reportés sur le mois suivant',
 
         // Panneau de la fiche conducteur.
         'panel_title' => 'Cotisations CNPS (RSTI)',

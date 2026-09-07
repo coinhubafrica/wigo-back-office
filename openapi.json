@@ -1612,7 +1612,7 @@
                     "Cnps"
                 ],
                 "operationId": "v1.cnps.show",
-                "description": "Le montant mensuel de référence, le mois en cours et les douze mois\nprécédents, du plus récent au plus ancien.\n\nSuivi purement déclaratif : les montants sont ceux que le conducteur\ndéclare avoir payés dans Wave. Seuls les états de la CNPS font foi.\n`status` se déduit du cumul déclaré face à la référence en vigueur ce\nmois-là — le mois en cours vaut `pending`, jamais `late`.\n\n`reference` est `null` tant que le conducteur n'a fixé aucun montant ;\n`reference_amount` l'est pour les mois antérieurs au premier montant fixé.\n\nReste lisible par un conducteur suspendu, comme le profil.",
+                "description": "Le montant mensuel de référence, le mois en cours et les douze mois\nprécédents, du plus récent au plus ancien.\n\nSuivi purement déclaratif : les montants sont ceux que le conducteur\ndéclare avoir payés dans Wave. Seuls les états de la CNPS font foi.\n`status` se déduit du cumul déclaré face à la référence en vigueur ce\nmois-là — le mois en cours vaut `pending`, jamais `late`.\n\nUn mois ne se lit pas seul : ce qui est versé au-delà de sa référence\nest **reporté sur le mois suivant**, de proche en proche. Un conducteur\nqui verse 15 000 en août sur une référence de 9 000 solde août et prend\n6 000 d'avance sur septembre — septembre affiche alors\n`carried_in: 6000` et `covered_amount: 6000` sans versement propre.\n\n`declared_amount` reste la somme saisie sur le mois ;\n`covered_amount` est ce qui lui est imputé, report compris. Ce sont\n`remaining`, `progress` et `status` qui suivent `covered_amount`.\nLe report ne remonte jamais vers un mois antérieur : un arriéré se\nrègle en déclarant son propre mois.\n\n`reference` est `null` tant que le conducteur n'a fixé aucun montant ;\n`reference_amount` l'est pour les mois antérieurs au premier montant fixé.\n\nReste lisible par un conducteur suspendu, comme le profil.",
                 "summary": "Mon relevé de cotisations CNPS",
                 "responses": {
                     "200": {
@@ -1685,6 +1685,28 @@
                                                             ]
                                                         },
                                                         "declared_amount": {
+                                                            "description": "Somme des versements saisis sur ce mois, telle que le\nconducteur l'a déclarée.",
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                7200
+                                                            ]
+                                                        },
+                                                        "carried_in": {
+                                                            "description": "Avance héritée du mois précédent, imputée à ce mois-ci.",
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "carried_out": {
+                                                            "description": "Excédent transmis au mois suivant : ce que le conducteur a\nversé au-delà de la référence de ce mois.",
+                                                            "type": "integer",
+                                                            "examples": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "covered_amount": {
+                                                            "description": "Montant réellement imputé au mois, report compris — c'est\nlui que `remaining`, `progress` et `status` reflètent.",
                                                             "type": "integer",
                                                             "examples": [
                                                                 7200
@@ -1752,6 +1774,9 @@
                                                         "label",
                                                         "reference_amount",
                                                         "declared_amount",
+                                                        "carried_in",
+                                                        "carried_out",
+                                                        "covered_amount",
                                                         "remaining",
                                                         "progress",
                                                         "status",
@@ -1785,6 +1810,28 @@
                                                                 ]
                                                             },
                                                             "declared_amount": {
+                                                                "description": "Somme des versements saisis sur ce mois, telle que le\nconducteur l'a déclarée.",
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    9000
+                                                                ]
+                                                            },
+                                                            "carried_in": {
+                                                                "description": "Avance héritée du mois précédent, imputée à ce mois-ci.",
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    0
+                                                                ]
+                                                            },
+                                                            "carried_out": {
+                                                                "description": "Excédent transmis au mois suivant : ce que le conducteur a\nversé au-delà de la référence de ce mois.",
+                                                                "type": "integer",
+                                                                "examples": [
+                                                                    0
+                                                                ]
+                                                            },
+                                                            "covered_amount": {
+                                                                "description": "Montant réellement imputé au mois, report compris — c'est\nlui que `remaining`, `progress` et `status` reflètent.",
                                                                 "type": "integer",
                                                                 "examples": [
                                                                     9000
@@ -1852,6 +1899,9 @@
                                                             "label",
                                                             "reference_amount",
                                                             "declared_amount",
+                                                            "carried_in",
+                                                            "carried_out",
+                                                            "covered_amount",
                                                             "remaining",
                                                             "progress",
                                                             "status",

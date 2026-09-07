@@ -204,8 +204,10 @@
             <div class="border-b border-line px-5 py-4">
                 <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.cnps.current_month') }} — {{ $currentCnps['label'] }}</p>
                 <div class="mt-2 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                    {{-- Le montant imputé, avance des mois précédents comprise :
+                         c'est lui que la pastille et la barre reflètent. --}}
                     <p class="text-2xl font-semibold text-ink tabular-nums">
-                        {{ number_format($currentCnps['declared_amount'], 0, ',', ' ') }}
+                        {{ number_format($currentCnps['covered_amount'], 0, ',', ' ') }}
                         <span class="text-sm font-medium text-muted">
                             / {{ $currentCnps['reference_amount'] === null ? '—' : number_format($currentCnps['reference_amount'], 0, ',', ' ') }} FCFA
                         </span>
@@ -215,6 +217,16 @@
                         <span class="text-xs text-muted">
                             {{ __('backoffice.cnps.remaining') }} :
                             <b class="text-ink tabular-nums">{{ number_format($currentCnps['remaining'], 0, ',', ' ') }} FCFA</b>
+                        </span>
+                    @endif
+                    @if ($currentCnps['carried_in'] > 0)
+                        <span class="text-xs text-muted">
+                            {{ __('backoffice.cnps.carried_in', ['amount' => number_format($currentCnps['carried_in'], 0, ',', ' ')]) }}
+                        </span>
+                    @endif
+                    @if ($currentCnps['carried_out'] > 0)
+                        <span class="text-xs text-muted">
+                            {{ __('backoffice.cnps.carried_out', ['amount' => number_format($currentCnps['carried_out'], 0, ',', ' ')]) }}
                         </span>
                     @endif
                 </div>
@@ -240,8 +252,18 @@
                     <tr wire:key="cnps-month-{{ $month['label'] }}" class="transition-colors hover:bg-surface">
                         <x-td nowrap>{{ $month['label'] }}</x-td>
                         <x-td align="right" nowrap>
-                            <b @class(['font-semibold tabular-nums', 'text-ink' => $month['declared_amount'] > 0, 'text-muted' => $month['declared_amount'] === 0])>{{ $month['declared_amount'] > 0 ? number_format($month['declared_amount'], 0, ',', ' ') : '—' }}</b>
+                            <b @class(['font-semibold tabular-nums', 'text-ink' => $month['covered_amount'] > 0, 'text-muted' => $month['covered_amount'] === 0])>{{ $month['covered_amount'] > 0 ? number_format($month['covered_amount'], 0, ',', ' ') : '—' }}</b>
                             <span class="text-muted tabular-nums"> / {{ $month['reference_amount'] === null ? '—' : number_format($month['reference_amount'], 0, ',', ' ') }}</span>
+                            @if ($month['carried_in'] > 0)
+                                <span class="block text-[11px] text-muted tabular-nums">
+                                    {{ __('backoffice.cnps.carried_in', ['amount' => number_format($month['carried_in'], 0, ',', ' ')]) }}
+                                </span>
+                            @endif
+                            @if ($month['carried_out'] > 0)
+                                <span class="block text-[11px] text-muted tabular-nums">
+                                    {{ __('backoffice.cnps.carried_out', ['amount' => number_format($month['carried_out'], 0, ',', ' ')]) }}
+                                </span>
+                            @endif
                         </x-td>
                         <x-td><x-badge :classes="$monthStatus->badgeClasses()">{{ $monthStatus->label() }}</x-badge></x-td>
                         <x-td muted class="text-[11px]">

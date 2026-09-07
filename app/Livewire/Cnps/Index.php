@@ -5,6 +5,7 @@ namespace App\Livewire\Cnps;
 use App\Enums\BackOfficeModule;
 use App\Enums\CnpsMonthStatus;
 use App\Models\CnpsDeclaration;
+use App\Models\CnpsReference;
 use App\Models\Driver;
 use App\Services\Cnps\CnpsStatementService;
 use Illuminate\Contracts\View\View;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -32,6 +34,11 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use WithPagination;
+
+    /**
+     * Profondeur sur laquelle un excédent se reporte, mois affiché compris.
+     */
+    private const CARRY_WINDOW_MONTHS = 13;
 
     #[Url]
     public string $search = '';
@@ -98,6 +105,7 @@ class Index extends Component
 
         return view($view, [
             'rows' => $rows,
+            'allocations' => $this->allocations($rows->getCollection(), $statement),
             'periodLabel' => $statement->labelFor($this->period),
             'periodOptions' => $this->periodOptions($statement),
             'totals' => $this->totals($statement),
@@ -135,6 +143,110 @@ class Index extends Component
     }
 
     /**
+     * Montant imputé au mois affiché, report des mois antérieurs compris.
+     *
+     * Le report se calcule sur la chronologie complète, ce qu'une sous-requête
+     * par mois ne peut pas faire : le cumul est donc reconstitué en PHP à
+     * partir des déclarations et des références de la fenêtre, puis rapporté
+     * sur les lignes de la page.
+     *
+     * @param  Collection<int, Driver>  $drivers
+     * @return array<string, array{applied: int, carry_in: int, carry_out: int}>
+     */
+    private function allocations(Collection $drivers, CnpsStatementService $statement): array
+    {
+        if ($drivers->isEmpty()) {
+            return [];
+        }
+
+        $driverIds = $drivers->pluck('id')->all();
+        $periods = $this->periodsUpTo();
+
+        $totals = CnpsDeclaration::query()
+            ->whereIn('driver_id', $driverIds)
+            ->whereIn('period', $periods)
+            ->groupBy('driver_id', 'period')
+            ->selectRaw('driver_id, period, sum(declared_amount) as aggregate')
+            ->get()
+            ->groupBy('driver_id');
+
+        $references = CnpsReference::query()
+            ->whereIn('driver_id', $driverIds)
+            ->where('effective_from', '<=', $this->endOfPeriod())
+            ->orderBy('effective_from')
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('driver_id');
+
+        $allocations = [];
+
+        foreach ($drivers as $driver) {
+            $driverTotals = $totals->get($driver->id, new Collection)
+                ->mapWithKeys(fn (CnpsDeclaration $row): array => [$row->period => (int) $row->aggregate])
+                ->all();
+
+            $driverReferences = $this->referencesByPeriod(
+                $references->get($driver->id, new Collection),
+                $periods,
+            );
+
+            $allocations[$driver->id] = $statement
+                ->allocateWithCarryOver($periods, $driverTotals, $driverReferences)[$this->period];
+        }
+
+        return $allocations;
+    }
+
+    /**
+     * Référence en vigueur pour chaque mois de la fenêtre, depuis une liste
+     * déjà chargée et triée par date d'effet croissante.
+     *
+     * @param  Collection<int, CnpsReference>  $references
+     * @param  list<string>  $periods
+     * @return array<string, int|null>
+     */
+    private function referencesByPeriod(Collection $references, array $periods): array
+    {
+        $resolved = [];
+
+        foreach ($periods as $period) {
+            [$year, $month] = explode('-', $period);
+            $end = Carbon::create((int) $year, (int) $month, 1)->endOfMonth();
+
+            $inForce = $references->last(
+                fn (CnpsReference $reference): bool => $reference->effective_from <= $end,
+            );
+
+            $resolved[$period] = $inForce?->amount;
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * La fenêtre sur laquelle le report se propage : les douze mois précédant
+     * le mois affiché, plus lui-même.
+     *
+     * Douze mois suffisent — au-delà, une avance aurait été absorbée depuis
+     * longtemps, et remonter à l'origine du conducteur coûterait une requête
+     * sans borne.
+     *
+     * @return list<string>
+     */
+    private function periodsUpTo(): array
+    {
+        [$year, $month] = explode('-', $this->period);
+        $end = Carbon::create((int) $year, (int) $month, 1);
+
+        $periods = array_map(
+            fn (int $offset): string => $end->copy()->subMonths($offset)->format('Y-m'),
+            range(self::CARRY_WINDOW_MONTHS - 1, 0),
+        );
+
+        return array_values($periods);
+    }
+
+    /**
      * Dernier montant fixé avant la fin du mois affiché : c'est lui qui juge
      * ce mois-là, même s'il a changé depuis.
      */
@@ -143,7 +255,7 @@ class Index extends Component
         return DB::table('cnps_references')
             ->select('amount')
             ->whereColumn('cnps_references.driver_id', 'drivers.id')
-            ->where('effective_from', '<=', $this->endOfPeriod())
+            ->where('effective_from', '<=', $this->endOfPeriod()->toDateString())
             ->orderByDesc('effective_from')
             ->orderByDesc('created_at')
             ->limit(1);
@@ -174,10 +286,13 @@ class Index extends Component
 
     /**
      * État d'un mois pour une ligne du tableau, déduit comme côté mobile.
+     *
+     * `$applied` est le montant imputé au mois — report des mois antérieurs
+     * compris — et non la seule somme déclarée sur ce mois.
      */
-    public function statusOf(int $declared, ?int $reference): CnpsMonthStatus
+    public function statusOf(int $applied, ?int $reference): CnpsMonthStatus
     {
-        return app(CnpsStatementService::class)->statusFor($declared, $reference, $this->period);
+        return app(CnpsStatementService::class)->statusFor($applied, $reference, $this->period);
     }
 
     /**
@@ -208,9 +323,14 @@ class Index extends Component
             return $query;
         }
 
-        // L'état se déduit des deux colonnes calculées : on enveloppe la
-        // requête pour pouvoir les comparer par leur alias, plutôt que de
-        // recopier leur SQL dans un `whereRaw`.
+        // L'état ne se compare plus en SQL : depuis que l'excédent d'un mois
+        // solde le suivant, il dépend de toute la chronologie du conducteur, pas
+        // des deux colonnes de ce mois-ci. Un filtre SQL et une pastille rendue
+        // en PHP se contrediraient — le mois soldé par une avance s'afficherait
+        // « Payé » tout en tombant dans « En retard ».
+        //
+        // On résout donc l'état une fois, hors pagination, et on restreint sur
+        // les identifiants retenus.
         //
         // `withoutGlobalScopes` sur l'enveloppe : le filtre de suppression
         // douce s'applique déjà à l'intérieur, et qualifié `drivers.` il ne
@@ -218,40 +338,35 @@ class Index extends Component
         return Driver::query()
             ->withoutGlobalScopes()
             ->fromSub($query, 'monthly')
-            ->tap(fn (Builder $wrapped) => $this->constrainToState($wrapped, $statement));
+            ->whereIn('id', $this->idsMatchingState($query, $statement));
     }
 
     /**
-     * Restreint la requête enveloppée à un état, par comparaison des colonnes
-     * calculées.
+     * Identifiants des conducteurs dont le mois affiché est dans l'état filtré,
+     * report compris.
      *
-     * @param  Builder<Driver>  $query
+     * @param  Builder<Driver>  $query  requête déjà filtrée par la recherche
+     * @return list<string>
      */
-    private function constrainToState(Builder $query, CnpsStatementService $statement): void
+    private function idsMatchingState(Builder $query, CnpsStatementService $statement): array
     {
-        $isCurrent = $this->period === $statement->currentPeriod();
+        /** @var Collection<int, Driver> $candidates */
+        $candidates = (clone $query)->get();
 
-        match ($this->state) {
-            CnpsMonthStatus::Paid->value => $query
-                ->where('period_declared', '>', 0)
-                ->whereNotNull('period_reference')
-                ->whereColumn('period_declared', '>=', 'period_reference'),
-            CnpsMonthStatus::Partial->value => $query
-                ->where('period_declared', '>', 0)
-                ->where(function (Builder $query): void {
-                    $query->whereNull('period_reference')
-                        ->orWhereColumn('period_declared', '<', 'period_reference');
-                }),
-            // Un mois vide n'est « en retard » que s'il est révolu ; le mois en
-            // cours reste simplement « à déclarer ».
-            CnpsMonthStatus::Late->value => $isCurrent
-                ? $query->whereRaw('1 = 0')
-                : $query->where('period_declared', 0),
-            CnpsMonthStatus::Pending->value => $isCurrent
-                ? $query->where('period_declared', 0)
-                : $query->whereRaw('1 = 0'),
-            default => null,
-        };
+        $allocations = $this->allocations($candidates, $statement);
+
+        return $candidates
+            ->filter(function (Driver $driver) use ($allocations, $statement): bool {
+                $applied = $allocations[$driver->id]['applied'] ?? 0;
+                $reference = $driver->period_reference === null
+                    ? null
+                    : (int) $driver->period_reference;
+
+                return $statement->statusFor($applied, $reference, $this->period)->value === $this->state;
+            })
+            ->pluck('id')
+            ->values()
+            ->all();
     }
 
     /**
@@ -278,12 +393,10 @@ class Index extends Component
         ];
     }
 
-    private function endOfPeriod(): string
+    private function endOfPeriod(): Carbon
     {
         [$year, $month] = explode('-', $this->period);
 
-        return Carbon::create((int) $year, (int) $month, 1)
-            ->endOfMonth()
-            ->toDateString();
+        return Carbon::create((int) $year, (int) $month, 1)->endOfMonth();
     }
 }
