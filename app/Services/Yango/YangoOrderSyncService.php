@@ -29,12 +29,20 @@ use Illuminate\Support\Facades\Log;
  * Une course dont le conducteur n'a pas de ligne locale est comptée et
  * journalisée, jamais écrite : `yango_orders.driver_id` est requis, et
  * inventer un conducteur ferait pire que le trou qu'on comble.
+ *
+ * Mais « pas de ligne locale » se vérifie désormais auprès de Yango avant
+ * d'être conclu (`YangoDriverResolver`) : la passe parc est coupée par un
+ * quota avant la fin d'un grand parc, si bien qu'un conducteur absent de la
+ * base est le plus souvent un conducteur que le tour en cours n'a pas encore
+ * atteint — pas un inconnu. Reste orphelin ce que Yango lui-même ne nomme
+ * pas, ou ce qui n'est pas écrivable faute de téléphone exploitable.
  */
 class YangoOrderSyncService
 {
     public function __construct(
         private readonly YangoDirectory $directory,
         private readonly DailyActivityService $activities,
+        private readonly YangoDriverResolver $drivers,
     ) {}
 
     public function syncDay(CarbonInterface $day, int $pageSize = GetOrdersRequest::DEFAULT_LIMIT): YangoOrderSyncResult
@@ -84,15 +92,16 @@ class YangoOrderSyncService
 
         $driverYangoId = Arr::get($order, 'driver_profile.id');
 
-        $driver = is_string($driverYangoId) && $driverYangoId !== ''
-            ? Driver::query()->where('yango_id', $driverYangoId)->first()
-            : null;
+        // Le conducteur est rapatrié de Yango s'il manque en base : un tour de
+        // parc s'étale sur plusieurs heures, et la course d'aujourd'hui nomme
+        // volontiers un profil situé au-delà du décalage déjà atteint.
+        $driver = $this->drivers->resolve(is_string($driverYangoId) ? $driverYangoId : null);
 
         if ($driver === null) {
-            // Conducteur inconnu de la base : le plus souvent un profil que la
-            // passe parc a écarté faute de téléphone exploitable. On signale
-            // sans écrire — la course reviendra à la passe suivante si le
-            // conducteur finit par entrer.
+            // Reste orphelin ce que Yango lui-même ne sait pas nommer, ou ce
+            // qui n'est pas écrivable — presque toujours un profil sans
+            // téléphone exploitable. On signale sans écrire : `driver_id` est
+            // requis, et inventer un conducteur ferait pire que le trou.
             $result->ordersOrphaned++;
 
             Log::warning('Yango : course d\'un conducteur inconnu, ignorée', [

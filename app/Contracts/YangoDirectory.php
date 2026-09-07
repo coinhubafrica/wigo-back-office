@@ -70,4 +70,33 @@ interface YangoDirectory
      * @throws YangoFleetException
      */
     public function transactions(CarbonInterface $from, CarbonInterface $to, int $pageSize = 1000): iterable;
+
+    /**
+     * Un profil conducteur nommément, ramené à la forme d'une ligne de liste.
+     *
+     * La passe parc ne fait pas le tour d'un grand parc avant que Yango la
+     * coupe : une course ou une transaction peut donc nommer un conducteur que
+     * la liste n'a pas encore atteint. Cet appel le rapatrie à la demande.
+     *
+     * Rend `null` quand Yango ne connaît pas ce profil (404) : c'est une
+     * réponse, pas une panne, et l'appelant doit pouvoir compter la ligne
+     * comme orpheline sans faire tomber la journée. Tout autre refus lève,
+     * comme le reste de l'annuaire.
+     *
+     * @return array<string, mixed>|null
+     *
+     * @throws YangoFleetException
+     */
+    public function driverProfile(string $yangoId): ?array;
+
+    /**
+     * Un véhicule nommément, ramené à la forme d'une ligne de liste.
+     *
+     * Même contrat que `driverProfile()` : `null` sur 404, lève sinon.
+     *
+     * @return array<string, mixed>|null
+     *
+     * @throws YangoFleetException
+     */
+    public function vehicle(string $yangoId): ?array;
 }

@@ -131,9 +131,42 @@ class YangoSyncService
     }
 
     /**
+     * Écrit un profil venu d'ailleurs que de la passe parc, et rend le
+     * conducteur obtenu.
+     *
+     * Point d'entrée de `YangoDriverResolver`, qui rapatrie à la demande les
+     * conducteurs qu'un tour de parc n'a pas encore atteints. Le chemin
+     * d'écriture est celui de la passe, sans copie : l'adoption par téléphone,
+     * le `status` jamais réécrit et le véhicule sur une seule ligne doivent
+     * valoir des deux côtés.
+     *
+     * Rend `null` quand le profil n'est pas écrivable — sans identifiant, ou
+     * sans téléphone exploitable.
+     *
      * @param  array<string, mixed>  $profile
      */
-    private function syncDriver(array $profile, YangoSyncResult $result): void
+    public function adoptDriver(array $profile): ?Driver
+    {
+        return $this->syncDriver($profile, new YangoSyncResult);
+    }
+
+    /**
+     * Pendant de `adoptDriver()` pour un véhicule sans affectation connue.
+     *
+     * `driver_id` n'est pas touché, comme dans la passe « parc » : on ne
+     * détache pas ce qu'une passe « conducteurs » vient de rattacher.
+     *
+     * @param  array<string, mixed>  $car
+     */
+    public function adoptVehicle(array $car): ?Vehicle
+    {
+        return $this->syncVehicle($car, null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $profile
+     */
+    private function syncDriver(array $profile, YangoSyncResult $result): ?Driver
     {
         $yangoId = Arr::get($profile, 'driver_profile.id');
 
@@ -142,7 +175,7 @@ class YangoSyncService
 
             Log::warning('Yango : profil sans identifiant, ignoré');
 
-            return;
+            return null;
         }
 
         $phone = $this->normalizePhone(Arr::get($profile, 'driver_profile.phones.0'));
@@ -171,7 +204,7 @@ class YangoSyncService
                 'yango_id' => $yangoId,
             ]);
 
-            return;
+            return null;
         }
 
         if ($driver === null) {
@@ -209,6 +242,8 @@ class YangoSyncService
         if ($this->syncVehicle(Arr::get($profile, 'car'), $driver) !== null) {
             $result->vehiclesSynced++;
         }
+
+        return $driver;
     }
 
     /**

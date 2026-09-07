@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
 use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
 use App\Jobs\SyncYangoOrdersJob;
@@ -55,9 +56,12 @@ it('prints what a period of orders reconciled', function (): void {
         ->assertSuccessful();
 });
 
-it('warns about orders whose driver is unknown', function (): void {
+it('warns about orders whose driver Yango cannot name either', function (): void {
+    // « Inconnu » se vérifie désormais auprès de Yango avant d'être conclu :
+    // seul un profil qu'il ignore à son tour reste orphelin.
     MockClient::global([
         GetOrdersRequest::class => yangoOrdersResponse([yangoOrderRow(driverYangoId: 'YAN-INCONNU')]),
+        GetDriverProfileRequest::class => yangoRefusal(404),
     ]);
 
     $this->artisan('yango:sync-orders --from=2026-09-03 --to=2026-09-03 --now')

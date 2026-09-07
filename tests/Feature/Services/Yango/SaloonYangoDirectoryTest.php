@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
+use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
+use App\Http\Integrations\Yango\Requests\GetVehicleRequest;
 use App\Services\Yango\SaloonYangoDirectory;
 use App\Settings\YangoSettings;
 use Illuminate\Support\Carbon;
@@ -124,4 +126,70 @@ it('walks the cursor for transactions too', function (): void {
     );
 
     expect($transactions)->toHaveCount(2);
+});
+
+it('reads a driver Yango does not know as an answer, not a failure', function (): void {
+    // Contrat volontairement distinct de la pagination, qui lève : demander un
+    // conducteur qui n'est pas de ce parc est une question légitime dont
+    // « non » est une réponse valable. La passe des courses doit pouvoir
+    // compter la ligne orpheline sans tomber.
+    yangoConfigure();
+
+    MockClient::global([GetDriverProfileRequest::class => yangoRefusal(404)]);
+
+    expect((new SaloonYangoDirectory)->driverProfile('YAN-FANTOME'))->toBeNull();
+});
+
+it('still throws when Yango refuses the key, an absence not being a refusal', function (int $status): void {
+    // Un 401 ou un 500 traduit en « inconnu » ferait passer une clé refusée
+    // pour un parc vide, et tous les conducteurs pour des orphelins.
+    yangoConfigure();
+
+    MockClient::global([GetDriverProfileRequest::class => yangoRefusal($status)]);
+
+    expect(fn () => (new SaloonYangoDirectory)->driverProfile('YAN-001'))
+        ->toThrow(YangoFleetException::class);
+})->with([401, 403, 500]);
+
+it('translates a v2 driver sheet into the shape of a list row', function (): void {
+    // `syncDriver()` ne doit pas savoir de quel endpoint sa ligne vient : les
+    // noms arrivent sous `person.full_name`, et l'identifiant du profil ne
+    // figure pas du tout dans la réponse — c'est celui qu'on a demandé.
+    yangoConfigure();
+
+    MockClient::global([
+        GetDriverProfileRequest::class => yangoContractorProfileResponse(
+            yangoContractorProfile(phone: '+2250700000009', firstName: 'Awa', lastName: 'TRAORE'),
+        ),
+    ]);
+
+    $profile = (new SaloonYangoDirectory)->driverProfile('YAN-LOIN');
+
+    expect($profile['driver_profile']['id'])->toBe('YAN-LOIN')
+        ->and($profile['driver_profile']['first_name'])->toBe('Awa')
+        ->and($profile['driver_profile']['last_name'])->toBe('TRAORE')
+        ->and($profile['driver_profile']['phones'])->toBe(['+2250700000009'])
+        ->and($profile['driver_profile']['driver_license']['number'])->toBe('070236')
+        // Pas de solde : `account.balance_limit` de la v2 est un plafond de
+        // découvert, pas un solde. Le faire passer pour tel afficherait faux.
+        ->and($profile)->not->toHaveKey('accounts');
+});
+
+it('translates a v2 vehicle sheet, plate included under its British spelling', function (): void {
+    yangoConfigure();
+
+    MockClient::global([
+        GetVehicleRequest::class => yangoCarDetailResponse(
+            yangoCarDetail(plate: '9876-ZZ-01', brand: 'Suzuki', model: 'Dzire'),
+        ),
+    ]);
+
+    $car = (new SaloonYangoDirectory)->vehicle('CAR-LOIN');
+
+    expect($car['id'])->toBe('CAR-LOIN')
+        // `licence_plate_number` côté fiche, `number` côté liste.
+        ->and($car['number'])->toBe('9876-ZZ-01')
+        ->and($car['brand'])->toBe('Suzuki')
+        ->and($car['model'])->toBe('Dzire')
+        ->and($car['color'])->toBe('Blanc');
 });
