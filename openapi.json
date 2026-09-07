@@ -592,7 +592,8 @@
                                                             "leaderboard",
                                                             "raffle",
                                                             "surprise"
-                                                        ]
+                                                        ],
+                                                        "example": "raffle"
                                                     },
                                                     "status": {
                                                         "type": "string",
@@ -709,6 +710,31 @@
                                                     },
                                                     "ticketing": {
                                                         "type": "object",
+                                                        "description": "Absent des challenges qui n'attribuent pas de\ntickets. L'exemple montre un challenge encore\n`active` : les `range_number` n'y sont pas encore\nattribués, le vivier n'étant gelé qu'au passage en\n`draw_pending`.",
+                                                        "example": {
+                                                            "trips_per_ticket": 10,
+                                                            "orders_completed": 34,
+                                                            "tickets_held": 3,
+                                                            "progress_in_block": 4,
+                                                            "orders_to_next_ticket": 6,
+                                                            "tickets": [
+                                                                {
+                                                                    "id": "01HZY3M4N5P6Q7R8S9T0V1W2X3",
+                                                                    "date": "2026-08-26",
+                                                                    "range_number": null
+                                                                },
+                                                                {
+                                                                    "id": "01HZY4P7Q8R9S0T1V2W3X4Y5Z6",
+                                                                    "date": "2026-08-28",
+                                                                    "range_number": null
+                                                                },
+                                                                {
+                                                                    "id": "01HZY5R9S0T1V2W3X4Y5Z6A7B8",
+                                                                    "date": "2026-08-30",
+                                                                    "range_number": null
+                                                                }
+                                                            ]
+                                                        },
                                                         "properties": {
                                                             "trips_per_ticket": {
                                                                 "type": "integer",

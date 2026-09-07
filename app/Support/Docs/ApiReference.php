@@ -404,7 +404,12 @@ class ApiReference
         // recurse jamais, donc la garde de profondeur — qui protège la
         // récursion dans `object`/`array` — ne doit pas l'empêcher de
         // ressortir même au dernier niveau autorisé.
-        if (isset($schema['example']) && is_scalar($schema['example'])) {
+        //
+        // Un `example` composite (objet ou tableau) est repris tel quel : il
+        // sert précisément à montrer un bloc que la génération ne saurait pas
+        // produire — une clé facultative, ou une imbrication au-delà de
+        // `SKELETON_DEPTH`.
+        if (isset($schema['example'])) {
             return $schema['example'];
         }
 
@@ -502,8 +507,11 @@ class ApiReference
 
             // Les clés facultatives d'un objet imbriqué encombrent plus
             // qu'elles n'aident : au premier niveau on montre tout, plus
-            // profond on s'en tient au requis.
-            if ($depth > 0 && $required !== [] && ! in_array($name, $required, true)) {
+            // profond on s'en tient au requis. Une clé facultative porteuse
+            // d'un `example` explicite fait exception : l'exemple n'a été
+            // écrit que pour la montrer.
+            if ($depth > 0 && $required !== [] && ! in_array($name, $required, true)
+                && ! isset($property['example'])) {
                 continue;
             }
 

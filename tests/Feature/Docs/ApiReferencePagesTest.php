@@ -143,3 +143,68 @@ it('an operation requested under the wrong tag is not found', function (): void 
     $this->get('/docs/api/reference/wallet/v1.shop.orders.store?token=jeton-de-test')
         ->assertNotFound();
 });
+
+/**
+ * L'exemple de réponse est généré depuis le contrat : une clé facultative ou
+ * imbriquée trop profond n'y apparaît que si elle porte un `example`.
+ */
+it('an explicit example carries an optional key into the generated response example', function (): void {
+    $reference = apiReferencePagesReference();
+
+    // Le filtre « requis seulement » ne s'applique qu'aux objets imbriqués :
+    // le cas se reproduit donc un niveau sous la racine.
+    $example = $reference->responseExample([
+        'type' => 'object',
+        'properties' => [
+            'item' => [
+                'type' => 'object',
+                'properties' => [
+                    'kept' => ['type' => 'string', 'examples' => ['oui']],
+                    // Facultative et sans exemple : la génération s'en tient
+                    // au requis passé le premier niveau.
+                    'dropped' => [
+                        'type' => 'object',
+                        'properties' => ['a' => ['type' => 'string']],
+                    ],
+                    // Facultative mais porteuse d'un exemple composite :
+                    // reprise telle quelle, imbrication comprise.
+                    'shown' => [
+                        'type' => 'object',
+                        'example' => ['deep' => [['n' => 1]]],
+                        'properties' => ['deep' => ['type' => 'array']],
+                    ],
+                ],
+                'required' => ['kept'],
+            ],
+        ],
+        'required' => ['item'],
+    ]);
+
+    $item = json_decode($example, true)['item'];
+
+    expect($item)->toHaveKeys(['kept', 'shown'])
+        ->and($item)->not->toHaveKey('dropped')
+        ->and($item['shown'])->toBe(['deep' => [['n' => 1]]]);
+});
+
+it('the challenges response example shows the tickets a driver holds', function (): void {
+    $reference = apiReferencePagesReference();
+    $document = $reference->document();
+    $schema = $document['paths']['/challenges']['get']['responses'][200]['content']['application/json']['schema'];
+
+    // L'exemple lui-même, pas la page : le tableau des schémas nomme
+    // `ticketing` de toute façon, et l'assertion ne prouverait rien.
+    $example = json_decode($reference->responseExample($reference->resolve($schema)), true);
+    $ticketing = $example['data'][0]['ticketing'] ?? null;
+
+    // Le bloc `ticketing` est facultatif : sans son `example`, la génération
+    // le laissait de côté et l'exemple publié ne montrait aucun ticket.
+    expect($ticketing)->not->toBeNull()
+        ->and($ticketing['tickets_held'])->toBe(3)
+        ->and($ticketing['tickets'])->toHaveCount(3)
+        ->and($ticketing['tickets'][0])->toHaveKeys(['id', 'date', 'range_number'])
+        // L'exemple montre un challenge encore `active` : le vivier n'est pas
+        // gelé, donc aucun numéro n'est attribué.
+        ->and($example['data'][0]['type'])->toBe('raffle')
+        ->and($ticketing['tickets'][0]['range_number'])->toBeNull();
+});
