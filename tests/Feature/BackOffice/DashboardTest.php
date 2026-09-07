@@ -88,6 +88,57 @@ it('counts only the orders of the selected week', function (): void {
     expect($weekTotal($component->html()))->toBe('47');
 });
 
+it('charts the seven latest days, crossing into the previous week', function (): void {
+    // Mardi : la semaine calendaire n'offrirait que deux barres. La fenêtre
+    // glissante remonte au mercredi précédent et en garde sept.
+    CarbonImmutable::setTestNow('2026-09-08 10:00:00');
+
+    $driver = Driver::factory()->create();
+
+    // Mercredi 2 septembre, premier jour de la fenêtre.
+    DriverDailyActivity::factory()->for($driver)->create([
+        'activity_date' => '2026-09-02',
+        'orders_completed' => 31,
+    ]);
+    // Mardi 1er septembre, la veille de la fenêtre : hors champ.
+    DriverDailyActivity::factory()->for($driver)->create([
+        'activity_date' => '2026-09-01',
+        'orders_completed' => 44,
+    ]);
+
+    $chart = static function (string $html): string {
+        return Str::of($html)
+            ->after(__('backoffice.dashboard.orders_per_day', [
+                'period' => __('backoffice.dashboard.day_range', ['from' => '2 sept.', 'to' => '8 sept. 2026']),
+            ]))
+            ->before(__('backoffice.dashboard.latest_requests'))
+            ->toString();
+    };
+
+    $html = $chart(Livewire::actingAs(dashboardUser('direction'))->test(Dashboard::class)->html());
+
+    expect($html)->toContain('31')
+        ->and($html)->not->toContain('44');
+
+    CarbonImmutable::setTestNow();
+});
+
+it('narrows the daily chart to a closed week when one is selected', function (): void {
+    // Sur une semaine révolue la fenêtre coïncide avec elle : du lundi au
+    // dimanche, sans déborder sur la semaine suivante.
+    CarbonImmutable::setTestNow('2026-09-08 10:00:00');
+
+    Livewire::actingAs(dashboardUser('direction'))
+        ->test(Dashboard::class)
+        ->set('week', '2026-W36')
+        ->assertSee(__('backoffice.dashboard.orders_per_day', [
+            'period' => __('backoffice.dashboard.day_range', ['from' => '31 août', 'to' => '6 sept. 2026']),
+        ]), escape: false)
+        ->assertDontSee(__('backoffice.dashboard.daily_rolling'), escape: false);
+
+    CarbonImmutable::setTestNow();
+});
+
 it('marks the current week as in progress and a closed week as closed', function (): void {
     $lastWeek = CarbonImmutable::now()->startOfWeek()->subWeek();
 

@@ -75,8 +75,10 @@
         <div class="mt-4 grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
             <div class="flex flex-col gap-4">
                 @if ($dailyOrders !== [])
-                    <x-panel :title="__('backoffice.dashboard.orders_per_day', ['period' => $weekLabel])"
-                             :subtitle="$weekInProgress ? __('backoffice.dashboard.week_in_progress') : null">
+                    {{-- Fenêtre glissante de sept jours : elle ne suit pas le --}}
+                    {{-- sélecteur de semaine tant qu'elle se referme aujourd'hui. --}}
+                    <x-panel :title="__('backoffice.dashboard.orders_per_day', ['period' => $dailyLabel])"
+                             :subtitle="$dailyToToday ? __('backoffice.dashboard.daily_rolling') : null">
                         <x-bar-chart :bars="$dailyOrders" />
                     </x-panel>
                 @endif

@@ -80,6 +80,8 @@ return [
         'trend_12_weeks' => 'Évolution des courses — 12 dernières semaines',
         'trend_last_point' => 'Dernier point : semaine en cours',
         'orders_per_day' => 'Courses par jour — :period',
+        'day_range' => ':from → :to',
+        'daily_rolling' => 'Sept derniers jours, aujourd\'hui compris',
 
         'latest_requests' => 'Dernières requêtes ouvertes',
         'open_queue' => 'Ouvrir la file',
