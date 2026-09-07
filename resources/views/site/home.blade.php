@@ -98,13 +98,16 @@
                                         {{ Vite::asset('resources/images/site/suzuki-dzire@2x.webp') }} 1040w"
                                 sizes="(min-width: 1024px) 520px, 100vw">
                         <img src="{{ Vite::asset('resources/images/site/suzuki-dzire.png') }}"
-                             alt="Suzuki Dzire du parc AT Confort Plus"
-                             width="520" height="292"
+                             alt="Suzuki Dzire blanche du parc AT Confort Plus"
+                             width="520" height="260"
                              fetchpriority="high" decoding="async"
                              class="mx-auto w-[min(100%,520px)] drop-shadow-[0_24px_30px_rgb(0_0_0/0.35)]">
                     </picture>
 
-                    <div class="absolute -top-1.5 right-1 flex rotate-3 items-center gap-2.5 rounded-[14px] bg-white px-3.5 py-2 pl-2 text-[13px] font-bold leading-tight text-ink shadow-lift">
+                    {{-- Remontée au-dessus du toit : la nouvelle photo, en 2:1, place la
+                         voiture plus haut dans son cadre et la pastille recouvrait
+                         le pare-brise et le montant avant. --}}
+                    <div class="absolute -top-8 right-0 flex rotate-3 items-center gap-2.5 rounded-[14px] bg-white px-3.5 py-2 pl-2 text-[13px] font-bold leading-tight text-ink shadow-lift">
                         <picture>
                             <source type="image/webp" srcset="{{ Vite::asset('resources/images/site/lots/televiseur.webp') }}">
                             <img src="{{ Vite::asset('resources/images/site/lots/televiseur.jpg') }}"
