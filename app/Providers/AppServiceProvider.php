@@ -26,6 +26,7 @@ use App\Models\PickupPoint;
 use App\Models\Prize;
 use App\Models\Product;
 use App\Models\ShopOrder;
+use App\Models\ShopOrderDocument;
 use App\Models\ShopOrderItem;
 use App\Models\SupportRequest;
 use App\Models\Transaction;
@@ -143,6 +144,7 @@ class AppServiceProvider extends ServiceProvider
             // `enforceMorphMap` lèverait sans cette entrée.
             'role' => Role::class,
             'shop_order' => ShopOrder::class,
+            'shop_order_document' => ShopOrderDocument::class,
             'shop_order_item' => ShopOrderItem::class,
             'support_request' => SupportRequest::class,
             'transaction' => Transaction::class,

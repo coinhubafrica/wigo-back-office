@@ -64,7 +64,26 @@ properties:
     maxLength: 255
     examples:
       - "Immeuble bleu, en face de la pharmacie, Cocody"
+  documents:
+    type: array
+    items:
+      type: string
+      format: binary
+      contentMediaType: application/octet-stream
+    description: |-
+      Carte grise du véhicule : deux photos, envoyées dans la même
+      requête que la commande. L'ordre n'a pas de sens à déclarer —
+      recto et verso se lisent sur l'image, pas sur un champ que le
+      conducteur pourrait renseigner à l'envers.
+
+      Une commande sans ses deux photos est refusée, quel que soit le
+      mode de réception. Image seule (jpg, png ou webp), 5 Mo au plus
+      par photo : le type est vérifié sur le contenu, pas sur
+      l'extension.
+    minItems: 2
+    maxItems: 2
 required:
   - lines
   - fulfilment_mode
+  - documents
 title: StoreShopOrderRequest

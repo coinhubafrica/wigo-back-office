@@ -89,6 +89,12 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('shop/orders', [ShopController::class, 'orders'])->name('shop.orders.index');
         Route::get('shop/orders/{order}', [ShopController::class, 'showOrder'])->name('shop.orders.show');
 
+        // Carte grise jointe à une commande : lecture par URL signée, comme la
+        // photo de profil et les pièces jointes du support.
+        Route::get('shop/orders/documents/{document}', [ShopController::class, 'orderDocument'])
+            ->middleware('signed')
+            ->name('shop.orders.documents.show');
+
         // Portefeuille : le solde et l'historique restent lisibles par un
         // conducteur suspendu — ses recharges passées le regardent —, mais il
         // ne peut plus en lancer de nouvelle.

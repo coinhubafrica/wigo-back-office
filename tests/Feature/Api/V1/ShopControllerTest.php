@@ -10,8 +10,14 @@ use App\Models\ShopOrderItem;
 use App\Models\Vehicle;
 use App\Models\VehicleBrand;
 use App\Models\VehicleModel;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
+
+beforeEach(function (): void {
+    Storage::fake('local');
+});
 
 it('requires authentication for the catalogue', function (): void {
     $this->getJson(route('api.v1.shop.products'))
@@ -80,10 +86,12 @@ it('lets a driver place a pickup order', function (): void {
     $pickupPoint = PickupPoint::factory()->create();
 
     $response = $this->withHeader('Idempotency-Key', (string) Str::uuid())
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             'lines' => [['product_id' => $product->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Pickup->value,
             'pickup_point_id' => $pickupPoint->id,
+            'documents' => shopOrderCarteGrise(),
         ])
         ->assertCreated();
 
@@ -100,9 +108,11 @@ it('uses the default pickup point for a pickup order without an agency', functio
     $headquarters = PickupPoint::factory()->create(['created_at' => now()->subDay()]);
 
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             'lines' => [['product_id' => $product->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Pickup->value,
+            'documents' => shopOrderCarteGrise(),
         ])
         ->assertCreated();
 
@@ -117,9 +127,11 @@ it('refuses a pickup order when no agency is active', function (): void {
     PickupPoint::factory()->create(['is_active' => false]);
 
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             'lines' => [['product_id' => $product->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Pickup->value,
+            'documents' => shopOrderCarteGrise(),
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('pickup_point_id');
@@ -134,9 +146,11 @@ it('requires a position and a contact for a delivery order', function (): void {
     $product = Product::factory()->create();
 
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             'lines' => [['product_id' => $product->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Delivery->value,
+            'documents' => shopOrderCarteGrise(),
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['latitude', 'longitude', 'contact_phone']);
@@ -178,9 +192,11 @@ it('falls back to the only active point for a pickup order', function (): void {
     // Les versions déjà déployées de l'application n'envoient pas
     // `pickup_point_id` : une agence unique lève l'ambiguïté.
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             'lines' => [['product_id' => $product->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Pickup->value,
+            'documents' => shopOrderCarteGrise(),
         ])
         ->assertCreated();
 
@@ -190,7 +206,8 @@ it('falls back to the only active point for a pickup order', function (): void {
 });
 
 it('still requires a point for a pickup order when several are active', function (): void {
-    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+    $driver = Driver::factory()->create();
+    Sanctum::actingAs($driver, ['mobile:*']);
 
     $product = Product::factory()->create();
     PickupPoint::factory()->count(2)->create();
@@ -198,9 +215,11 @@ it('still requires a point for a pickup order when several are active', function
     // Deux agences ouvertes : deviner reviendrait à envoyer le conducteur
     // au mauvais comptoir sans le dire.
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             'lines' => [['product_id' => $product->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Pickup->value,
+            'documents' => shopOrderCarteGrise(),
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('pickup_point_id');
@@ -213,10 +232,12 @@ it('refuses ordering a reference closed to ordering', function (): void {
     $product = Product::factory()->inactive()->create();
 
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             'lines' => [['product_id' => $product->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Pickup->value,
             'pickup_point_id' => PickupPoint::factory()->create()->id,
+            'documents' => shopOrderCarteGrise(),
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('lines');
@@ -232,10 +253,12 @@ it('prevents a suspended driver from ordering', function (): void {
     Sanctum::actingAs($driver, ['mobile:*']);
 
     $this->withHeader('Idempotency-Key', (string) Str::uuid())
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             'lines' => [['product_id' => Product::factory()->create()->id, 'qty' => 1]],
             'fulfilment_mode' => FulfilmentMode::Pickup->value,
             'pickup_point_id' => PickupPoint::factory()->create()->id,
+            'documents' => shopOrderCarteGrise(),
         ])
         ->assertForbidden();
 });
@@ -288,4 +311,18 @@ function vehicleModel(string $brand, string $model): VehicleModel
     return VehicleModel::factory()
         ->for(VehicleBrand::factory()->create(['name' => $brand]))
         ->create(['name' => $model]);
+}
+
+/**
+ * Les deux photos de la carte grise, telles que le mobile les joint à la
+ * commande.
+ *
+ * @return list<UploadedFile>
+ */
+function shopOrderCarteGrise(): array
+{
+    return [
+        UploadedFile::fake()->image('cg-1.jpg'),
+        UploadedFile::fake()->image('cg-2.jpg'),
+    ];
 }

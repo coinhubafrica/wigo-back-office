@@ -76,6 +76,13 @@ properties:
         - qty
         - price
         - line_total
+  documents:
+    type: array
+    items:
+      $ref: ../../components/schemas/ShopOrderDocumentResource.yaml
+    description: |-
+      Carte grise du véhicule, les deux photos transmises à la
+      commande. Chacune porte une URL signée valable une heure.
   placed_at:
     type: string
     examples:
