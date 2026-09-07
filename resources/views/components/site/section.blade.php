@@ -1,5 +1,5 @@
 @props([
-    /** `light` (fond clair), `dark` (tombola), `orange` (recrutement). */
+    /** `light` (fond clair), `dark` (tombola), `green` (recrutement), `orange`. */
     'tone' => 'light',
     /** Titre de section. Absent = section sans en-tête. */
     'title' => null,
@@ -22,6 +22,17 @@
     [$sectionClasses, $titleClasses, $subtitleClasses] = match ($tone) {
         'dark' => [
             'bg-gradient-to-br from-ink-dark to-ink-dark-soft',
+            'text-white',
+            'text-white/85',
+        ],
+        /*
+         * Le vert porte le bloc de recrutement depuis que la page est orange :
+         * un second dégradé orange en bas de page ferait doublon avec le héros
+         * et l'appel à l'action n'accrocherait plus l'œil. Le vert reste par
+         * ailleurs la teinte de confiance de la marque (CNPS, support).
+         */
+        'green' => [
+            'bg-gradient-to-br from-site-green to-site-green-dark',
             'text-white',
             'text-white/85',
         ],

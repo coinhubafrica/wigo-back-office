@@ -55,7 +55,7 @@
     <div x-data="siteReveal">
 
         {{-- ============ HÉROS ============ --}}
-        <section id="haut" class="relative overflow-hidden bg-gradient-to-br from-site-green to-site-green-dark pt-[54px] pb-[90px] text-white">
+        <section id="haut" class="relative overflow-hidden bg-gradient-to-br from-site-hero to-site-hero-deep pt-[54px] pb-[90px] text-white">
             <div class="mx-auto grid max-w-[1120px] items-center gap-9 px-5 lg:grid-cols-[1.1fr_1fr]">
                 <div>
                     <x-site.pill class="mb-4.5">
@@ -73,7 +73,11 @@
                     </p>
 
                     <div class="mb-6 flex flex-wrap gap-3">
-                        <x-site.cta href="#rejoindre">
+                        {{-- Variante blanche et non `solid` : sur un héros orange,
+                             un bouton `--color-primary` ne détache que 1,50:1 de
+                             son fond et se fond dedans. Sur fond coloré, c'est le
+                             blanc qui porte l'action principale. --}}
+                        <x-site.cta href="#rejoindre" variant="white">
                             <span class="me-1" aria-hidden="true">🚗</span>Devenir chauffeur WiGO
                         </x-site.cta>
                         <x-site.cta href="#app" variant="outline">Découvrir l'application</x-site.cta>
@@ -94,13 +98,16 @@
                                         {{ Vite::asset('resources/images/site/suzuki-dzire@2x.webp') }} 1040w"
                                 sizes="(min-width: 1024px) 520px, 100vw">
                         <img src="{{ Vite::asset('resources/images/site/suzuki-dzire.png') }}"
-                             alt="Suzuki Dzire du parc AT Confort Plus"
-                             width="520" height="292"
+                             alt="Suzuki Dzire blanche du parc AT Confort Plus"
+                             width="520" height="260"
                              fetchpriority="high" decoding="async"
                              class="mx-auto w-[min(100%,520px)] drop-shadow-[0_24px_30px_rgb(0_0_0/0.35)]">
                     </picture>
 
-                    <div class="absolute -top-1.5 right-1 flex rotate-3 items-center gap-2.5 rounded-[14px] bg-white px-3.5 py-2 pl-2 text-[13px] font-bold leading-tight text-ink shadow-lift">
+                    {{-- Remontée au-dessus du toit : la nouvelle photo, en 2:1, place la
+                         voiture plus haut dans son cadre et la pastille recouvrait
+                         le pare-brise et le montant avant. --}}
+                    <div class="absolute -top-8 right-0 flex rotate-3 items-center gap-2.5 rounded-[14px] bg-white px-3.5 py-2 pl-2 text-[13px] font-bold leading-tight text-ink shadow-lift">
                         <picture>
                             <source type="image/webp" srcset="{{ Vite::asset('resources/images/site/lots/televiseur.webp') }}">
                             <img src="{{ Vite::asset('resources/images/site/lots/televiseur.jpg') }}"
@@ -185,7 +192,7 @@
         </x-site.section>
 
         {{-- ============ DEVENIR CHAUFFEUR ============ --}}
-        <x-site.section id="rejoindre" tone="orange"
+        <x-site.section id="rejoindre" tone="green"
                         title="Devenez chauffeur du parc AT Confort Plus"
                         subtitle="Un véhicule récent, un revenu régulier avec Yango, et tous les avantages WiGO PRO.">
             <ol class="mx-auto mb-9 grid max-w-[980px] gap-4.5 md:grid-cols-3">

@@ -64,9 +64,29 @@
      * (#E05302), qui est le survol des boutons du back-office. */
     --color-primary-dark: #D94E00;
 
-    /* Accent chaud : le fragment de titre en emphase du héros, et les liens
-     * du pied de page — tous deux sur fond vert. */
-    --color-site-accent: #FFC79E;
+    /* Accent chaud : le fragment de titre en emphase du héros et les liens du
+     * pied de page. Sur l'orange dominant, #FFC79E n'a plus assez d'écart
+     * avec le fond — on éclaircit vers un crème qui tient le contraste. */
+    --color-site-accent: #FFE8D4;
+
+    /*
+     * Bornes du dégradé du héros et de l'en-tête.
+     *
+     * Deux contraintes les fixent, et non le goût :
+     *
+     * 1. Plus sombres que `--color-primary` (#FB5C02) — un aplat de la teinte
+     *    de marque écraserait le bouton d'appel principal, qui est lui aussi
+     *    `--color-primary` et doit ressortir du fond.
+     * 2. Le texte blanc du héros doit tenir 4,5:1 (WCAG AA). #FB5C02 ne donne
+     *    que 2,97:1 et #E85102 3,74:1 — tous deux en échec. #C94802 est la
+     *    teinte la plus claire qui passe (4,76:1), et c'est déjà un jeton de
+     *    la charte (`--color-primary-active`).
+     *
+     * Le vert du site tenait l'AA sans effort ; l'orange, non. C'est la raison
+     * pour laquelle ces deux jetons existent au lieu de réutiliser `primary`.
+     */
+    --color-site-hero: #C94802;
+    --color-site-hero-deep: #8F3102;
 
     /* Dégradé de la section sombre (tombola). */
     --color-ink-dark: #1C1C1C;

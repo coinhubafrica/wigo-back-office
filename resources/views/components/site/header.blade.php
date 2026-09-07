@@ -21,7 +21,7 @@
 @endphp
 <header x-data="siteNav"
         x-on:keydown.escape.window="close()"
-        class="sticky top-0 z-50 bg-site-green shadow-[0_2px_12px_rgb(0_0_0/0.18)]">
+        class="sticky top-0 z-50 bg-site-hero shadow-[0_2px_12px_rgb(0_0_0/0.18)]">
     <div class="mx-auto flex h-[62px] max-w-[1120px] items-center gap-[18px] px-5">
         <a href="#haut" aria-label="WiGO — accueil" class="shrink-0">
             <picture>
@@ -63,7 +63,7 @@
          x-cloak
          x-on:click="close()"
          aria-label="Navigation principale (mobile)"
-         class="flex flex-col bg-site-green-dark px-4 pb-4 shadow-[0_12px_24px_rgb(0_0_0/0.25)] lg:hidden">
+         class="flex flex-col bg-site-hero-deep px-4 pb-4 shadow-[0_12px_24px_rgb(0_0_0/0.25)] lg:hidden">
         @foreach ($links as $href => $label)
             <x-site.nav-link :href="$href" class="border-b border-white/10 py-3">{{ $label }}</x-site.nav-link>
         @endforeach
