@@ -32,6 +32,10 @@ it('runs a day of orders', function (): void {
 });
 
 it('runs a day of transactions', function (): void {
+    // Conducteur déjà en base : sans lui, la passe le demanderait nommément à
+    // Yango, ce que ce test-ci n'a pas à exercer.
+    Driver::factory()->create(['yango_id' => 'YAN-001']);
+
     MockClient::global([
         GetTransactionsRequest::class => yangoTransactionsResponse([yangoTransactionRow()]),
     ]);

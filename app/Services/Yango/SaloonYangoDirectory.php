@@ -6,8 +6,10 @@ use App\Contracts\YangoDirectory;
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
+use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
 use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
+use App\Http\Integrations\Yango\Requests\GetVehicleRequest;
 use App\Http\Integrations\Yango\YangoFleetConnector;
 use App\Settings\YangoSettings;
 use Carbon\CarbonInterface;
@@ -96,6 +98,74 @@ class SaloonYangoDirectory implements YangoDirectory
             fn (string $parkId, ?string $cursor): Request => new GetTransactionsRequest($parkId, $from, $to, $pageSize, $cursor),
             'transactions',
         );
+    }
+
+    public function driverProfile(string $yangoId): ?array
+    {
+        $profile = $this->fetchOne(new GetDriverProfileRequest($yangoId));
+
+        if ($profile === null) {
+            return null;
+        }
+
+        $shaped = YangoProfileShape::fromContractorProfile($profile, $yangoId);
+
+        // Le conducteur porte un identifiant de voiture, jamais la fiche : on
+        // va la chercher pour que `syncDriver()` rattache l'affectation dans
+        // la même écriture, exactement comme la clé `car` de la liste.
+        $carId = YangoProfileShape::carId($profile);
+
+        if ($carId !== null) {
+            $car = $this->vehicle($carId);
+
+            if ($car !== null) {
+                $shaped['car'] = $car;
+            }
+        }
+
+        return $shaped;
+    }
+
+    public function vehicle(string $yangoId): ?array
+    {
+        $car = $this->fetchOne(new GetVehicleRequest($yangoId));
+
+        return $car === null ? null : YangoVehicleShape::fromCar($car, $yangoId);
+    }
+
+    /**
+     * Une fiche unitaire, ou `null` si Yango ne la connaît pas.
+     *
+     * Le 404 est traduit en `null` et non levé : demander un conducteur qui
+     * n'est pas de ce parc est une question légitime dont « non » est une
+     * réponse valable. Le reste remonte — un 401 ou un 500 ne doit pas se
+     * confondre avec une absence, sans quoi une clé refusée passerait pour un
+     * parc vide.
+     *
+     * Le rejeu sur 429 est partagé avec la pagination : ces appels arrivent
+     * au fil d'une passe de courses, dans la même rafale.
+     *
+     * @return array<string, mixed>|null
+     *
+     * @throws YangoFleetException
+     */
+    private function fetchOne(Request $request): ?array
+    {
+        $settings = $this->configuredSettings();
+
+        try {
+            $response = $this->fetchPage($this->connector($settings), $request);
+        } catch (YangoFleetException $exception) {
+            if ($exception->getStatusCode() === Response::HTTP_NOT_FOUND) {
+                return null;
+            }
+
+            throw $exception;
+        }
+
+        $body = $response->json();
+
+        return is_array($body) ? $body : null;
     }
 
     /**

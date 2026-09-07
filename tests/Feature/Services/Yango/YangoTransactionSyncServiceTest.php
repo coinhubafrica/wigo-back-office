@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
 use App\Models\Driver;
 use App\Models\YangoTransaction;
@@ -54,13 +55,36 @@ it('still records a movement Yango attaches to nobody', function (): void {
         ->and(YangoTransaction::query()->firstOrFail()->driver_id)->toBeNull();
 });
 
-it('records a movement whose driver is unknown locally, unattached', function (): void {
-    MockClient::global([yangoTransactionsResponse([yangoTransactionRow(driverYangoId: 'YAN-INCONNU')])]);
+it('records a movement unattached when Yango cannot name the driver either', function (): void {
+    MockClient::global([
+        GetTransactionsRequest::class => yangoTransactionsResponse([
+            yangoTransactionRow(driverYangoId: 'YAN-INCONNU'),
+        ]),
+        GetDriverProfileRequest::class => yangoRefusal(404),
+    ]);
 
     $result = app(YangoTransactionSyncService::class)->syncDay(Carbon::parse('2026-09-03'));
 
     expect($result->transactionsUnattached)->toBe(1)
         ->and(YangoTransaction::query()->firstOrFail()->driver_id)->toBeNull();
+});
+
+it('brings back a driver the park pass has not reached, and attaches the movement', function (): void {
+    // Le grand livre se rapproche d'autant mieux que la passe parc est en
+    // retard : la ligne était écrite sans conducteur, elle l'est désormais avec.
+    MockClient::global([
+        GetTransactionsRequest::class => yangoTransactionsResponse([
+            yangoTransactionRow(driverYangoId: 'YAN-LOIN'),
+        ]),
+        GetDriverProfileRequest::class => yangoContractorProfileResponse(),
+    ]);
+
+    $result = app(YangoTransactionSyncService::class)->syncDay(Carbon::parse('2026-09-03'));
+
+    $driver = Driver::query()->where('yango_id', 'YAN-LOIN')->firstOrFail();
+
+    expect($result->transactionsUnattached)->toBe(0)
+        ->and(YangoTransaction::query()->firstOrFail()->driver_id)->toBe($driver->id);
 });
 
 it('skips a movement without a usable date', function (): void {

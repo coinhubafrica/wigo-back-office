@@ -329,6 +329,71 @@ function yangoBalanceResponse(int $balance = 0, string $yangoId = 'YAN-001'): Mo
 }
 
 /**
+ * Fiche conducteur telle que `/v2/parks/contractors/driver-profile` la rend.
+ *
+ * Rien à voir avec `yangoProfile()`, qui imite une ligne de liste : les noms
+ * vivent sous `person.full_name`, le téléphone sous `person.contact_info`, et
+ * l'identifiant du profil ne figure pas dans la réponse — c'est celui qu'on a
+ * passé en paramètre. `YangoProfileShape` fait la traduction.
+ *
+ * @return array<string, mixed>
+ */
+function yangoContractorProfile(
+    ?string $phone = '+2250700000009',
+    string $firstName = 'Awa',
+    string $lastName = 'TRAORE',
+    ?string $carId = null,
+): array {
+    return [
+        'person' => [
+            'full_name' => ['first_name' => $firstName, 'last_name' => $lastName],
+            'contact_info' => array_filter(['phone' => $phone], fn (mixed $v): bool => $v !== null),
+            'driver_license' => ['number' => '070236'],
+        ],
+        'profile' => ['work_status' => 'working'],
+        'account' => ['balance_limit' => '50'],
+    ] + ($carId === null ? [] : ['car_id' => $carId]);
+}
+
+/**
+ * Réponse à la demande d'un conducteur nommément.
+ */
+function yangoContractorProfileResponse(?array $profile = null): MockResponse
+{
+    return MockResponse::make($profile ?? yangoContractorProfile(), 200);
+}
+
+/**
+ * Fiche véhicule telle que `/v2/parks/vehicles/car` la rend.
+ *
+ * La plaque s'appelle ici `licence_plate_number` — orthographe britannique, et
+ * `number` côté liste : c'est le piège de cette forme.
+ *
+ * @return array<string, mixed>
+ */
+function yangoCarDetail(string $plate = '9876-ZZ-01', string $brand = 'Suzuki', string $model = 'Dzire'): array
+{
+    return [
+        'vehicle_specifications' => [
+            'brand' => $brand,
+            'model' => $model,
+            'color' => 'Blanc',
+            'year' => 2019,
+        ],
+        'vehicle_licenses' => ['licence_plate_number' => $plate],
+        'park_profile' => ['status' => 'working'],
+    ];
+}
+
+/**
+ * Réponse à la demande d'un véhicule nommément.
+ */
+function yangoCarDetailResponse(?array $car = null): MockResponse
+{
+    return MockResponse::make($car ?? yangoCarDetail(), 200);
+}
+
+/**
  * Refus de Yango, avec le statut qui décide du sort de l'appelant.
  */
 function yangoRefusal(int $status, string $message = 'Refus de Yango'): MockResponse
