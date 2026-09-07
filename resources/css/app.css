@@ -49,6 +49,46 @@
     --color-type-surprise-bg: #F1EAF7;
     --color-type-surprise-text: #6A3C93;
 
+    /* ------------------------------------------------------------------
+     * Site vitrine (wigo.ci). Charte distincte de celle du back-office :
+     * vert de marque, dégradés, rayon de 16 px. Préfixés `site-` là où le
+     * nom entrerait en collision avec un jeton du back-office, sinon nus.
+     * ------------------------------------------------------------------ */
+
+    /* Vert de marque : en-tête, héros, pied de page. Aucun vert n'existait —
+     * `--color-ok-text` est un état (« validé »), pas une couleur de marque. */
+    --color-site-green: #01663F;
+    --color-site-green-dark: #014C2F;
+
+    /* Seconde borne des dégradés orange. Distinct de `--color-primary-hover`
+     * (#E05302), qui est le survol des boutons du back-office. */
+    --color-primary-dark: #D94E00;
+
+    /* Accent chaud : le fragment de titre en emphase du héros, et les liens
+     * du pied de page — tous deux sur fond vert. */
+    --color-site-accent: #FFC79E;
+
+    /* Dégradé de la section sombre (tombola). */
+    --color-ink-dark: #1C1C1C;
+    --color-ink-dark-soft: #2E2E2E;
+
+    /* Fond de page du site : un ton plus gris que le `--color-surface`
+     * (#FAFAFA) du back-office. La vague SVG du héros doit s'y accorder. */
+    --color-site-surface: #F5F5F5;
+
+    /* Texte secondaire du site : plus contrasté que le `--color-muted`
+     * (#71717A) du back-office — il porte des chapeaux de section en
+     * 16,5 px, pas des libellés de tableau. */
+    --color-site-muted: #5F5F5F;
+
+    /* Rayon des cartes du site. Le back-office reste à 8 px : deux chartes,
+     * deux rayons. */
+    --radius-site: 16px;
+
+    /* Ombre portée des cartes du site. Le back-office n'en utilise pas — il
+     * borde au filet `--color-line`. */
+    --shadow-lift: 0 10px 30px rgb(33 33 33 / 0.10);
+
     --radius-DEFAULT: 8px;
     --radius-sm: 6px;
 
@@ -304,5 +344,49 @@
     .docs-prose pre .hljs-meta,
     .docs-hljs .hljs-meta {
         color: #8B949E;
+    }
+}
+
+/*
+ * Apparition au défilement du site vitrine.
+ *
+ * Une transition pilotée par une classe, et non une `@keyframes` : l'état est
+ * binaire (vu / pas vu), pas une séquence.
+ *
+ * `.site-reveal` est posée par Alpine (`siteReveal` dans `app.js`), JAMAIS
+ * écrite dans le markup : sans JavaScript — ou avant l'initialisation
+ * d'Alpine — la page doit rester entièrement lisible. Le site statique
+ * d'origine faisait l'inverse (`opacity: 0` en dur dans le CSS) et sa page
+ * était vide quand le script ne partait pas.
+ *
+ * Le bloc `prefers-reduced-motion` global de ce fichier neutralise déjà la
+ * transition ; `siteReveal` court-circuite en plus le masquage et les
+ * compteurs, qu'aucune règle CSS ne pourrait arrêter.
+ */
+@layer components {
+    .site-reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .site-reveal--visible {
+        opacity: 1;
+        transform: none;
+    }
+
+    /*
+     * Onglet en arrière-plan : le navigateur bride `requestAnimationFrame` et
+     * les transitions. Une page ouverte dans un onglet non actif verrait donc
+     * l'apparition démarrer puis se figer à `opacity: 0`. On neutralise le
+     * masquage tant que le document est caché — le contenu est alors
+     * simplement là, sans animation.
+     */
+    @media (scripting: none) {
+        .site-reveal {
+            opacity: 1;
+            transform: none;
+            transition: none;
+        }
     }
 }

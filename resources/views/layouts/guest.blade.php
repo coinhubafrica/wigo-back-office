@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{-- Écrans nominatifs et journalisés : ils ne doivent pas être indexés.
+         La vitrine, elle, porte `index, follow`. --}}
+    <meta name="robots" content="noindex, nofollow">
     <title>{{ __('backoffice.sign_in') }} — WiGO PRO</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

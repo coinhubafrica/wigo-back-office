@@ -28,13 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        // Volontairement hors des groupes de domaine de `routes/web.php` : la
+        // plateforme sonde parfois cette URL par nom interne ou par IP, et une
+        // contrainte d'hôte ferait échouer le contrôle de santé.
         health: '/up',
-        // La documentation a ses propres verrous (interrupteur + jeton) et ne
-        // partage donc pas le groupe `web` par défaut : elle les applique
-        // elle-même dans `routes/docs.php`.
-        then: function (): void {
-            require __DIR__.'/../routes/docs.php';
-        },
     )
     /*
     | Canaux de diffusion. Déclarés ici et non par `withRouting(channels: ...)` :
@@ -72,9 +69,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // redirection par défaut de `auth` viserait une route `login` absente.
         $middleware->redirectGuestsTo(fn () => route('bo.login'));
 
-        // La redirection par défaut de `guest` viserait `home` (`/`, qui
-        // redirige lui-même vers `/login`) : boucle infinie pour un
-        // utilisateur déjà connecté qui rouvre `/`.
+        // La redirection par défaut de `guest` viserait `home` : un agent déjà
+        // connecté qui rouvre `/login` retomberait sur la page vitrine
+        // publique, alors qu'il demandait le back-office.
+        //
+        // (Avant que `/` ne devienne cette vitrine, la même valeur par défaut
+        // bouclait : `/` redirigeait vers `/login`, qui redirigeait vers `/`.
+        // La boucle a disparu avec la redirection, la ligne reste utile pour
+        // la destination.)
         $middleware->redirectUsersTo(fn () => route(BackOfficeModule::Dashboard->route()));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
