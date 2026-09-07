@@ -6,11 +6,15 @@ use App\Models\IdempotencyKey;
 use App\Models\PickupPoint;
 use App\Models\Product;
 use App\Models\ShopOrder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function (): void {
+    Storage::fake('local');
+
     $this->driver = Driver::factory()->create();
     Sanctum::actingAs($this->driver, ['mobile:*']);
 
@@ -41,7 +45,8 @@ it('conflicts on the same key with a different body', function (): void {
 });
 
 it('refuses a missing key', function (): void {
-    $this->postJson(route('api.v1.shop.orders.store'), payload())
+    $this->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), payload())
         ->assertUnprocessable()
         ->assertJsonValidationErrors('Idempotency-Key');
 
@@ -50,7 +55,8 @@ it('refuses a missing key', function (): void {
 
 it('refuses a key that is not a uuid', function (): void {
     $this->withHeader('Idempotency-Key', 'pas-un-uuid')
-        ->postJson(route('api.v1.shop.orders.store'), payload())
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), payload())
         ->assertUnprocessable();
 
     $this->assertSame(0, ShopOrder::query()->count());
@@ -58,6 +64,7 @@ it('refuses a key that is not a uuid', function (): void {
 
 it('places a second order with a new key', function (): void {
     order((string) Str::uuid())->assertCreated();
+
     order((string) Str::uuid())->assertCreated();
 
     $this->assertSame(2, ShopOrder::query()->count());
@@ -70,6 +77,8 @@ it('processes an expired key again', function (): void {
 
     IdempotencyKey::query()->where('key', $key)->update(['expires_at' => now()->subMinute()]);
 
+    // La clé périmée se comporte comme absente : la requête est réexécutée,
+    // c'est donc une seconde commande.
     order($key)->assertCreated();
 
     $this->assertSame(2, ShopOrder::query()->count());
@@ -80,7 +89,8 @@ it('does not claim the key on a failed request', function (): void {
 
     // Référence inconnue : la commande échoue, la clé reste libre.
     test()->withHeader('Idempotency-Key', $key)
-        ->postJson(route('api.v1.shop.orders.store'), [
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), [
             ...payload(),
             'lines' => [['product_id' => (string) Str::ulid(), 'qty' => 1]],
         ])
@@ -100,11 +110,16 @@ function payload(int $quantity = 1): array
         'lines' => [['product_id' => test()->product->id, 'qty' => $quantity]],
         'fulfilment_mode' => FulfilmentMode::Pickup->value,
         'pickup_point_id' => test()->pickupPoint->id,
+        'documents' => [
+            UploadedFile::fake()->image('cg-1.jpg'),
+            UploadedFile::fake()->image('cg-2.jpg'),
+        ],
     ];
 }
 
 function order(string $key, int $quantity = 1): TestResponse
 {
     return test()->withHeader('Idempotency-Key', $key)
-        ->postJson(route('api.v1.shop.orders.store'), payload($quantity));
+        ->withHeader('Accept', 'application/json')
+        ->post(route('api.v1.shop.orders.store'), payload($quantity));
 }

@@ -197,7 +197,7 @@ class Orders extends Component
 
         $selected = $this->selected === null
             ? null
-            : ShopOrder::query()->with(['driver', 'items', 'delivery.pickupPoint'])->find($this->selected);
+            : ShopOrder::query()->with(['driver', 'items', 'delivery.pickupPoint', 'documents'])->find($this->selected);
 
         return view('livewire.shop.orders', [
             'orders' => $orders,

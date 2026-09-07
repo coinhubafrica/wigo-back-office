@@ -113,8 +113,14 @@
       Rend la commande créée. En retrait, la réponse porte le code à six
       chiffres à présenter au comptoir.
 
+      La carte grise du véhicule est exigée : joindre les deux photos dans
+      `documents[]`, ce qui fait de cette requête un envoi
+      `multipart/form-data`. Rien à déclarer sur l'ordre des photos.
+
       L'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois
-      la même requête ne crée qu'une commande.
+      la même requête ne crée qu'une commande. L'empreinte d'un envoi
+      multipart porte sur les champs et le contenu des fichiers, pas sur le
+      corps brut.
     summary: 'Passer commande'
     parameters:
       -
@@ -122,7 +128,7 @@
     requestBody:
       required: true
       content:
-        application/json:
+        multipart/form-data:
           schema:
             $ref: ../components/schemas/StoreShopOrderRequest.yaml
     responses:
@@ -147,6 +153,44 @@
         $ref: ../components/responses/AuthenticationException.yaml
       409:
         $ref: ../components/responses/Conflict.yaml
+'/shop/orders/documents/{document}':
+  get:
+    operationId: v1.shop.orders.documents.show
+    description: |-
+      Accessible par URL signée seulement : le fichier vit sur le disque privé
+      et n'a pas d'URL publique. Répond 403 pour la photo d'un autre
+      conducteur — l'URL signée en atteste, la vérification aussi.
+    summary: 'Télécharger une photo de la carte grise'
+    parameters:
+      -
+        name: document
+        in: path
+        required: true
+        description: 'The document ID'
+        schema:
+          type: string
+    responses:
+      200:
+        description: 'Le fichier, servi depuis le disque privé.'
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      403:
+        description: 'An error'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 'Message prêt à afficher, en français.'
+              required:
+                - message
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
 '/shop/orders/{order}':
   get:
     operationId: v1.shop.orders.show

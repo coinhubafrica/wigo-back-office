@@ -9,6 +9,7 @@ use App\Models\PickupPoint;
 use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -28,14 +29,19 @@ class ShopOrderService
      * quantité n'est décrémentée ; une seule ligne fermée à la commande annule
      * toute la commande.
      *
+     * La carte grise du véhicule est exigée : `$documents` porte les deux
+     * photos envoyées avec la commande, écrites sur le disque privé dans la
+     * même transaction.
+     *
      * @param  list<array{product_id: string, qty: int}>  $lines
      * @param  array{pickup_point_id?: string|null, latitude?: float|string|null, longitude?: float|string|null, address_hint?: string|null, contact_phone?: string|null}  $fulfilment
+     * @param  list<UploadedFile>  $documents
      *
      * @throws ValidationException Pièce inconnue ou fermée à la commande.
      */
-    public function place(Driver $driver, array $lines, FulfilmentMode $mode, array $fulfilment = []): ShopOrder
+    public function place(Driver $driver, array $lines, FulfilmentMode $mode, array $fulfilment = [], array $documents = []): ShopOrder
     {
-        return DB::transaction(function () use ($driver, $lines, $mode, $fulfilment): ShopOrder {
+        return DB::transaction(function () use ($driver, $lines, $mode, $fulfilment, $documents): ShopOrder {
             $quantities = $this->mergeLines($lines);
 
             /** @var Collection<string, Product> $products */
@@ -63,6 +69,8 @@ class ShopOrderService
                 'ordered_at' => now(),
             ]);
 
+            $this->storeDocuments($order, $driver, $documents);
+
             foreach ($quantities as $productId => $quantity) {
                 $product = $products[$productId];
 
@@ -86,7 +94,7 @@ class ShopOrderService
                 'contact_phone' => $fulfilment['contact_phone'] ?? null,
             ]);
 
-            return $order->load(['items', 'delivery.pickupPoint']);
+            return $order->load(['items', 'delivery.pickupPoint', 'documents']);
         });
     }
 
@@ -215,6 +223,32 @@ class ShopOrderService
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * Écrit les photos de la carte grise sur le disque privé et les rattache à
+     * la commande.
+     *
+     * Disque privé : une carte grise nomme une personne et un véhicule, elle
+     * n'a rien à faire derrière une URL publique devinable. Le fichier est
+     * écrit dans la transaction de la commande — si celle-ci échoue, la ligne
+     * disparaît, et le fichier orphelin qui resterait sur le disque est sans
+     * conséquence puisque rien ne le référence.
+     *
+     * @param  list<UploadedFile>  $documents
+     */
+    private function storeDocuments(ShopOrder $order, Driver $driver, array $documents): void
+    {
+        foreach ($documents as $document) {
+            $order->documents()->create([
+                'disk' => 'local',
+                'path' => $document->store("shop-order-documents/{$driver->getKey()}", 'local'),
+                'original_name' => $document->getClientOriginalName(),
+                'mime_type' => $document->getMimeType() ?? 'application/octet-stream',
+                'size_bytes' => $document->getSize(),
+                'uploaded_by_driver_id' => $driver->getKey(),
+            ]);
         }
     }
 

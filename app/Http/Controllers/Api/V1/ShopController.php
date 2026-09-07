@@ -12,10 +12,14 @@ use App\Http\Resources\ShopOrderResource;
 use App\Models\PickupPoint;
 use App\Models\Product;
 use App\Models\ShopOrder;
+use App\Models\ShopOrderDocument;
 use App\Services\Shop\ShopOrderService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ShopController extends Controller
 {
@@ -87,7 +91,7 @@ class ShopController extends Controller
     {
         $orders = $this->driver($request)
             ->shopOrders()
-            ->with('items')
+            ->with(['items', 'documents'])
             ->orderByDesc('ordered_at')
             ->orderBy('id')
             ->cursorPaginate($this->perPage($request));
@@ -101,13 +105,22 @@ class ShopController extends Controller
      * Rend la commande créée. En retrait, la réponse porte le code à six
      * chiffres à présenter au comptoir.
      *
+     * La carte grise du véhicule est exigée : joindre les deux photos dans
+     * `documents[]`, ce qui fait de cette requête un envoi
+     * `multipart/form-data`. Rien à déclarer sur l'ordre des photos.
+     *
      * L'en-tête `Idempotency-Key` (UUID) est obligatoire : renvoyer deux fois
-     * la même requête ne crée qu'une commande.
+     * la même requête ne crée qu'une commande. L'empreinte d'un envoi
+     * multipart porte sur les champs et le contenu des fichiers, pas sur le
+     * corps brut — voir `EnsureIdempotentRequest`.
      */
     public function storeOrder(StoreShopOrderRequest $request): JsonResponse
     {
         /** @var list<array{product_id: string, qty: int}> $lines */
         $lines = $request->validated('lines');
+
+        /** @var list<UploadedFile> $documents */
+        $documents = $request->file('documents', []);
 
         $order = $this->orders->place(
             $this->driver($request),
@@ -120,12 +133,44 @@ class ShopController extends Controller
                 'address_hint' => $request->validated('address_hint'),
                 'contact_phone' => $request->validated('contact_phone'),
             ],
+            $documents,
         );
 
         return $this->createdApiResponse(
             new ShopOrderResource($order),
             __('api.shop.order_placed'),
         );
+    }
+
+    /**
+     * Télécharger une photo de la carte grise
+     *
+     * Accessible par URL signée seulement : le fichier vit sur le disque privé
+     * et n'a pas d'URL publique. Répond 403 pour la photo d'un autre
+     * conducteur — l'URL signée en atteste, la vérification aussi.
+     */
+    public function orderDocument(Request $request, string $document): StreamedResponse
+    {
+        /*
+        | Le modèle est résolu ici, pas par liaison de route : la liaison
+        | s'exécute avant le middleware `signed`, et une photo inexistante
+        | répondrait alors 404 à une requête non signée — de quoi deviner
+        | quels identifiants existent sans jamais présenter de signature. Tout
+        | ce qui n'est pas légitime répond 403.
+        */
+        $found = ShopOrderDocument::query()->find($document);
+
+        abort_if(
+            $found?->uploaded_by_driver_id !== $this->driver($request)->getKey(),
+            403,
+            __('api.forbidden'),
+        );
+
+        $disk = Storage::disk($found->disk);
+
+        abort_unless($disk->exists($found->path), 404, __('api.shop.document_missing'));
+
+        return $disk->response($found->path);
     }
 
     /**
@@ -138,7 +183,7 @@ class ShopController extends Controller
     {
         abort_unless($order->driver_id === $this->driver($request)->getKey(), 404);
 
-        return $this->okApiResponse(new ShopOrderResource($order->load(['items', 'delivery.pickupPoint'])));
+        return $this->okApiResponse(new ShopOrderResource($order->load(['items', 'delivery.pickupPoint', 'documents'])));
     }
 
     /**

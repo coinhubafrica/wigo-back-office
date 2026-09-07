@@ -10,6 +10,12 @@ use Illuminate\Validation\Rule;
 class StoreShopOrderRequest extends FormRequest
 {
     /**
+     * Poids maximal d'une photo de carte grise, en kilo-octets. Une photo
+     * prise au téléphone tient largement sous cette limite.
+     */
+    private const MAX_DOCUMENT_KILOBYTES = 5120;
+
+    /**
      * Complète un retrait qui ne désigne aucune agence lorsqu'il n'y en a
      * qu'une d'ouverte : les versions de l'application antérieures à
      * `GET /shop/pickup-points` n'ont aucun identifiant à envoyer, et il n'y a
@@ -91,6 +97,18 @@ class StoreShopOrderRequest extends FormRequest
                 'max:32',
             ],
             'address_hint' => ['nullable', 'string', 'max:255'],
+
+            /**
+             * Carte grise du véhicule : deux photos, envoyées dans la même
+             * requête que la commande (`multipart/form-data`). L'ordre n'a pas
+             * de sens à déclarer — recto et verso se lisent sur l'image, pas
+             * sur un champ que le conducteur pourrait renseigner à l'envers.
+             *
+             * Une commande sans ses deux photos est refusée, quel que soit le
+             * mode de réception.
+             */
+            'documents' => ['required', 'array', 'size:2'],
+            'documents.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.self::MAX_DOCUMENT_KILOBYTES],
         ];
     }
 }

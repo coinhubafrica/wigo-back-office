@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\ShopOrder;
+use App\Models\ShopOrderDocument;
 use App\Models\ShopOrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -56,6 +57,13 @@ class ShopOrderResource extends JsonResource
                     'price' => $item->unit_price,
                     'line_total' => $item->line_total,
                 ])->all()),
+            /**
+             * Carte grise du véhicule, recto et verso, telle que transmise à
+             * la commande. Chaque face porte une URL signée valable une heure.
+             */
+            'documents' => $this->whenLoaded('documents', fn (): array => $this->documents
+                ->map(fn (ShopOrderDocument $document): array => (new ShopOrderDocumentResource($document))
+                    ->toArray($request))->all()),
             'placed_at' => $this->ordered_at->toIso8601String(),
         ];
     }

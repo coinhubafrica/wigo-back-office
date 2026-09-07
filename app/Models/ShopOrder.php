@@ -33,6 +33,7 @@ use Illuminate\Support\Collection;
  * @property-read Driver $driver
  * @property-read Collection<int, ShopOrderItem> $items
  * @property-read Delivery|null $delivery
+ * @property-read Collection<int, ShopOrderDocument> $documents
  */
 class ShopOrder extends Model
 {
@@ -72,6 +73,16 @@ class ShopOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ShopOrderItem::class);
+    }
+
+    /**
+     * Carte grise du véhicule, une ligne par face, exigée à la commande.
+     *
+     * @return HasMany<ShopOrderDocument, $this>
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ShopOrderDocument::class);
     }
 
     /**

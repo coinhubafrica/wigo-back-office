@@ -24,6 +24,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | routes/channels.php | .ai/rules/routes.md |
 | database/seeders/** | .ai/rules/seeders.md |
 | app/Settings/** | .ai/rules/settings.md |
+| app/Http/Controllers/Api/V1/ShopController.php,app/Services/Shop/**,app/Models/ShopOrderDocument.php | .ai/rules/shop-models.md |
 | app/Livewire/Shop/** | .ai/rules/shop.md |
 | app/Livewire/Audit/**,app/Enums/AuditAction.php,app/Support/AuditLogFilter.php,app/Models/AuditLog.php | .ai/rules/support-models.md |
 | app/Services/Support/**, app/Services/Support/BroadcastDispatcher.php, app/Services/Support/CampaignDispatcher.php | .ai/rules/support.md |
@@ -32,4 +33,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/Vehicles/** | .ai/rules/vehicles.md |
 | resources/views/** | .ai/rules/views.md |
 | app/Services/Wave/** | .ai/rules/wave.md |
+| .claude/worktrees/** | .ai/rules/worktrees.md |
 | app/Services/Yango/** | .ai/rules/yango.md |

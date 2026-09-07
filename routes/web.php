@@ -5,6 +5,7 @@ use App\Http\Controllers\BackOffice\AuditExportController;
 use App\Http\Controllers\BackOffice\CampaignImageController;
 use App\Http\Controllers\BackOffice\DriverPhotoController;
 use App\Http\Controllers\BackOffice\MessageAttachmentController;
+use App\Http\Controllers\BackOffice\ShopOrderDocumentController;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Audit\Index as AuditIndex;
 use App\Livewire\Auth\Login;
@@ -126,6 +127,12 @@ Route::middleware(['auth', 'user.active'])->group(function (): void {
     Route::livewire('shop', ShopCatalogue::class)
         ->middleware('permission:'.BackOfficeModule::Shop->permission())
         ->name(BackOfficeModule::Shop->route());
+
+    // La carte grise jointe à une commande vit sur un disque privé : l'écran
+    // ne peut pas la pointer directement, elle passe par cette route protégée.
+    Route::get('shop/orders/documents/{document}', ShopOrderDocumentController::class)
+        ->middleware('permission:'.BackOfficeModule::ShopOrders->permission())
+        ->name('bo.shop-orders.document');
 
     Route::livewire('shop/orders', ShopOrders::class)
         ->middleware('permission:'.BackOfficeModule::ShopOrders->permission())

@@ -113,6 +113,37 @@
                         @endif
                     </div>
 
+                    {{-- Carte grise du véhicule, transmise à la commande. Le
+                         fichier vit sur un disque privé : la vignette passe
+                         par la route protégée du module, jamais par un chemin
+                         de stockage. --}}
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.carte_grise') }}</p>
+                        @if ($selectedOrder->documents->isEmpty())
+                            <p class="mt-0.5 text-sm text-muted">{{ __('backoffice.shop.carte_grise_missing') }}</p>
+                        @else
+                            <div class="mt-2 grid grid-cols-2 gap-2">
+                                @foreach ($selectedOrder->documents as $index => $document)
+                                    <a
+                                        href="{{ route('bo.shop-orders.document', ['document' => $document->id]) }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="group block overflow-hidden rounded-lg border border-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                                        aria-label="{{ __('backoffice.shop.carte_grise_open', ['number' => $index + 1]) }}"
+                                    >
+                                        <img
+                                            src="{{ route('bo.shop-orders.document', ['document' => $document->id]) }}"
+                                            alt="{{ __('backoffice.shop.carte_grise_photo', ['number' => $index + 1]) }}"
+                                            class="h-24 w-full bg-sidebar object-cover transition group-hover:opacity-90"
+                                            loading="lazy"
+                                        >
+                                        <span class="block border-t border-line px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{{ __('backoffice.shop.carte_grise_photo', ['number' => $index + 1]) }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+
                     @if ($selectedOrder->cancellation_reason !== null)
                         <x-banner tone="err">{{ $selectedOrder->cancellation_reason }}</x-banner>
                     @endif

@@ -20,6 +20,7 @@ return [
         'product_inactive' => '« :product » n\'est plus disponible à la commande.',
         'product_unavailable' => "Une des pièces commandées n'est plus disponible.",
         'no_pickup_point' => "Aucune agence de retrait n'est disponible pour le moment.",
+        'document_missing' => 'Cette photo est introuvable.',
     ],
 
     /*

@@ -7,9 +7,12 @@ use App\Livewire\Shop\Orders;
 use App\Models\Delivery;
 use App\Models\Product;
 use App\Models\ShopOrder;
+use App\Models\ShopOrderDocument;
 use App\Models\ShopOrderItem;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 beforeEach(function (): void {
@@ -215,6 +218,62 @@ it('shows both entries in the sidebar', function (): void {
         ->assertSee(route(BackOfficeModule::Shop->route()), escape: false)
         ->assertSee(route(BackOfficeModule::ShopOrders->route()), escape: false)
         ->assertSee(BackOfficeModule::ShopOrders->label());
+});
+
+it('shows both photos of the carte grise on the selected order', function (): void {
+    $order = ShopOrder::factory()->create();
+    ShopOrderDocument::factory()->count(2)->create(['shop_order_id' => $order->id]);
+
+    $component = Livewire::actingAs(shopOrdersUser('stock'))
+        ->test(Orders::class)
+        ->call('select', $order->id);
+
+    // Les deux photos sont pointées par la route protégée du module, jamais
+    // par un chemin de stockage.
+    foreach ($order->documents as $document) {
+        $component->assertSee(route('bo.shop-orders.document', ['document' => $document->id]), escape: false);
+        $component->assertDontSee($document->path);
+    }
+});
+
+it('says so when an order carries no carte grise', function (): void {
+    $order = ShopOrder::factory()->create();
+
+    Livewire::actingAs(shopOrdersUser('stock'))
+        ->test(Orders::class)
+        ->call('select', $order->id)
+        ->assertSee(__('backoffice.shop.carte_grise_missing'));
+});
+
+it('serves a carte grise to a permitted user', function (): void {
+    Storage::fake('local');
+
+    $document = ShopOrderDocument::factory()->create([
+        'shop_order_id' => ShopOrder::factory()->create()->id,
+        'disk' => 'local',
+    ]);
+    Storage::disk('local')->put($document->path, 'binaire');
+
+    $this->actingAs(shopOrdersUser('stock'))
+        ->get(route('bo.shop-orders.document', ['document' => $document->id]))
+        ->assertOk();
+});
+
+it('refuses a carte grise to a user without the orders permission', function (): void {
+    $document = ShopOrderDocument::factory()->create([
+        'shop_order_id' => ShopOrder::factory()->create()->id,
+    ]);
+
+    $this->actingAs(shopOrdersUser('admin'))
+        ->get(route('bo.shop-orders.document', ['document' => $document->id]))
+        ->assertForbidden();
+});
+
+it('answers 403 for an unknown carte grise rather than 404', function (): void {
+    // Un 404 dirait quels identifiants existent : l'inconnu répond 403.
+    $this->actingAs(shopOrdersUser('stock'))
+        ->get(route('bo.shop-orders.document', ['document' => (string) Str::ulid()]))
+        ->assertForbidden();
 });
 
 function shopOrdersUser(string $role): User
