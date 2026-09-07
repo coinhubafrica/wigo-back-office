@@ -3,7 +3,7 @@
     posait en JavaScript, ce qui est un comportement de moins à embarquer et
     à tester.
 --}}
-<footer id="contact" class="bg-site-green-dark pt-[52px] text-white/85">
+<footer id="contact" class="bg-site-hero-deep pt-[52px] text-white/85">
     <div class="mx-auto grid max-w-[1120px] gap-[30px] px-5 pb-9 md:grid-cols-[1.3fr_1fr_1fr]">
         <div>
             <picture>

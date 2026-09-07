@@ -55,7 +55,7 @@
     <div x-data="siteReveal">
 
         {{-- ============ HÉROS ============ --}}
-        <section id="haut" class="relative overflow-hidden bg-gradient-to-br from-site-green to-site-green-dark pt-[54px] pb-[90px] text-white">
+        <section id="haut" class="relative overflow-hidden bg-gradient-to-br from-site-hero to-site-hero-deep pt-[54px] pb-[90px] text-white">
             <div class="mx-auto grid max-w-[1120px] items-center gap-9 px-5 lg:grid-cols-[1.1fr_1fr]">
                 <div>
                     <x-site.pill class="mb-4.5">
@@ -73,7 +73,11 @@
                     </p>
 
                     <div class="mb-6 flex flex-wrap gap-3">
-                        <x-site.cta href="#rejoindre">
+                        {{-- Variante blanche et non `solid` : sur un héros orange,
+                             un bouton `--color-primary` ne détache que 1,50:1 de
+                             son fond et se fond dedans. Sur fond coloré, c'est le
+                             blanc qui porte l'action principale. --}}
+                        <x-site.cta href="#rejoindre" variant="white">
                             <span class="me-1" aria-hidden="true">🚗</span>Devenir chauffeur WiGO
                         </x-site.cta>
                         <x-site.cta href="#app" variant="outline">Découvrir l'application</x-site.cta>
@@ -185,7 +189,7 @@
         </x-site.section>
 
         {{-- ============ DEVENIR CHAUFFEUR ============ --}}
-        <x-site.section id="rejoindre" tone="orange"
+        <x-site.section id="rejoindre" tone="green"
                         title="Devenez chauffeur du parc AT Confort Plus"
                         subtitle="Un véhicule récent, un revenu régulier avec Yango, et tous les avantages WiGO PRO.">
             <ol class="mx-auto mb-9 grid max-w-[980px] gap-4.5 md:grid-cols-3">

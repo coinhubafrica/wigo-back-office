@@ -158,6 +158,31 @@ it('never double-escapes an HTML entity', function (): void {
         ->and($html)->not->toContain('&amp;nbsp;');
 });
 
+it('keeps white hero text above the WCAG AA contrast floor', function (): void {
+    /*
+     * Le héros vert tenait l'AA sans effort ; l'orange, non. `--color-primary`
+     * (#FB5C02) ne donne que 2,97:1 en blanc et #E85102 3,74:1 — sous le seuil
+     * de 4,5:1. Le dégradé part donc de #C94802 (4,76:1).
+     *
+     * Ce test épingle le jeton employé : repasser le héros sur `from-primary`
+     * pour « raviver » la couleur casserait la lisibilité du texte.
+     */
+    $html = $this->get('/')->assertOk()->getContent();
+
+    expect($html)->toContain('from-site-hero')
+        ->and($html)->not->toContain('from-primary to-primary-dark pt-[54px]');
+});
+
+it('does not put the primary button on the primary-coloured hero', function (): void {
+    // `--color-primary` sur le héros orange ne détache que 1,50:1 : le bouton
+    // d'appel principal se fondrait dans son fond. Sur fond coloré, c'est la
+    // variante blanche qui le porte.
+    $hero = $this->get('/')->assertOk()->getContent();
+    $hero = substr($hero, strpos($hero, 'id="haut"'), 4000);
+
+    expect($hero)->toContain('bg-white text-primary-text');
+});
+
 it('never disables the global focus ring', function (): void {
     // `app.css` porte l'anneau `:focus-visible` ; le neutraliser échoue au
     // critère WCAG 2.4.7 (cf. `.ai/rules/views.md`).

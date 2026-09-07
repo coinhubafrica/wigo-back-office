@@ -66,6 +66,7 @@ describe('x-site.section', function (): void {
     })->with([
         ['light', 'bg-site-surface'],
         ['dark', 'from-ink-dark'],
+        ['green', 'from-site-green'],
         ['orange', 'from-primary'],
     ]);
 

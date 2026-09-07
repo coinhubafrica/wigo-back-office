@@ -18,7 +18,7 @@
 @php
     $variantClasses = match ($variant) {
         'outline' => 'border-2 border-white/70 text-white hover:bg-white/10',
-        'white' => 'bg-white text-primary hover:bg-white/90',
+        'white' => 'bg-white text-primary-text hover:bg-white/90',
         default => 'bg-primary text-white hover:bg-primary-dark',
     };
 
