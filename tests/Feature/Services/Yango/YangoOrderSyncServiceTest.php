@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\YangoOrderStatus;
+use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
 use App\Models\Driver;
 use App\Models\DriverDailyActivity;
@@ -66,13 +67,15 @@ it('maps an unknown Yango status to other rather than refusing the row', functio
     expect(YangoOrder::query()->firstOrFail()->status)->toBe(YangoOrderStatus::Other);
 });
 
-it('counts an order whose driver is unknown, and writes nothing', function (): void {
-    // Le plus souvent un profil que la passe parc a écarté faute de téléphone.
-    // `yango_orders.driver_id` est requis : inventer un conducteur ferait pire
-    // que le trou qu'on comble.
+it('counts an order whose driver Yango cannot name either, and writes nothing', function (): void {
+    // Reste orphelin ce que Yango lui-même ignore. `yango_orders.driver_id`
+    // est requis : inventer un conducteur ferait pire que le trou qu'on comble.
     Log::spy();
 
-    yangoOrdersReturn([yangoOrderRow(driverYangoId: 'YAN-INCONNU')]);
+    MockClient::global([
+        GetOrdersRequest::class => yangoOrdersResponse([yangoOrderRow(driverYangoId: 'YAN-INCONNU')]),
+        GetDriverProfileRequest::class => yangoRefusal(404),
+    ]);
 
     $result = app(YangoOrderSyncService::class)->syncDay(Carbon::parse('2026-09-03'));
 
@@ -80,7 +83,49 @@ it('counts an order whose driver is unknown, and writes nothing', function (): v
         ->and($result->ordersSynced)->toBe(0)
         ->and(YangoOrder::query()->count())->toBe(0);
 
-    Log::shouldHaveReceived('warning')->once();
+    Log::shouldHaveReceived('warning');
+});
+
+it('brings back a driver the park pass has not reached, and keeps the order', function (): void {
+    // Le cœur du changement : sur un grand parc, la passe parc est coupée par
+    // un quota et un `driver_profile.id` absent de la base dit surtout où en
+    // est le tour en cours. La course était jetée, elle est désormais écrite.
+    MockClient::global([
+        GetOrdersRequest::class => yangoOrdersResponse([yangoOrderRow(driverYangoId: 'YAN-LOIN')]),
+        GetDriverProfileRequest::class => yangoContractorProfileResponse(),
+    ]);
+
+    $result = app(YangoOrderSyncService::class)->syncDay(Carbon::parse('2026-09-03'));
+
+    $driver = Driver::query()->where('yango_id', 'YAN-LOIN')->firstOrFail();
+
+    expect($result->ordersSynced)->toBe(1)
+        ->and($result->ordersOrphaned)->toBe(0)
+        ->and(YangoOrder::query()->firstOrFail()->driver_id)->toBe($driver->id);
+});
+
+it('mints challenge tickets on a day whose driver arrived by lazy fetch', function (): void {
+    // Le rapatriement ne sert à rien s'il n'alimente pas le grand livre
+    // journalier : c'est lui que lisent les challenges.
+    MockClient::global([
+        GetOrdersRequest::class => yangoOrdersResponse([
+            yangoOrderRow('ORD-1', driverYangoId: 'YAN-LOIN', endedAt: '2026-09-03T08:00:00+00:00'),
+            yangoOrderRow('ORD-2', driverYangoId: 'YAN-LOIN', endedAt: '2026-09-03T18:00:00+00:00'),
+        ]),
+        GetDriverProfileRequest::class => yangoContractorProfileResponse(),
+    ]);
+
+    $result = app(YangoOrderSyncService::class)->syncDay(Carbon::parse('2026-09-03'));
+
+    $driver = Driver::query()->where('yango_id', 'YAN-LOIN')->firstOrFail();
+
+    $activity = DriverDailyActivity::query()
+        ->where('driver_id', $driver->id)
+        ->whereDate('activity_date', '2026-09-03')
+        ->firstOrFail();
+
+    expect($result->driversTouched)->toBe(1)
+        ->and($activity->orders_completed)->toBe(2);
 });
 
 it('recomputes the daily ledger so challenge tickets mint on real trips', function (): void {

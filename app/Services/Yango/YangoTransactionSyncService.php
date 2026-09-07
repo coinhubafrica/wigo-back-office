@@ -4,7 +4,6 @@ namespace App\Services\Yango;
 
 use App\Contracts\YangoDirectory;
 use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
-use App\Models\Driver;
 use App\Models\YangoTransaction;
 use Carbon\CarbonInterface;
 use Carbon\Exceptions\InvalidFormatException;
@@ -23,11 +22,17 @@ use Illuminate\Support\Facades\Log;
  * **écrite quand même**, avec `driver_id` nul : le grand livre du parc doit
  * rester complet même là où le rapprochement échoue, et toutes les écritures
  * ne visent pas un conducteur.
+ *
+ * Le rapprochement passe par `YangoDriverResolver`, qui rapatrie de Yango un
+ * conducteur que la passe parc n'a pas encore atteint : sur un grand parc, un
+ * `driver_profile_id` absent de la base dit surtout où en est le tour en
+ * cours, pas que le conducteur soit inconnu.
  */
 class YangoTransactionSyncService
 {
     public function __construct(
         private readonly YangoDirectory $directory,
+        private readonly YangoDriverResolver $drivers,
     ) {}
 
     public function syncDay(
@@ -77,9 +82,9 @@ class YangoTransactionSyncService
 
         $driverYangoId = Arr::get($transaction, 'driver_profile_id');
 
-        $driver = is_string($driverYangoId) && $driverYangoId !== ''
-            ? Driver::query()->where('yango_id', $driverYangoId)->first()
-            : null;
+        // Rapatriement à la demande, comme pour les courses : le grand livre
+        // se rapproche d'autant mieux que la passe parc est en retard.
+        $driver = $this->drivers->resolve(is_string($driverYangoId) ? $driverYangoId : null);
 
         if ($driver === null) {
             $result->transactionsUnattached++;

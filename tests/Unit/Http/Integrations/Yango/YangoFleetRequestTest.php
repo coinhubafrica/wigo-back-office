@@ -3,9 +3,12 @@
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
+use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
 use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
+use App\Http\Integrations\Yango\Requests\GetVehicleRequest;
 use App\Http\Integrations\Yango\YangoFleetConnector;
+use Saloon\Enums\Method;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 
@@ -84,4 +87,23 @@ it('never sends more than the endpoint ceiling, whatever it is asked for', funct
     $request = new GetAllDriversRequest('park-123', 99999);
 
     expect($request->defaultBody()['limit'])->toBe(GetAllDriversRequest::MAX_LIMIT);
+});
+
+it('asks for one driver by GET and URL parameter, not by POST body', function (): void {
+    // Autre génération de l'API : `/v2/parks/contractors/…` est en GET avec un
+    // paramètre d'URL, là où tout le parc est en POST avec un corps JSON. Les
+    // confondre vaut un 404 ou un 405, pas une réponse.
+    $request = new GetDriverProfileRequest('YAN-001');
+
+    expect($request->getMethod())->toBe(Method::GET)
+        ->and($request->resolveEndpoint())->toBe('/v2/parks/contractors/driver-profile')
+        ->and($request->defaultQuery())->toBe(['contractor_profile_id' => 'YAN-001']);
+});
+
+it('asks for one vehicle by GET and URL parameter', function (): void {
+    $request = new GetVehicleRequest('CAR-001');
+
+    expect($request->getMethod())->toBe(Method::GET)
+        ->and($request->resolveEndpoint())->toBe('/v2/parks/vehicles/car')
+        ->and($request->defaultQuery())->toBe(['vehicle_id' => 'CAR-001']);
 });

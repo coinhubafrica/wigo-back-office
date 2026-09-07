@@ -101,3 +101,18 @@ Deux pièges vérifiés à l'expérience :
 
 1. **`MockClient::global()` utilise `??=`** : appelé alors qu'un global existe déjà, il rend l'ancien et **ignore silencieusement** les nouvelles réponses. Pour remplacer le mock d'un `beforeEach` dans un test précis, il faut `MockClient::destroyGlobal()` juste avant.
 2. **Une réponse indexée par classe est resservie à chaque appel de cette classe.** `SaloonYangoDirectory::paginate()` redemande tant qu'une page est pleine : une page simulée qui fait exactement `pageSize` boucle à l'infini. Garder les pages simulées plus courtes, ou passer une closure pour rendre des pages successives.
+
+## Un conducteur absent de la base est rapatrié, pas déclaré inconnu
+La passe parc est coupée par un quota avant la fin d'un grand parc (cf. « Un tour de parc s'étale sur plusieurs passes »). Un `driver_profile.id` absent de la base dit donc surtout où en est le tour en cours, pas que Yango ignore le conducteur.
+
+`YangoDriverResolver` le demande nommément avant de conclure, via deux endpoints d'une **autre génération de l'API** : `GET /v2/parks/contractors/driver-profile?contractor_profile_id=…` et `GET /v2/parks/vehicles/car?vehicle_id=…` — GET avec paramètre d'URL, là où tout le parc est en POST avec corps JSON.
+
+À ne pas défaire :
+
+- **Les réponses v2 n'ont pas la forme d'une ligne de liste.** Noms sous `person.full_name`, téléphone sous `person.contact_info.phone`, plaque sous `vehicle_licenses.licence_plate_number` (orthographe britannique ; `number` côté liste). `YangoProfileShape` / `YangoVehicleShape` traduisent vers la forme v1, et `YangoSyncService::adoptDriver()`/`adoptVehicle()` restent le seul chemin d'écriture — pas de second chemin qui relirait les mêmes champs ailleurs.
+- **L'identifiant ne figure pas dans la réponse** : c'est celui qu'on a demandé, il est réinjecté. Sans lui la ligne serait écartée « profil sans identifiant ».
+- **`account.balance_limit` de la v2 n'est pas un solde** mais un plafond de découvert. Il n'est pas traduit : `YangoAccountBalance::read()` rend `null` et la passe ne réécrit rien.
+- **404 = `null`, tout le reste lève** (`SaloonYangoDirectory::fetchOne()`). Traduire un 401 ou un 500 en « inconnu » ferait passer une clé refusée pour un parc vide et tous les conducteurs pour des orphelins.
+- **Un identifiant introuvable est mémorisé pour la durée de la passe.** Une journée de courses concentre des centaines de lignes sur les mêmes conducteurs ; sans cette mémoire, un profil absent coûterait un appel par course. D'où : `YangoDriverResolver` **ne doit pas être un singleton** — il est résolu par passe et sa mémoire meurt avec elle.
+
+Reste orphelin ce que Yango lui-même ne nomme pas, ou ce qui n'est pas écrivable faute de téléphone exploitable (`drivers.phone` requis et unique).
