@@ -253,6 +253,9 @@ class AppServiceProvider extends ServiceProvider
             'regenerateChallengeSeed' => Permission::ChallengesRegenerateSeed,
             'creditChallengePrize' => Permission::ChallengesCredit,
             'manageChallengePrizes' => Permission::ChallengesManagePrizes,
+            // Le règlement est ce sur quoi le conducteur se fonde pour
+            // contester : le joindre ou le remplacer est un geste à part.
+            'manageChallengeRules' => Permission::ChallengesManageRules,
 
             // Annonces — publier expose la bannière à tous les conducteurs.
             'manageAnnouncements' => Permission::AnnouncementsManage,

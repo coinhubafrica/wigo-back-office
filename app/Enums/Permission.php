@@ -68,6 +68,7 @@ enum Permission: string
     case ChallengesRegenerateSeed = 'challenges.regenerate-seed';
     case ChallengesCredit = 'challenges.credit';
     case ChallengesManagePrizes = 'challenges.manage-prizes';
+    case ChallengesManageRules = 'challenges.manage-rules';
 
     // Annonces.
     case AnnouncementsManage = 'announcements.manage';
@@ -136,7 +137,8 @@ enum Permission: string
             self::ChallengesDraw,
             self::ChallengesRegenerateSeed,
             self::ChallengesCredit,
-            self::ChallengesManagePrizes => BackOfficeModule::Challenges,
+            self::ChallengesManagePrizes,
+            self::ChallengesManageRules => BackOfficeModule::Challenges,
 
             self::AnnouncementsManage,
             self::AnnouncementsPublish => BackOfficeModule::Announcements,
@@ -185,6 +187,7 @@ enum Permission: string
             self::ChallengesRegenerateSeed => 'Republier la graine du tirage',
             self::ChallengesCredit => 'Marquer un lot crédité',
             self::ChallengesManagePrizes => 'Gérer le catalogue des lots',
+            self::ChallengesManageRules => 'Joindre le règlement du challenge',
 
             self::AnnouncementsManage => 'Gérer les annonces',
             self::AnnouncementsPublish => 'Publier ou retirer une annonce',
@@ -229,6 +232,7 @@ enum Permission: string
             self::ChallengesRegenerateSeed => 'Change le hasard après le gel du vivier — le geste le plus sensible du module.',
             self::ChallengesCredit => "Déclare le lot remis au gagnant. Touche à ce qu'on lui doit.",
             self::ChallengesManagePrizes => 'Les lots proposés aux challenges, et leur valeur.',
+            self::ChallengesManageRules => "Le règlement publié aux conducteurs : ils s'y fient pour savoir ce qui est promis.",
 
             self::AnnouncementsManage => "Créer, modifier, réordonner ou supprimer une bannière de l'accueil.",
             self::AnnouncementsPublish => "Une annonce active s'affiche à tous les conducteurs.",

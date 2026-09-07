@@ -21,8 +21,11 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Détail d'un challenge. L'écran suit le statut : la période affiche sa
@@ -33,7 +36,7 @@ use Livewire\Component;
 #[Layout('layouts.app', ['module' => BackOfficeModule::Challenges])]
 class Show extends Component
 {
-    use InteractsWithCurrentUser;
+    use InteractsWithCurrentUser, WithFileUploads;
 
     public Challenge $challenge;
 
@@ -60,6 +63,15 @@ class Show extends Component
      * bloque l'automatisation navigateur, comme constaté sur les recharges.
      */
     public ?string $pendingAction = null;
+
+    /**
+     * Règlement à joindre. PDF attendu, images acceptées : un agent n'a
+     * parfois qu'une photo de la feuille imprimée.
+     */
+    #[Validate('required|file|mimes:pdf,jpg,jpeg,png,webp|max:5120')]
+    public mixed $rulesDocument = null;
+
+    public bool $confirmingRulesRemoval = false;
 
     public function mount(Challenge $challenge): void
     {
@@ -279,6 +291,118 @@ class Show extends Component
      * l'évènement côté navigateur (cf. la vue) : un dispatch serveur serait
      * rejoué après une navigation `wire:navigate` et rouvrirait la modale.
      */
+    /**
+     * Joint le règlement au challenge, en remplaçant celui déjà en place.
+     *
+     * Le fichier va sur le disque privé : un règlement n'est pas secret, mais
+     * il n'a pas à être énumérable par son chemin — le contrat mobile le sert
+     * par URL signée, comme les autres pièces.
+     */
+    public function uploadRulesDocument(): void
+    {
+        Gate::authorize('manageChallengeRules');
+
+        $this->validateOnly('rulesDocument');
+
+        $previousDisk = $this->challenge->rules_document_disk;
+        $previousPath = $this->challenge->rules_document_path;
+        $replaced = $this->challenge->hasRulesDocument();
+
+        $this->challenge->update([
+            'rules_document_disk' => 'local',
+            'rules_document_path' => $this->rulesDocument->store(
+                "challenge-rules/{$this->challenge->getKey()}",
+                'local',
+            ),
+            'rules_document_name' => $this->rulesDocument->getClientOriginalName(),
+            'rules_document_mime' => $this->rulesDocument->getMimeType() ?? 'application/octet-stream',
+            'rules_document_size' => $this->rulesDocument->getSize(),
+            'rules_document_uploaded_at' => now(),
+        ]);
+
+        // Le fichier remplacé n'est plus référencé par personne : le garder ne
+        // servirait qu'à encombrer le disque.
+        if ($previousPath !== null) {
+            Storage::disk($previousDisk ?? 'local')->delete($previousPath);
+        }
+
+        /*
+        | Journalisé : les conducteurs se fondent sur ce document pour savoir ce
+        | qui leur est promis, et un remplacement change cette promesse en
+        | cours de challenge. La ligne dit lequel des deux gestes a eu lieu.
+        */
+        AuditLog::record(
+            action: AuditAction::ChallengeRulesAttached->value,
+            summary: $replaced
+                ? "{$this->actor()->fullName()} a remplacé le règlement du challenge {$this->challenge->reference}."
+                : "{$this->actor()->fullName()} a joint le règlement du challenge {$this->challenge->reference}.",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: [
+                'reference' => $this->challenge->reference,
+                'file_name' => $this->challenge->rules_document_name,
+                'replaced' => $replaced,
+            ],
+        );
+
+        $this->reset('rulesDocument');
+        $this->resetValidation();
+        $this->dispatch('toast', message: __('backoffice.challenges.rules_attached'));
+    }
+
+    public function confirmRulesRemoval(): void
+    {
+        Gate::authorize('manageChallengeRules');
+
+        $this->confirmingRulesRemoval = true;
+    }
+
+    public function cancelRulesRemoval(): void
+    {
+        $this->confirmingRulesRemoval = false;
+    }
+
+    /**
+     * Retire le règlement : le lien disparaît du contrat mobile et le fichier
+     * du disque.
+     */
+    public function removeRulesDocument(): void
+    {
+        Gate::authorize('manageChallengeRules');
+
+        if (! $this->challenge->hasRulesDocument()) {
+            $this->confirmingRulesRemoval = false;
+
+            return;
+        }
+
+        $name = $this->challenge->rules_document_name;
+
+        // Journalisé avant la suppression : après, il ne reste rien à citer.
+        AuditLog::record(
+            action: AuditAction::ChallengeRulesRemoved->value,
+            summary: "{$this->actor()->fullName()} a retiré le règlement du challenge {$this->challenge->reference}.",
+            subject: $this->challenge,
+            by: $this->actor(),
+            context: ['reference' => $this->challenge->reference, 'file_name' => $name],
+        );
+
+        Storage::disk($this->challenge->rules_document_disk ?? 'local')
+            ->delete((string) $this->challenge->rules_document_path);
+
+        $this->challenge->update([
+            'rules_document_disk' => null,
+            'rules_document_path' => null,
+            'rules_document_name' => null,
+            'rules_document_mime' => null,
+            'rules_document_size' => null,
+            'rules_document_uploaded_at' => null,
+        ]);
+
+        $this->confirmingRulesRemoval = false;
+        $this->dispatch('toast', message: __('backoffice.challenges.rules_removed'));
+    }
+
     public function duplicateTemplateKey(): string
     {
         return 'duplicate:'.$this->challenge->id;
@@ -675,6 +799,7 @@ class Show extends Component
             'totalWinners' => $totalWinners,
             'creditedCount' => $credited,
             'canManage' => $this->canManageBonus(),
+            'canManageRules' => Gate::allows('manageChallengeRules'),
         ]);
     }
 }

@@ -54,6 +54,8 @@ enum AuditAction: string
     case ChallengeSeedRegenerated = 'challenge.seed_regenerated';
     case ChallengePrizeCredited = 'challenge.prize_credited';
     case ChallengePrizeDeleted = 'challenge.prize_deleted';
+    case ChallengeRulesAttached = 'challenge.rules_attached';
+    case ChallengeRulesRemoved = 'challenge.rules_removed';
 
     // Annonces — ce que tout le parc voit à l'accueil.
     case AnnouncementPublished = 'announcement.published';
@@ -129,6 +131,8 @@ enum AuditAction: string
             self::ChallengeSeedRegenerated => 'Graine republiée',
             self::ChallengePrizeCredited => 'Lot crédité',
             self::ChallengePrizeDeleted => 'Lot supprimé',
+            self::ChallengeRulesAttached => 'Règlement joint',
+            self::ChallengeRulesRemoved => 'Règlement retiré',
 
             self::AnnouncementPublished => 'Annonce publiée',
             self::AnnouncementWithdrawn => 'Annonce retirée',
@@ -189,7 +193,9 @@ enum AuditAction: string
             self::ChallengeDrawn,
             self::ChallengeSeedRegenerated,
             self::ChallengePrizeCredited,
-            self::ChallengePrizeDeleted => BackOfficeModule::Challenges,
+            self::ChallengePrizeDeleted,
+            self::ChallengeRulesAttached,
+            self::ChallengeRulesRemoved => BackOfficeModule::Challenges,
 
             self::AnnouncementPublished,
             self::AnnouncementWithdrawn,
@@ -246,6 +252,7 @@ enum AuditAction: string
             self::SupportDismissed,
             self::ChallengeRejected,
             self::ChallengePrizeDeleted,
+            self::ChallengeRulesRemoved,
             self::AnnouncementDeleted,
             self::ShopProductDeleted,
             self::ShopOrderCancelled,
@@ -279,6 +286,7 @@ enum AuditAction: string
             self::ChallengeApproved,
             self::ChallengePeriodClosed,
             self::ChallengeDrawn,
+            self::ChallengeRulesAttached,
             self::AnnouncementPublished,
             self::AnnouncementWithdrawn,
             self::CampaignSent,

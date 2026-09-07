@@ -6,6 +6,7 @@ use App\Models\Challenge;
 use App\Models\Driver;
 use App\Services\Challenges\DriverProgressService;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Charge utile d'un challenge en cours vu par un conducteur donné.
@@ -59,6 +60,14 @@ class DriverChallengePayload
                     ? null
                     : Storage::url($challenge->prize->photo_url),
             ],
+            /*
+            | Le règlement vit sur le disque privé : la charge utile porte une
+            | URL signée, jamais le chemin de stockage. `null` quand aucun
+            | règlement n'a été joint — l'application masque alors le lien.
+            */
+            'rules_document' => $challenge->hasRulesDocument()
+                ? self::rulesDocument($challenge)
+                : null,
         ];
 
         $ticketing = $progress->ticketing($driver, $challenge);
@@ -85,5 +94,25 @@ class DriverChallengePayload
         }
 
         return $payload;
+    }
+
+    /**
+     * Règlement du challenge, servi par URL signée valable une heure — la même
+     * durée que les autres pièces privées du contrat mobile.
+     *
+     * @return array{url: string, original_name: string, mime_type: string, size_bytes: int}
+     */
+    private static function rulesDocument(Challenge $challenge): array
+    {
+        return [
+            'url' => URL::temporarySignedRoute(
+                'api.v1.challenges.rules',
+                now()->addHour(),
+                ['challenge' => $challenge->getKey()],
+            ),
+            'original_name' => (string) $challenge->rules_document_name,
+            'mime_type' => (string) $challenge->rules_document_mime,
+            'size_bytes' => (int) $challenge->rules_document_size,
+        ];
     }
 }
