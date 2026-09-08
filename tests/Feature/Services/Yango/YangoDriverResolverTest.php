@@ -6,6 +6,7 @@ use App\Http\Integrations\Yango\Requests\GetVehicleRequest;
 use App\Models\Driver;
 use App\Models\Vehicle;
 use App\Services\Yango\YangoDriverResolver;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Saloon\Http\Faking\MockClient;
 
@@ -46,6 +47,28 @@ it('prefers the local row and never calls Yango for a driver already known', fun
     MockClient::global([]);
 
     expect(app(YangoDriverResolver::class)->resolve('YAN-001')->id)->toBe($existing->id);
+});
+
+it('reads a known driver once per pass, however many rows name it', function (): void {
+    // Une journée de courses nomme le même conducteur des dizaines de fois :
+    // la ligne se lit une fois, puis se ressert.
+    $existing = Driver::factory()->create(['yango_id' => 'YAN-001']);
+    Vehicle::factory()->create(['yango_id' => 'CAR-001']);
+
+    MockClient::global([]);
+
+    $resolver = app(YangoDriverResolver::class);
+
+    DB::enableQueryLog();
+
+    foreach (range(1, 5) as $i) {
+        expect($resolver->resolve('YAN-001')->id)->toBe($existing->id);
+        expect($resolver->resolveVehicle('CAR-001'))->not->toBeNull();
+    }
+
+    expect(DB::getQueryLog())->toHaveCount(2);
+
+    DB::disableQueryLog();
 });
 
 it('adopts the local row of a driver registered by phone on mobile', function (): void {

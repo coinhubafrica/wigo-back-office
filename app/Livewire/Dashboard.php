@@ -16,7 +16,7 @@ use App\Models\User;
 use App\Support\DashboardAlerts;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -178,10 +178,7 @@ class Dashboard extends Component
     private function dailyOrders(CarbonImmutable $end): array
     {
         $start = $end->subDays(self::DAILY_DAYS - 1);
-
-        $totals = $this->ordersBetween($start, $end)
-            ->groupBy(fn (DriverDailyActivity $activity): string => $activity->activity_date->format('Y-m-d'))
-            ->map(fn (Collection $group): int => (int) $group->sum('orders_completed'));
+        $totals = $this->dailyTotals($start, $end);
 
         return array_map(function (int $offset) use ($start, $totals): array {
             $day = $start->addDays($offset);
@@ -230,9 +227,14 @@ class Dashboard extends Component
         $current = CarbonImmutable::now()->startOfWeek();
         $oldest = $current->subWeeks(self::TREND_WEEKS - 1);
 
-        $totals = $this->ordersBetween($oldest, $current->endOfWeek())
-            ->groupBy(fn (DriverDailyActivity $activity): string => $activity->activity_date->format('o-\WW'))
-            ->map(fn (Collection $group): int => (int) $group->sum('orders_completed'));
+        // Les jours sont repliés en semaines ici : la semaine ISO n'est pas
+        // portable en SQL, et la fenêtre ne compte que 84 jours.
+        $totals = [];
+
+        foreach ($this->dailyTotals($oldest, $current->endOfWeek()) as $day => $orders) {
+            $week = CarbonImmutable::parse($day)->format('o-\WW');
+            $totals[$week] = ($totals[$week] ?? 0) + $orders;
+        }
 
         $trend = [];
 
@@ -250,13 +252,28 @@ class Dashboard extends Component
     }
 
     /**
-     * @return Collection<int, DriverDailyActivity>
+     * Courses terminées du parc, par jour, sur la fenêtre — bornes incluses.
+     *
+     * Sommé en base : la table porte une ligne par conducteur et par jour, la
+     * remonter pour l'additionner en PHP faisait transiter tout le parc
+     * multiplié par la fenêtre à chaque rendu. Une seule requête, au plus une
+     * ligne par jour.
+     *
+     * @return array<string, int> « 2026-09-07 » => courses
      */
-    private function ordersBetween(CarbonImmutable $from, CarbonImmutable $to): Collection
+    private function dailyTotals(CarbonImmutable $from, CarbonImmutable $to): array
     {
         return DriverDailyActivity::query()
             ->whereBetween('activity_date', [$from->format('Y-m-d'), $to->format('Y-m-d')])
-            ->get(['activity_date', 'orders_completed']);
+            ->groupBy('activity_date')
+            ->selectRaw('activity_date, sum(orders_completed) as aggregate')
+            ->pluck('aggregate', 'activity_date')
+            ->mapWithKeys(fn (mixed $orders, mixed $day): array => [
+                // `pluck` sur une colonne castée rend une date ; la clé doit
+                // être la chaîne « Y-m-d » que les appelants recomposent.
+                CarbonImmutable::parse((string) $day)->format('Y-m-d') => (int) $orders,
+            ])
+            ->all();
     }
 
     /**
@@ -289,7 +306,7 @@ class Dashboard extends Component
                 'tone' => 'primary',
             ];
 
-            $weekOrders = (int) $this->ordersBetween($weekStart, $weekStart->endOfWeek())->sum('orders_completed');
+            $weekOrders = array_sum($this->dailyTotals($weekStart, $weekStart->endOfWeek()));
 
             $cards[] = [
                 'label' => (string) __('backoffice.dashboard.orders_week'),
@@ -356,9 +373,9 @@ class Dashboard extends Component
     /**
      * Les cinq requêtes en souffrance les plus récentes.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, SupportRequest>
+     * @return Collection<int, SupportRequest>
      */
-    private function latestRequests(User $user): \Illuminate\Database\Eloquent\Collection
+    private function latestRequests(User $user): Collection
     {
         if (! $user->can(BackOfficeModule::SupportRequests->permission())) {
             return SupportRequest::query()->whereRaw('1 = 0')->get();

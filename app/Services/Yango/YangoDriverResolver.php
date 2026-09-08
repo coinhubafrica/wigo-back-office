@@ -42,6 +42,19 @@ class YangoDriverResolver
      */
     private array $unresolvable = [];
 
+    /**
+     * Lignes déjà résolues pendant cette passe, par identifiant Yango. Une
+     * journée de courses nomme le même conducteur des dizaines de fois : sans
+     * ce cache, chaque course relisait sa ligne. Le service est instancié par
+     * passe (jamais singleton), le cache vit donc le temps d'une exécution.
+     *
+     * @var array<string, Driver>
+     */
+    private array $drivers = [];
+
+    /** @var array<string, Vehicle> */
+    private array $vehicles = [];
+
     public function __construct(
         private readonly YangoDirectory $directory,
         private readonly YangoSyncService $sync,
@@ -62,17 +75,27 @@ class YangoDriverResolver
             return null;
         }
 
+        if (isset($this->drivers[$yangoId])) {
+            return $this->drivers[$yangoId];
+        }
+
         $driver = Driver::query()->where('yango_id', $yangoId)->first();
 
         if ($driver !== null) {
-            return $driver;
+            return $this->drivers[$yangoId] = $driver;
         }
 
         if (isset($this->unresolvable[$yangoId])) {
             return null;
         }
 
-        return $this->fetch($yangoId);
+        $fetched = $this->fetch($yangoId);
+
+        if ($fetched !== null) {
+            $this->drivers[$yangoId] = $fetched;
+        }
+
+        return $fetched;
     }
 
     /**
@@ -88,10 +111,14 @@ class YangoDriverResolver
             return null;
         }
 
+        if (isset($this->vehicles[$yangoId])) {
+            return $this->vehicles[$yangoId];
+        }
+
         $vehicle = Vehicle::query()->where('yango_id', $yangoId)->first();
 
         if ($vehicle !== null) {
-            return $vehicle;
+            return $this->vehicles[$yangoId] = $vehicle;
         }
 
         if (isset($this->unresolvable[$yangoId])) {
@@ -117,7 +144,13 @@ class YangoDriverResolver
             return null;
         }
 
-        return $this->sync->adoptVehicle($car);
+        $adopted = $this->sync->adoptVehicle($car);
+
+        if ($adopted !== null) {
+            $this->vehicles[$yangoId] = $adopted;
+        }
+
+        return $adopted;
     }
 
     /**

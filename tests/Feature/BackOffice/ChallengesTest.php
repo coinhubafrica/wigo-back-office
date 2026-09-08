@@ -6,9 +6,12 @@ use App\Enums\ChallengeStatus;
 use App\Livewire\Challenges\Prizes;
 use App\Livewire\Challenges\Show;
 use App\Models\Challenge;
+use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
+use App\Models\Driver;
 use App\Models\Prize;
 use App\Models\User;
+use App\Models\YangoOrder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -123,6 +126,122 @@ function challengesUser(string $role): User
 
     return $user;
 }
+
+/**
+ * Un conducteur nommé, avec `$orders` courses terminées à la date donnée.
+ */
+function challengesDriverWithOrders(string $lastName, int $orders, DateTimeInterface $on): Driver
+{
+    $driver = Driver::factory()->create(['first_name' => 'Awa', 'last_name' => $lastName]);
+
+    YangoOrder::factory()->count($orders)->for($driver)->completedOn($on)->create();
+
+    return $driver;
+}
+
+it('ranks the participants in the database and keeps their place under search', function (): void {
+    $challenge = Challenge::factory()->active()->create(['winners_count' => 2]);
+    $inPeriod = $challenge->period_start->copy()->addDay();
+
+    challengesDriverWithOrders('KONE', 5, $inPeriod);
+    challengesDriverWithOrders('DIABY', 3, $inPeriod);
+    challengesDriverWithOrders('TRAORE', 1, $inPeriod);
+    // Hors période, ou sans course : pas participant.
+    challengesDriverWithOrders('HORS', 9, $challenge->period_start->copy()->subWeek());
+    Driver::factory()->create(['last_name' => 'AUCUNE']);
+
+    $component = Livewire::actingAs(challengesUser('bonus'))
+        ->test(Show::class, ['challenge' => $challenge])
+        ->set('listOpen', true)
+        ->assertSeeInOrder(['KONE', 'DIABY', 'TRAORE'])
+        ->assertDontSee('HORS')
+        ->assertDontSee('AUCUNE');
+
+    /** @var Show $show */
+    $show = $component->instance();
+
+    $this->assertSame(3, $show->eligibleCount());
+    $this->assertSame([1, 2, 3], array_column($show->listRows(), 'rank'));
+    $this->assertSame([true, true, false], array_column($show->listRows(), 'isWinner'));
+
+    // Le rang est celui du classement complet, pas de la page de résultats.
+    $component->set('listSearch', 'TRAORE');
+    $rows = $component->instance()->listRows();
+
+    $this->assertCount(1, $rows);
+    $this->assertSame(3, $rows[0]['rank']);
+    $this->assertSame('Awa TRAORE', $rows[0]['name']);
+
+    $component->set('listSearch', '')->set('listFilter', 'hors');
+    $this->assertSame(['Awa TRAORE'], array_column($component->instance()->listRows(), 'name'));
+
+    $component->set('listFilter', 'gagnants');
+    $this->assertSame(['Awa KONE', 'Awa DIABY'], array_column($component->instance()->listRows(), 'name'));
+});
+
+it('ranks raffle participants by tickets held', function (): void {
+    $challenge = Challenge::factory()->raffle()->active()->create();
+
+    $two = Driver::factory()->create(['first_name' => 'Awa', 'last_name' => 'DEUX']);
+    $five = Driver::factory()->create(['first_name' => 'Awa', 'last_name' => 'CINQ']);
+    Driver::factory()->create(['last_name' => 'ZERO']);
+
+    ChallengeTicket::factory()->count(2)->for($challenge)->for($two)->create();
+    ChallengeTicket::factory()->count(5)->for($challenge)->for($five)->create();
+
+    $show = Livewire::actingAs(challengesUser('bonus'))
+        ->test(Show::class, ['challenge' => $challenge])
+        ->instance();
+
+    $this->assertSame(2, $show->eligibleCount());
+    $this->assertSame(['Awa CINQ', 'Awa DEUX'], array_column($show->listRows(), 'name'));
+    $this->assertSame([5, 2], array_column($show->listRows(), 'tickets'));
+});
+
+it('shows the frozen pool winners first and eight holders at most', function (): void {
+    $challenge = Challenge::factory()->raffle()->drawPending()->create(['draw_seed' => 'seed-2026']);
+
+    // Dix porteurs d'un ticket chacun, numérotés 1 à 10 ; le 7 gagne.
+    $holders = collect(range(1, 10))->map(function (int $number) use ($challenge): Driver {
+        $driver = Driver::factory()->create(['first_name' => 'Porteur', 'last_name' => "N{$number}"]);
+        ChallengeTicket::factory()->for($challenge)->for($driver)->create(['range_number' => $number]);
+
+        return $driver;
+    });
+
+    ChallengeWinner::factory()->for($challenge)->for($holders[6])->create(['winning_range_number' => 7]);
+
+    $pool = Livewire::actingAs(challengesUser('bonus'))
+        ->test(Show::class, ['challenge' => $challenge])
+        ->instance()
+        ->frozenPoolRows();
+
+    $this->assertCount(8, $pool);
+    $this->assertSame('Porteur N7', $pool[0]['name']);
+    $this->assertTrue($pool[0]['isWinner']);
+    $this->assertSame('7 – 7', $pool[0]['range']);
+    $this->assertSame(1, collect($pool)->where('isWinner', true)->count());
+    $this->assertSame(['Porteur N1', 'Porteur N2'], [$pool[1]['name'], $pool[2]['name']]);
+});
+
+it('awards the leaderboard to the best-ranked drivers when the period closes', function (): void {
+    $challenge = Challenge::factory()->active()->create(['winners_count' => 2, 'reward_amount' => 5_000]);
+    $inPeriod = $challenge->period_start->copy()->addDay();
+
+    $first = challengesDriverWithOrders('PREMIER', 8, $inPeriod);
+    $second = challengesDriverWithOrders('SECOND', 4, $inPeriod);
+    challengesDriverWithOrders('TROISIEME', 1, $inPeriod);
+
+    Livewire::actingAs(challengesUser('direction'))
+        ->test(Show::class, ['challenge' => $challenge])
+        ->call('closePeriod');
+
+    $this->assertSame(ChallengeStatus::PayoutPending, $challenge->refresh()->status);
+    $this->assertSame(
+        [[$first->id, 1], [$second->id, 2]],
+        $challenge->winners()->orderBy('rank')->get()->map(fn (ChallengeWinner $w): array => [$w->driver_id, $w->rank])->all(),
+    );
+});
 
 it('guards the irreversible draw and the credit actions', function (): void {
     $challenge = Challenge::factory()->raffle()->create([

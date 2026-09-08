@@ -58,6 +58,13 @@ it('counts only the orders of the selected week', function (): void {
         'activity_date' => $thisWeek->format('Y-m-d'),
         'orders_completed' => 11,
     ]);
+    // Un second conducteur le même jour : le total est celui du parc, sommé
+    // en base — une ligne par conducteur et par jour ne remonte jamais telle
+    // quelle.
+    DriverDailyActivity::factory()->for(Driver::factory())->create([
+        'activity_date' => $thisWeek->format('Y-m-d'),
+        'orders_completed' => 5,
+    ]);
     DriverDailyActivity::factory()->for($driver)->create([
         'activity_date' => $lastWeek->format('Y-m-d'),
         'orders_completed' => 47,
@@ -80,7 +87,7 @@ it('counts only the orders of the selected week', function (): void {
     $component = Livewire::actingAs(dashboardUser('direction'))->test(Dashboard::class);
 
     // Par défaut, la semaine en cours.
-    expect($weekTotal($component->html()))->toBe('11');
+    expect($weekTotal($component->html()))->toBe('16');
 
     // La semaine précédente change le total, et elle seule.
     $component->set('week', $lastWeek->format('o-\WW'));

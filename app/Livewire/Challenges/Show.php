@@ -16,10 +16,13 @@ use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
 use App\Models\Driver;
+use App\Models\YangoOrder;
 use App\Services\Challenges\DrawService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
@@ -72,6 +75,24 @@ class Show extends Component
     public mixed $rulesDocument = null;
 
     public bool $confirmingRulesRemoval = false;
+
+    /**
+     * Compteurs résolus une fois par rendu : la vue relit les éligibles et le
+     * nombre de tickets à plusieurs endroits (barre de progression, résumé de
+     * la liste, vivier gelé). Propriétés privées, donc jamais sérialisées —
+     * chaque requête Livewire repart de zéro, et les gestes qui écrivent
+     * (`closePeriod`) ne passent pas par elles avant d'avoir écrit.
+     */
+    private ?int $eligibleCount = null;
+
+    private ?int $ticketCount = null;
+
+    /**
+     * Lignes affichées de la liste et de l'instantané du vivier.
+     */
+    private const LIST_ROWS = 25;
+
+    private const POOL_ROWS = 8;
 
     public function mount(Challenge $challenge): void
     {
@@ -418,13 +439,15 @@ class Show extends Component
             return;
         }
 
-        $ranking = $this->rankedDrivers()->take((int) ($this->challenge->winners_count ?? 0));
+        $ranking = $this->rankedQuery()
+            ->limit((int) ($this->challenge->winners_count ?? 0))
+            ->get();
 
-        foreach ($ranking as $index => $row) {
+        foreach ($ranking as $row) {
             ChallengeWinner::query()->create([
                 'challenge_id' => $this->challenge->id,
-                'driver_id' => $row['driver']->id,
-                'rank' => $index + 1,
+                'driver_id' => $row->id,
+                'rank' => (int) $row->place,
                 'amount' => $this->challenge->reward_amount,
             ]);
         }
@@ -441,34 +464,72 @@ class Show extends Component
     }
 
     /**
-     * Conducteurs classés par nombre de courses terminées sur la période.
+     * Les participants : conducteurs ayant terminé au moins une course sur la
+     * période — ou porteurs d'un ticket pour une tombola —, avec leurs deux
+     * compteurs en colonnes calculées. Sans ordre : `rankedQuery()` le pose.
      *
-     * @return Collection<int, array{driver: Driver, orders: int, tickets: int}>
+     * Tout reste en base. L'ancienne version hydratait le parc entier, puis
+     * filtrait et triait en PHP, quatre fois par rendu : la page tombait en
+     * délai d'attente dès que le parc a grossi. Ici les sous-requêtes ne sont
+     * évaluées que pour les lignes que `whereHas` retient, et s'appuient sur
+     * `yango_orders (driver_id, status, completed_at)` et
+     * `challenge_tickets (challenge_id, driver_id)`.
+     *
+     * @return Builder<Driver> colonnes ajoutées : `period_orders`, `period_tickets`
      */
-    private function rankedDrivers(): Collection
+    private function rankingQuery(): Builder
     {
-        $ticketCounts = $this->challenge->tickets()
-            ->selectRaw('driver_id, count(*) as aggregate')
-            ->groupBy('driver_id')
-            ->pluck('aggregate', 'driver_id');
+        $period = [$this->challenge->period_start, $this->challenge->period_end];
+
+        $completedOrders = YangoOrder::query()
+            ->selectRaw('count(*)')
+            ->whereColumn('yango_orders.driver_id', 'drivers.id')
+            ->where('status', YangoOrderStatus::Complete)
+            ->whereBetween('completed_at', $period);
+
+        $tickets = ChallengeTicket::query()
+            ->selectRaw('count(*)')
+            ->whereColumn('challenge_tickets.driver_id', 'drivers.id')
+            ->where('challenge_id', $this->challenge->id);
 
         return Driver::query()
-            ->withCount(['yangoOrders as period_orders' => fn ($query) => $query
-                ->where('status', YangoOrderStatus::Complete)
-                ->whereBetween('completed_at', [$this->challenge->period_start, $this->challenge->period_end])])
-            ->get()
-            ->map(fn (Driver $driver): array => [
-                'driver' => $driver,
-                'orders' => (int) $driver->period_orders,
-                'tickets' => (int) ($ticketCounts[$driver->id] ?? 0),
-            ])
-            ->filter(fn (array $row): bool => $this->challenge->type === ChallengeType::Raffle
-                ? $row['tickets'] > 0
-                : $row['orders'] > 0)
-            ->sortByDesc(fn (array $row): int => $this->challenge->type === ChallengeType::Raffle
-                ? $row['tickets']
-                : $row['orders'])
-            ->values();
+            ->select(['drivers.id', 'drivers.first_name', 'drivers.last_name', 'drivers.yango_id'])
+            ->selectSub($completedOrders, 'period_orders')
+            ->selectSub($tickets, 'period_tickets')
+            ->when(
+                $this->challenge->type === ChallengeType::Raffle,
+                fn (Builder $query) => $query->whereHas('challengeTickets', fn (Builder $ticket) => $ticket
+                    ->where('challenge_id', $this->challenge->id)),
+                fn (Builder $query) => $query->whereHas('yangoOrders', fn (Builder $order) => $order
+                    ->where('status', YangoOrderStatus::Complete)
+                    ->whereBetween('completed_at', $period)),
+            );
+    }
+
+    /**
+     * Le classement numéroté. `place` est calculé par fenêtre sur l'ensemble
+     * des participants, **avant** tout filtre d'affichage : chercher un
+     * conducteur montre son vrai rang, pas sa position parmi les résultats.
+     *
+     * `rank` est un mot réservé de MySQL, d'où `place`.
+     */
+    private function rankedQuery(): QueryBuilder
+    {
+        $column = $this->challenge->type === ChallengeType::Raffle ? 'period_tickets' : 'period_orders';
+
+        return DB::query()
+            ->fromSub($this->rankingQuery(), 'ranking')
+            ->select('ranking.*')
+            ->selectRaw("row_number() over (order by {$column} desc, id) as place")
+            ->orderBy('place');
+    }
+
+    /**
+     * Tickets émis sur le challenge, comptés une fois par rendu.
+     */
+    private function ticketCount(): int
+    {
+        return $this->ticketCount ??= $this->challenge->tickets()->count();
     }
 
     /**
@@ -530,7 +591,7 @@ class Show extends Component
             ],
             ChallengeType::Raffle => [
                 'label' => __('backoffice.challenges.tickets_issued'),
-                'value' => number_format($this->challenge->tickets()->count(), 0, ',', ' '),
+                'value' => number_format($this->ticketCount(), 0, ',', ' '),
                 'tone' => 'text-ink',
             ],
             ChallengeType::Leaderboard => [
@@ -543,11 +604,12 @@ class Show extends Component
         return $stats;
     }
 
+    /**
+     * Nombre de participants, compté en base et une fois par rendu.
+     */
     public function eligibleCount(): int
     {
-        return $this->challenge->type === ChallengeType::Raffle
-            ? $this->challenge->tickets()->distinct('driver_id')->count('driver_id')
-            : $this->rankedDrivers()->count();
+        return $this->eligibleCount ??= $this->rankingQuery()->count();
     }
 
     /**
@@ -618,7 +680,7 @@ class Show extends Component
             ]),
             ChallengeType::Raffle => __('backoffice.challenges.list_summary_raffle', [
                 'holders' => number_format($count, 0, ',', ' '),
-                'tickets' => number_format($this->challenge->tickets()->count(), 0, ',', ' '),
+                'tickets' => number_format($this->ticketCount(), 0, ',', ' '),
             ]),
             ChallengeType::Surprise => __('backoffice.challenges.list_summary_surprise', [
                 'drivers' => number_format($count, 0, ',', ' '),
@@ -627,91 +689,105 @@ class Show extends Component
     }
 
     /**
-     * Lignes de la liste des participants, filtrées et paginées côté PHP :
-     * le classement dépend d'un agrégat de courses, pas d'une colonne triable.
+     * Lignes de la liste des participants : recherche, filtre et limite sont
+     * appliqués en base **sur le classement déjà numéroté**, pour que le rang
+     * affiché reste celui de l'ensemble.
      *
      * @return list<array<string, mixed>>
      */
     public function listRows(): array
     {
         $winnerDriverIds = $this->challenge->winners()->pluck('driver_id')->all();
-        $places = (int) ($this->challenge->winners_count ?? 0);
+        $isLeaderboard = $this->challenge->type === ChallengeType::Leaderboard;
+        $places = $isLeaderboard ? (int) ($this->challenge->winners_count ?? 0) : 0;
 
-        $rows = $this->rankedDrivers()
-            ->values()
-            ->map(function (array $row, int $index) use ($winnerDriverIds, $places): array {
-                $rank = $index + 1;
-                $isWinner = in_array($row['driver']->id, $winnerDriverIds, true)
-                    || ($this->challenge->type === ChallengeType::Leaderboard && $places > 0 && $rank <= $places);
+        // Gagnant : désigné par un tirage, ou — pour un classement — dans les
+        // N premières places. La même clause sert au filtre et à son inverse.
+        $winning = fn (QueryBuilder $query): QueryBuilder => $query
+            ->whereIn('id', $winnerDriverIds)
+            ->when($places > 0, fn (QueryBuilder $query) => $query->orWhere('place', '<=', $places));
+
+        $rows = DB::query()
+            ->fromSub($this->rankedQuery(), 'ranked')
+            ->when($this->listSearch !== '', function (QueryBuilder $query): void {
+                $term = "%{$this->listSearch}%";
+                $query->where(fn (QueryBuilder $query) => $query
+                    ->where('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term)
+                    ->orWhere('yango_id', 'like', $term));
+            })
+            ->when($this->listFilter === 'gagnants', fn (QueryBuilder $query) => $query->where($winning))
+            ->when($this->listFilter === 'hors', fn (QueryBuilder $query) => $query->whereNot($winning))
+            ->orderBy('place')
+            ->limit(self::LIST_ROWS)
+            ->get();
+
+        return $rows
+            ->map(function (object $row) use ($winnerDriverIds, $places, $isLeaderboard): array {
+                $place = (int) $row->place;
+                $isWinner = in_array($row->id, $winnerDriverIds, true) || ($places > 0 && $place <= $places);
 
                 return [
-                    'rank' => $rank,
-                    'name' => $row['driver']->fullName(),
-                    'account' => $row['driver']->yango_id ?? '—',
-                    'orders' => $row['orders'],
-                    'tickets' => $row['tickets'],
+                    'rank' => $place,
+                    'name' => trim("{$row->first_name} {$row->last_name}"),
+                    'account' => $row->yango_id ?? '—',
+                    'orders' => (int) $row->period_orders,
+                    'tickets' => (int) $row->period_tickets,
                     'isWinner' => $isWinner,
                     'label' => $isWinner
                         ? __('backoffice.challenges.winner_badge')
-                        : ($this->challenge->type === ChallengeType::Leaderboard
+                        : ($isLeaderboard
                             ? __('backoffice.challenges.outside_top', ['top' => $places])
                             : __('backoffice.challenges.eligible_badge')),
                 ];
             })
             ->all();
-
-        if ($this->listSearch !== '') {
-            $needle = mb_strtolower($this->listSearch);
-            $rows = array_filter($rows, fn (array $row): bool => str_contains(mb_strtolower((string) $row['name']), $needle)
-                || str_contains(mb_strtolower((string) $row['account']), $needle));
-        }
-
-        $rows = match ($this->listFilter) {
-            'gagnants' => array_filter($rows, fn (array $row): bool => (bool) $row['isWinner']),
-            'hors' => array_filter($rows, fn (array $row): bool => ! $row['isWinner']),
-            default => $rows,
-        };
-
-        return array_slice(array_values($rows), 0, 25);
     }
 
     /**
-     * Instantané figé du pool, tel qu'il sera rejoué depuis la graine.
+     * Instantané figé du pool, tel qu'il sera rejoué depuis la graine : un
+     * porteur par ligne, gagnants en tête, huit lignes au plus.
+     *
+     * Agrégé en base : le vivier d'une tombola compte des milliers de tickets,
+     * les charger tous avec leur conducteur pour en montrer huit ne tient pas.
      *
      * @return list<array{name: string, tickets: int, range: string, isWinner: bool}>
      */
     public function frozenPoolRows(): array
     {
-        $winnerNumbers = $this->challenge->winners()->pluck('winning_range_number')->filter()->all();
+        $winnerNumbers = $this->challenge->winners()->pluck('winning_range_number')->filter()->values()->all();
 
-        $rows = ChallengeTicket::query()
+        $holders = ChallengeTicket::query()
             ->where('challenge_id', $this->challenge->id)
             ->whereNotNull('range_number')
-            ->with('driver')
-            ->orderBy('range_number')
-            ->get()
             ->groupBy('driver_id')
-            ->map(function (EloquentCollection $tickets): array {
-                $numbers = $tickets->pluck('range_number');
-                $driver = $tickets->firstOrFail()->driver;
+            ->selectRaw('driver_id, count(*) as tickets, min(range_number) as range_min, max(range_number) as range_max')
+            ->when(
+                $winnerNumbers !== [],
+                fn (Builder $query) => $query->selectRaw(
+                    'max(case when range_number in ('.implode(', ', array_fill(0, count($winnerNumbers), '?')).') then 1 else 0 end) as is_winner',
+                    $winnerNumbers,
+                ),
+                fn (Builder $query) => $query->selectRaw('0 as is_winner'),
+            )
+            ->orderByDesc('is_winner')
+            ->orderBy('range_min')
+            ->limit(self::POOL_ROWS)
+            ->get();
 
-                return [
-                    'name' => $driver->fullName(),
-                    'tickets' => $tickets->count(),
-                    'range' => number_format((int) $numbers->min(), 0, ',', ' ').' – '.number_format((int) $numbers->max(), 0, ',', ' '),
-                    'numbers' => $numbers->all(),
-                ];
-            })
-            ->map(fn (array $row): array => [
-                'name' => $row['name'],
-                'tickets' => $row['tickets'],
-                'range' => $row['range'],
-                'isWinner' => array_intersect($row['numbers'], $winnerNumbers) !== [],
+        $drivers = Driver::query()
+            ->whereKey($holders->pluck('driver_id'))
+            ->get(['id', 'first_name', 'last_name'])
+            ->keyBy('id');
+
+        return $holders
+            ->map(fn (ChallengeTicket $holder): array => [
+                'name' => $drivers->get($holder->driver_id)?->fullName() ?? '—',
+                'tickets' => (int) $holder->tickets,
+                'range' => number_format((int) $holder->range_min, 0, ',', ' ').' – '.number_format((int) $holder->range_max, 0, ',', ' '),
+                'isWinner' => (bool) $holder->is_winner,
             ])
-            ->sortByDesc('isWinner')
             ->all();
-
-        return array_slice(array_values($rows), 0, 8);
     }
 
     /**
@@ -786,9 +862,10 @@ class Show extends Component
         // relation déjà chargée serait périmée.
         $this->challenge->load(['prize', 'createdBy', 'winners.driver', 'winners.prize']);
 
+        // Les totaux se lisent sur la relation qu'on vient de charger.
         $winners = $this->winnerRows();
-        $totalWinners = $this->challenge->winners()->count();
-        $credited = $this->challenge->winners()->where('credited', true)->count();
+        $totalWinners = $this->challenge->winners->count();
+        $credited = $this->challenge->winners->where('credited', true)->count();
 
         return view('livewire.challenges.show', [
             'challenge' => $this->challenge,

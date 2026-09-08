@@ -77,14 +77,21 @@ class Index extends Component
             ->orderBy('last_name')
             ->paginate(20);
 
+        // Une requête groupée pour les quatre puces, pas un `count()` chacune.
+        $byStatus = Driver::query()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status')
+            ->map(fn (mixed $count): int => (int) $count);
+
         return view('livewire.drivers.index', [
             'drivers' => $drivers,
             'cnpsStatuses' => $this->cnpsStatuses($drivers, $statement),
             'statusCounts' => [
-                null => Driver::query()->count(),
-                DriverStatus::Working->value => Driver::query()->where('status', DriverStatus::Working)->count(),
-                DriverStatus::NotWorking->value => Driver::query()->where('status', DriverStatus::NotWorking)->count(),
-                DriverStatus::Fired->value => Driver::query()->where('status', DriverStatus::Fired)->count(),
+                null => $byStatus->sum(),
+                DriverStatus::Working->value => $byStatus[DriverStatus::Working->value] ?? 0,
+                DriverStatus::NotWorking->value => $byStatus[DriverStatus::NotWorking->value] ?? 0,
+                DriverStatus::Fired->value => $byStatus[DriverStatus::Fired->value] ?? 0,
             ],
         ]);
     }

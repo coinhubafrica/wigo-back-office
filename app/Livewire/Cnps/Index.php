@@ -105,7 +105,7 @@ class Index extends Component
 
         return view($view, [
             'rows' => $rows,
-            'allocations' => $this->allocations($rows->getCollection(), $statement),
+            'allocations' => $this->allocations($rows->getCollection()->pluck('id')->all(), $statement),
             'periodLabel' => $statement->labelFor($this->period),
             'periodOptions' => $this->periodOptions($statement),
             'totals' => $this->totals($statement),
@@ -150,16 +150,19 @@ class Index extends Component
      * partir des déclarations et des références de la fenêtre, puis rapporté
      * sur les lignes de la page.
      *
-     * @param  Collection<int, Driver>  $drivers
-     * @return array<string, array{applied: int, carry_in: int, carry_out: int}>
+     * `reference` est le montant en vigueur sur le mois affiché — le même que
+     * la colonne `period_reference` des lignes, résolu ici depuis la fenêtre
+     * déjà chargée pour que le filtre d'état n'ait pas à hydrater les lignes.
+     *
+     * @param  list<string>  $driverIds
+     * @return array<string, array{applied: int, carry_in: int, carry_out: int, reference: int|null}>
      */
-    private function allocations(Collection $drivers, CnpsStatementService $statement): array
+    private function allocations(array $driverIds, CnpsStatementService $statement): array
     {
-        if ($drivers->isEmpty()) {
+        if ($driverIds === []) {
             return [];
         }
 
-        $driverIds = $drivers->pluck('id')->all();
         $periods = $this->periodsUpTo();
 
         $totals = CnpsDeclaration::query()
@@ -180,18 +183,20 @@ class Index extends Component
 
         $allocations = [];
 
-        foreach ($drivers as $driver) {
-            $driverTotals = $totals->get($driver->id, new Collection)
+        foreach ($driverIds as $driverId) {
+            $driverTotals = $totals->get($driverId, new Collection)
                 ->mapWithKeys(fn (CnpsDeclaration $row): array => [$row->period => (int) $row->aggregate])
                 ->all();
 
             $driverReferences = $this->referencesByPeriod(
-                $references->get($driver->id, new Collection),
+                $references->get($driverId, new Collection),
                 $periods,
             );
 
-            $allocations[$driver->id] = $statement
-                ->allocateWithCarryOver($periods, $driverTotals, $driverReferences)[$this->period];
+            $allocations[$driverId] = [
+                ...$statement->allocateWithCarryOver($periods, $driverTotals, $driverReferences)[$this->period],
+                'reference' => $driverReferences[$this->period],
+            ];
         }
 
         return $allocations;
@@ -303,12 +308,31 @@ class Index extends Component
      */
     private function baseQuery(CnpsStatementService $statement): Builder
     {
-        $query = Driver::query()
+        return $this->searchQuery()
             ->select('drivers.*')
             ->selectSub($this->declaredSubQuery(), 'period_declared')
             ->selectSub($this->referenceSubQuery(), 'period_reference')
             ->selectSub($this->paymentCountSubQuery(), 'period_payments')
             ->selectSub($this->proofCountSubQuery(), 'period_proofs')
+            // L'état ne se compare pas en SQL : depuis que l'excédent d'un
+            // mois solde le suivant, il dépend de toute la chronologie du
+            // conducteur. Un filtre SQL et une pastille rendue en PHP se
+            // contrediraient — le mois soldé par une avance s'afficherait
+            // « Payé » tout en tombant dans « En retard ». On résout donc l'état
+            // une fois, hors pagination, et on restreint sur les identifiants.
+            ->when($this->state !== null, fn (Builder $query) => $query
+                ->whereIn('drivers.id', $this->idsMatchingState($statement)));
+    }
+
+    /**
+     * Les conducteurs visibles, recherche comprise — sans colonne calculée :
+     * c'est le socle des lignes comme de la résolution d'état.
+     *
+     * @return Builder<Driver>
+     */
+    private function searchQuery(): Builder
+    {
+        return Driver::query()
             ->when($this->search !== '', function (Builder $query): void {
                 $term = "%{$this->search}%";
                 $query->where(function (Builder $query) use ($term): void {
@@ -318,55 +342,46 @@ class Index extends Component
                         ->orWhere('yango_id', 'like', $term);
                 });
             });
-
-        if ($this->state === null) {
-            return $query;
-        }
-
-        // L'état ne se compare plus en SQL : depuis que l'excédent d'un mois
-        // solde le suivant, il dépend de toute la chronologie du conducteur, pas
-        // des deux colonnes de ce mois-ci. Un filtre SQL et une pastille rendue
-        // en PHP se contrediraient — le mois soldé par une avance s'afficherait
-        // « Payé » tout en tombant dans « En retard ».
-        //
-        // On résout donc l'état une fois, hors pagination, et on restreint sur
-        // les identifiants retenus.
-        //
-        // `withoutGlobalScopes` sur l'enveloppe : le filtre de suppression
-        // douce s'applique déjà à l'intérieur, et qualifié `drivers.` il ne
-        // résoudrait pas contre l'alias `monthly`.
-        return Driver::query()
-            ->withoutGlobalScopes()
-            ->fromSub($query, 'monthly')
-            ->whereIn('id', $this->idsMatchingState($query, $statement));
     }
 
     /**
      * Identifiants des conducteurs dont le mois affiché est dans l'état filtré,
      * report compris.
      *
-     * @param  Builder<Driver>  $query  requête déjà filtrée par la recherche
+     * Seuls les identifiants remontent, jamais les lignes : l'ancienne version
+     * hydratait tout le parc avec ses quatre colonnes calculées pour n'en
+     * garder qu'une page. La référence du mois est reprise de la fenêtre que
+     * `allocations()` charge déjà — c'est la même valeur que `period_reference`.
+     *
+     * « Payé » et « Partiel » exigent un montant imputé, donc un versement
+     * quelque part dans la fenêtre de report : les conducteurs sans aucune
+     * déclaration sur ces treize mois sont écartés en base avant tout calcul.
+     * « En retard » et « À déclarer » ne peuvent pas être resserrés ainsi — un
+     * mois sans ligne est précisément ce qu'ils cherchent.
+     *
      * @return list<string>
      */
-    private function idsMatchingState(Builder $query, CnpsStatementService $statement): array
+    private function idsMatchingState(CnpsStatementService $statement): array
     {
-        /** @var Collection<int, Driver> $candidates */
-        $candidates = (clone $query)->get();
+        $periods = $this->periodsUpTo();
+        $needsPayment = in_array($this->state, [CnpsMonthStatus::Paid->value, CnpsMonthStatus::Partial->value], true);
 
-        $allocations = $this->allocations($candidates, $statement);
-
-        return $candidates
-            ->filter(function (Driver $driver) use ($allocations, $statement): bool {
-                $applied = $allocations[$driver->id]['applied'] ?? 0;
-                $reference = $driver->period_reference === null
-                    ? null
-                    : (int) $driver->period_reference;
-
-                return $statement->statusFor($applied, $reference, $this->period)->value === $this->state;
-            })
-            ->pluck('id')
-            ->values()
+        /** @var list<string> $candidateIds */
+        $candidateIds = $this->searchQuery()
+            ->when($needsPayment, fn (Builder $query) => $query
+                ->whereHas('cnpsDeclarations', fn (Builder $declaration) => $declaration->whereIn('period', $periods)))
+            ->pluck('drivers.id')
             ->all();
+
+        $matching = [];
+
+        foreach ($this->allocations($candidateIds, $statement) as $driverId => $allocation) {
+            if ($statement->statusFor($allocation['applied'], $allocation['reference'], $this->period)->value === $this->state) {
+                $matching[] = $driverId;
+            }
+        }
+
+        return $matching;
     }
 
     /**
