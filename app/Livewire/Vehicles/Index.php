@@ -82,13 +82,24 @@ class Index extends Component
         /** @var view-string $view */
         $view = 'livewire.vehicles.index';
 
+        // Une requête pour les quatre puces : mêmes prédicats que `baseQuery()`.
+        $counts = Vehicle::query()
+            ->selectRaw(implode(', ', [
+                'count(*) as total',
+                'sum(case when driver_id is not null and is_active = 1 then 1 else 0 end) as assigned',
+                'sum(case when driver_id is null and is_active = 1 then 1 else 0 end) as unassigned',
+                'sum(case when is_active = 0 then 1 else 0 end) as inactive',
+            ]))
+            ->toBase()
+            ->first();
+
         return view($view, [
             'vehicles' => $vehicles,
             'counts' => [
-                null => Vehicle::query()->count(),
-                self::FILTER_ASSIGNED => Vehicle::query()->whereNotNull('driver_id')->where('is_active', true)->count(),
-                self::FILTER_UNASSIGNED => Vehicle::query()->whereNull('driver_id')->where('is_active', true)->count(),
-                self::FILTER_INACTIVE => Vehicle::query()->where('is_active', false)->count(),
+                null => (int) ($counts->total ?? 0),
+                self::FILTER_ASSIGNED => (int) ($counts->assigned ?? 0),
+                self::FILTER_UNASSIGNED => (int) ($counts->unassigned ?? 0),
+                self::FILTER_INACTIVE => (int) ($counts->inactive ?? 0),
             ],
         ]);
     }

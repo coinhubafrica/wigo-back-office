@@ -94,6 +94,17 @@ class Index extends Component
 
     public ?string $confirmingDismiss = null;
 
+    /**
+     * Conversation ouverte, résolue une fois par rendu : le fil, le ticket
+     * vivant, l'historique et les compteurs la relisent tous, ce qui coûtait
+     * cinq fois la même requête. Le rendu et la sélection repartent de zéro,
+     * pour qu'un geste qui écrit (réponse, tri) soit toujours relu après coup.
+     * Privées, donc jamais sérialisées entre deux requêtes Livewire.
+     */
+    private ?Conversation $openConversation = null;
+
+    private bool $openConversationResolved = false;
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -140,6 +151,7 @@ class Index extends Component
         $this->draft = '';
         $this->triageDraft = '';
 
+        $this->forgetOpenConversation();
         $this->markOpenThreadRead();
     }
 
@@ -439,6 +451,10 @@ class Index extends Component
 
     public function render(SlaCalculator $sla): View
     {
+        // Le rendu relit la conversation telle que l'action qui précède l'a
+        // laissée.
+        $this->forgetOpenConversation();
+
         // En première instruction : les compteurs qui suivent doivent voir la
         // lecture qu'on vient de poser, sinon l'écran affiche un non-lu déjà
         // effacé.
@@ -578,9 +594,20 @@ class Index extends Component
 
     private function conversation(): ?Conversation
     {
-        return $this->selected === null
-            ? null
-            : Conversation::query()->with('driver')->find($this->selected);
+        if (! $this->openConversationResolved) {
+            $this->openConversation = $this->selected === null
+                ? null
+                : Conversation::query()->with('driver')->find($this->selected);
+            $this->openConversationResolved = true;
+        }
+
+        return $this->openConversation;
+    }
+
+    private function forgetOpenConversation(): void
+    {
+        $this->openConversation = null;
+        $this->openConversationResolved = false;
     }
 
     /**

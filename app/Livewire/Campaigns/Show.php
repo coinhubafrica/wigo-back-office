@@ -5,6 +5,7 @@ namespace App\Livewire\Campaigns;
 use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\CampaignAudience;
+use App\Enums\CampaignRecipientStatus;
 use App\Enums\CampaignStatus;
 use App\Enums\DriverStatus;
 use App\Jobs\DispatchCampaignJob;
@@ -106,14 +107,37 @@ class Show extends Component
 
     public function render(CampaignAudienceResolver $audience): View
     {
-        $delivered = $this->campaign->deliveredCount();
+        /*
+        | Deux requêtes groupées pour les cinq compteurs, plutôt qu'un `count()`
+        | chacun via le modèle : les destinataires par statut d'un côté, les
+        | messages déposés et lus de l'autre. Mêmes définitions que
+        | `Campaign::targetedCount()` et consorts, qui restent la référence
+        | pour le service d'envoi.
+        */
+        $recipientsByStatus = $this->campaign->recipients()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status')
+            ->map(fn (mixed $count): int => (int) $count);
+
+        $messages = $this->campaign->messages()
+            ->selectRaw('count(*) as total, sum(case when read_at is not null then 1 else 0 end) as read_total')
+            ->toBase()
+            ->first();
+
+        $delivered = $recipientsByStatus[CampaignRecipientStatus::Sent->value] ?? 0;
+        $deposited = (int) ($messages->total ?? 0);
+        $read = (int) ($messages->read_total ?? 0);
 
         return view('livewire.campaigns.show', [
             'delivered' => $delivered,
-            'read' => $this->campaign->readCount(),
+            'read' => $read,
             // `null` et non `0.0` quand rien n'est parti : la vue affiche un
-            // tiret, qui ne se lit pas comme un échec de lecture.
-            'rate' => $delivered > 0 ? $this->campaign->readRate() : null,
+            // tiret, qui ne se lit pas comme un échec de lecture. Le taux se
+            // compte sur les messages déposés, comme `Campaign::readRate()`.
+            'rate' => $delivered > 0
+                ? ($deposited > 0 ? round($read / $deposited * 100, 1) : 0.0)
+                : null,
             // Pour un brouillon, ce que l'envoi toucherait aujourd'hui.
             // Résolu seulement pour un brouillon : c'est le seul cas où
             // l'écran l'affiche.
@@ -125,8 +149,8 @@ class Show extends Component
             'recipients' => $this->campaign->status === CampaignStatus::Draft
                 ? $this->audiencePreview($audience)
                 : $this->recipients(),
-            'targeted' => $this->campaign->targetedCount(),
-            'failed' => $this->campaign->failedCount(),
+            'targeted' => $recipientsByStatus->sum(),
+            'failed' => $recipientsByStatus[CampaignRecipientStatus::Failed->value] ?? 0,
             'canSend' => Gate::allows('sendCampaign'),
             'canManage' => Gate::allows('manageCampaigns'),
             'segmentLabels' => $this->segmentLabels(),
