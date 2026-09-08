@@ -123,6 +123,40 @@ it('charts the seven latest days, crossing into the previous week', function ():
     CarbonImmutable::setTestNow();
 });
 
+it('writes the period and the total of each week on the trend curve', function (): void {
+    // La courbe est le seul endroit où l'on lit les douze semaines : chaque
+    // point doit porter sa date et son total, pas seulement un survol.
+    CarbonImmutable::setTestNow('2026-09-08 10:00:00');
+
+    $driver = Driver::factory()->create();
+
+    // Semaine du 31 août, la semaine en cours : son point est le dernier.
+    DriverDailyActivity::factory()->for($driver)->create([
+        'activity_date' => '2026-09-02',
+        'orders_completed' => 57,
+    ]);
+    // Semaine du 17 août, deux semaines plus tôt.
+    DriverDailyActivity::factory()->for($driver)->create([
+        'activity_date' => '2026-08-19',
+        'orders_completed' => 23,
+    ]);
+
+    $curve = Str::of(Livewire::actingAs(dashboardUser('direction'))->test(Dashboard::class)->html())
+        ->after(__('backoffice.dashboard.trend_12_weeks'))
+        ->before(__('backoffice.dashboard.latest_requests'))
+        ->toString();
+
+    expect($curve)->toContain('7 sept.')  // début de la semaine en cours
+        ->toContain('17 août')            // le point à 23
+        ->toContain('57')
+        ->toContain('23')
+        // Les douze périodes sont écrites, pas trois : c'était le défaut.
+        ->toContain('22 juin')
+        ->toContain('6 juil.');
+
+    CarbonImmutable::setTestNow();
+});
+
 it('narrows the daily chart to a closed week when one is selected', function (): void {
     // Sur une semaine révolue la fenêtre coïncide avec elle : du lundi au
     // dimanche, sans déborder sur la semaine suivante.
