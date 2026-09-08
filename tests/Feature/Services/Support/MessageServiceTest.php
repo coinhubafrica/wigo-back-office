@@ -186,6 +186,54 @@ it('marks only the driver messages as read for staff', function (): void {
         ->and($request->messages()->where('sender_type', 'driver')->whereNull('read_at')->count())->toBe(0);
 });
 
+it('reads every driver message of the thread whatever its triage state', function (): void {
+    // L'agent voit tout l'historique, pas seulement le ticket courant : à
+    // trier, écarté et rattaché doivent passer lus ensemble. Le marquage porté
+    // par le ticket laissait les deux premiers non lus pour toujours.
+    $driver = Driver::factory()->create();
+    $agent = User::factory()->create();
+    $service = app(MessageService::class);
+
+    $service->sendFromDriver($driver, 'Un premier sujet');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    // Rattaché : le ticket avale le message existant, puis se referme.
+    $request = app(SupportRequestService::class)->createFromTriage(
+        $conversation->fresh(), SupportRequestCategory::Other, $agent,
+    );
+    $staffMessage = $service->sendFromStaff($request->fresh(), $agent, 'Nous regardons');
+    app(SupportRequestService::class)->resolve($request->fresh());
+
+    // Écarté : un remerciement qui n'appelle aucun travail.
+    $dismissed = $service->sendFromDriver($driver->fresh(), 'Merci !');
+    app(SupportRequestService::class)->dismissUntriaged($conversation->fresh(), $agent);
+
+    // À trier : le sujet suivant, sans ticket vivant pour le recueillir.
+    $untriaged = $service->sendFromDriver($driver->fresh(), 'Nouveau souci');
+
+    $touched = $service->markConversationReadForStaff($conversation->fresh());
+
+    expect($touched)->toBe(3)
+        ->and($conversation->messages()->where('sender_type', 'driver')->whereNull('read_at')->count())->toBe(0)
+        ->and($dismissed->fresh()->read_at)->not->toBeNull()
+        ->and($untriaged->fresh()->read_at)->not->toBeNull()
+        // La réponse de l'agent n'est pas lue par l'agent.
+        ->and($staffMessage->fresh()->read_at)->toBeNull();
+});
+
+it('has nothing left to read on a second pass', function (): void {
+    // C'est ce zéro qui retient la diffusion : sans lui, chaque rendu du fil
+    // ouvert rediffuserait, et la trame reçue relancerait un rendu.
+    $driver = Driver::factory()->create();
+    $service = app(MessageService::class);
+
+    $service->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    expect($service->markConversationReadForStaff($conversation->fresh()))->toBe(1)
+        ->and($service->markConversationReadForStaff($conversation->fresh()))->toBe(0);
+});
+
 it('replies without a ticket and leaves every clock alone', function (): void {
     // Le tri se règle parfois d'une phrase. `sendFromStaff()` ne convient pas :
     // elle arrête le chronomètre d'un ticket, et ici il n'y en a aucun.

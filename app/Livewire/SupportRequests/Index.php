@@ -142,10 +142,25 @@ class Index extends Component
         $this->draft = '';
         $this->triageDraft = '';
 
-        $request = $this->liveRequest();
+        $this->markOpenThreadRead();
+    }
 
-        if ($request !== null) {
-            app(MessageService::class)->markReadForStaff($request);
+    /**
+     * Le fil ouvert est lu. Appelé à la sélection **et** à chaque rendu : un
+     * message qui arrive dans un fil déjà ouvert est lu lui aussi, sans qu'il
+     * faille recliquer sur la ligne — le rechargement temps réel ne rejoue pas
+     * `select()`.
+     *
+     * Porté par la conversation et non par le ticket : l'onglet « À trier »
+     * n'en a aucun, et c'est là que se tiennent la plupart des premiers
+     * contacts.
+     */
+    private function markOpenThreadRead(): void
+    {
+        $conversation = $this->conversation();
+
+        if ($conversation !== null) {
+            app(MessageService::class)->markConversationReadForStaff($conversation);
         }
     }
 
@@ -416,6 +431,11 @@ class Index extends Component
 
     public function render(SlaCalculator $sla): View
     {
+        // En première instruction : les compteurs qui suivent doivent voir la
+        // lecture qu'on vient de poser, sinon l'écran affiche un non-lu déjà
+        // effacé.
+        $this->markOpenThreadRead();
+
         return view('livewire.support-requests.index', [
             'triageCount' => $this->triageQuery()->count(),
             'ticketCount' => SupportRequest::query()->live()->count(),

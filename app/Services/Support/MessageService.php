@@ -240,11 +240,13 @@ class MessageService
 
     /**
      * Un agent a ouvert le ticket : les messages du conducteur sont lus.
+     *
+     * @return int Messages effectivement passés lus.
      */
-    public function markReadForStaff(SupportRequest $request): void
+    public function markReadForStaff(SupportRequest $request): int
     {
-        DB::transaction(function () use ($request): void {
-            $request->messages()
+        $touched = DB::transaction(function () use ($request): int {
+            $touched = $request->messages()
                 ->whereNull('read_at')
                 ->where('sender_type', (new Driver)->getMorphClass())
                 ->update(['read_at' => now()]);
@@ -253,9 +255,54 @@ class MessageService
                 'staff_unread_count' => 0,
                 'staff_read_at' => now(),
             ])->save();
+
+            return $touched;
         });
 
-        MessageRead::dispatch($request->conversation, 'user');
+        if ($touched > 0) {
+            MessageRead::dispatch($request->conversation, 'user');
+        }
+
+        return $touched;
+    }
+
+    /**
+     * Un agent a le fil sous les yeux : les messages du conducteur sont lus,
+     * qu'ils soient rattachés à un ticket, écartés ou encore à trier. L'agent
+     * voit tout l'historique et pas seulement le ticket courant — un message
+     * en tri n'a aucun `support_request_id`, et `markReadForStaff()`, portée
+     * par le ticket, ne pouvait donc jamais l'atteindre.
+     *
+     * Ne diffuse que si quelque chose a changé : la trame revient dans l'onglet
+     * qui l'a provoquée (aucun `toOthers()`) et y relance un rendu. Sans cette
+     * garde, un fil ouvert boucle, et le `wire:poll` en rediffuserait une
+     * toutes les soixante secondes par onglet.
+     *
+     * @return int Messages effectivement passés lus.
+     */
+    public function markConversationReadForStaff(Conversation $conversation): int
+    {
+        $touched = DB::transaction(function () use ($conversation): int {
+            $touched = $conversation->messages()
+                ->whereNull('read_at')
+                ->where('sender_type', (new Driver)->getMorphClass())
+                ->update(['read_at' => now()]);
+
+            // La pastille de la file suit le fil réellement ouvert : lire le
+            // fil vaut lire le ticket qui s'y trouve.
+            $conversation->liveSupportRequest()->first()?->forceFill([
+                'staff_unread_count' => 0,
+                'staff_read_at' => now(),
+            ])->save();
+
+            return $touched;
+        });
+
+        if ($touched > 0) {
+            MessageRead::dispatch($conversation, 'user');
+        }
+
+        return $touched;
     }
 
     /**

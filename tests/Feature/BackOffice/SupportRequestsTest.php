@@ -9,6 +9,7 @@ use App\Enums\BackOfficeModule;
 use App\Enums\SupportRequestCategory;
 use App\Enums\SupportRequestPriority;
 use App\Enums\SupportRequestStatus;
+use App\Events\Support\MessageRead;
 use App\Livewire\SupportRequests\Index;
 use App\Models\Conversation;
 use App\Models\Driver;
@@ -18,6 +19,7 @@ use App\Models\User;
 use App\Services\Support\MessageService;
 use App\Services\Support\SupportRequestService;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 
 beforeEach(function (): void {
@@ -652,4 +654,76 @@ it('guards the send button and closes the templates list from its own method', f
         ->assertSeeHtml('$wire.closeTemplates()')
         ->call('closeTemplates')
         ->assertSet('templatesOpen', false);
+});
+
+it('sends a read receipt for a conversation still in triage', function (): void {
+    // Un message à trier n'a pas de ticket, et le marquage porté par le ticket
+    // ne pouvait donc jamais l'atteindre : le conducteur restait sur « Envoyé »
+    // alors que l'agent avait le message sous les yeux.
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Ma course a disparu');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    Event::fake([MessageRead::class]);
+
+    Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class)
+        ->call('select', $conversation->id);
+
+    Event::assertDispatched(
+        MessageRead::class,
+        fn (MessageRead $e): bool => $e->readerType === 'user'
+            && $e->conversation->is($conversation),
+    );
+
+    expect(SupportRequest::query()->count())->toBe(0)
+        ->and($conversation->messages()->whereNull('read_at')->count())->toBe(0);
+});
+
+it('reads a message arriving in an already open thread', function (): void {
+    // Le rechargement temps réel ne rejoue pas `select()` : sans marquage au
+    // rendu, l'agent regardait un message que le conducteur croyait non lu.
+    $driver = Driver::factory()->create();
+    $messages = app(MessageService::class);
+    $messages->sendFromDriver($driver, 'Première question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+    $agent = supportUser('gestionnaire');
+
+    $component = Livewire::actingAs($agent)
+        ->test(Index::class)
+        ->call('select', $conversation->id);
+
+    app(SupportRequestService::class)->createFromTriage(
+        $conversation->fresh(), SupportRequestCategory::Other, $agent,
+    );
+
+    // Le fil reste ouvert ; un second message arrive.
+    $messages->sendFromDriver($driver->fresh(), 'Et une relance');
+
+    Event::fake([MessageRead::class]);
+    $component->call('$refresh');
+
+    Event::assertDispatched(MessageRead::class, fn (MessageRead $e): bool => $e->readerType === 'user');
+
+    expect($conversation->messages()->where('sender_type', 'driver')->whereNull('read_at')->count())->toBe(0)
+        ->and($conversation->fresh()->liveSupportRequest()->first()->staff_unread_count)->toBe(0);
+});
+
+it('does not broadcast again when a render has nothing new to read', function (): void {
+    // La trame de lecture relance un rendu dans l'onglet qui l'a provoquée, et
+    // `wire:poll.60s` en déclenche un autre chaque minute. Rediffuser sans
+    // garde ferait boucler le fil ouvert.
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    $component = Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class)
+        ->call('select', $conversation->id);
+
+    Event::fake([MessageRead::class]);
+
+    $component->call('$refresh')->call('$refresh');
+
+    Event::assertNotDispatched(MessageRead::class);
 });
