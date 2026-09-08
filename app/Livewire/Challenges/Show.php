@@ -87,6 +87,8 @@ class Show extends Component
      */
     private ?int $eligibleCount = null;
 
+    private ?int $participantsCount = null;
+
     private ?int $ticketCount = null;
 
     private ?ChallengeRanking $ranking = null;
@@ -512,7 +514,7 @@ class Show extends Component
         $stats = [
             [
                 'label' => __('backoffice.challenges.participants'),
-                'value' => number_format($this->challenge->participantsCount(), 0, ',', ' '),
+                'value' => number_format($this->participantsCount(), 0, ',', ' '),
                 'tone' => 'text-ink',
             ],
             [
@@ -546,10 +548,31 @@ class Show extends Component
     }
 
     /**
-     * Nombre de participants, compté en base et une fois par rendu.
+     * Conducteurs ayant roulé sur la période, comptés une fois par rendu.
+     */
+    private function participantsCount(): int
+    {
+        return $this->participantsCount ??= $this->challenge->participantsCount();
+    }
+
+    /**
+     * Nombre d'éligibles, compté en base et une fois par rendu.
+     *
+     * Hors tombola, « éligible » et « participant » sont la même question —
+     * avoir terminé une course sur la période — et se répondaient par deux
+     * requêtes différentes, l'une balayant tout l'historique. La réponse déjà
+     * calculée suffit.
+     *
+     * Une tombola, elle, garde son propre compte : y sont éligibles les seuls
+     * porteurs de tickets, un sous-ensemble de ceux qui ont roulé. Les
+     * confondre gonflerait le chiffre affiché à côté du tirage.
      */
     public function eligibleCount(): int
     {
+        if ($this->challenge->type !== ChallengeType::Raffle) {
+            return $this->eligibleCount ??= $this->participantsCount();
+        }
+
         return $this->eligibleCount ??= $this->ranking()->participants()->count();
     }
 

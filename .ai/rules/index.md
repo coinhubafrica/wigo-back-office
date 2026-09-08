@@ -9,6 +9,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Support/NavigationBadges.php | .ai/rules/app-support.md |
 | app/Services/Auth/** | .ai/rules/auth.md |
 | app/Http/Controllers/BackOffice/** | .ai/rules/back-office.md |
+| app/Models/Challenge.php,app/Services/Challenges/ParticipantCounter.php,app/Livewire/Challenges/** | .ai/rules/challenges-livewire-challenges.md |
 | app/Services/Challenges/**,app/Models/DriverDailyActivity.php | .ai/rules/challenges-models.md |
 | app/Http/Controllers/Api/V1/ChallengeController.php,app/Http/Resources/DriverChallengePayload.php,app/Services/Challenges/** | .ai/rules/challenges.md |
 | app/Services/Cnps/** | .ai/rules/cnps.md |

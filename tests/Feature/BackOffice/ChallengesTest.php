@@ -491,12 +491,25 @@ it('shows the real participant count on the list and the detail screen', functio
     | seeder, donc la production affichait « 0 participant » sur un challenge
     | que tout le parc courait.
     */
-    Livewire::actingAs(challengesUser('bonus'))
+    /*
+    | Sur la valeur résolue et non sur `assertSee('2')` : la page est pleine de
+    | « 2 » — les dates de 2026 en portent toutes un —, et l'assertion passait
+    | même quand le compte était faux.
+    */
+    $listed = Livewire::actingAs(challengesUser('bonus'))
         ->test(Index::class)
-        ->assertSee('2');
+        ->viewData('challenges')
+        ->firstWhere('id', $challenge->id);
 
-    Livewire::actingAs(challengesUser('bonus'))
-        ->test(Show::class, ['challenge' => $challenge])
-        ->assertSee(__('backoffice.challenges.participants'))
-        ->assertSee('2');
+    expect($listed->participantsCount())->toBe(2);
+
+    $show = Livewire::actingAs(challengesUser('bonus'))
+        ->test(Show::class, ['challenge' => $challenge]);
+
+    $show->assertSee(__('backoffice.challenges.participants'));
+
+    $participants = collect($show->instance()->progressStats())
+        ->firstWhere('label', __('backoffice.challenges.participants'));
+
+    expect($participants['value'])->toBe('2');
 });
