@@ -93,6 +93,29 @@ it('the state filter separates paid partial and late', function (): void {
     $this->assertSame(['RETARD'], $names('late'));
 });
 
+it('a payment older than the carry window does not make a month paid', function (): void {
+    // Le report ne remonte que treize mois : un versement de juin 2025 ne
+    // solde pas juillet 2026, et « Payé » ne doit pas le retenir — la
+    // présélection en base des payeurs suit la même fenêtre que le calcul.
+    $stale = Driver::factory()->create(['last_name' => 'ANCIEN']);
+    CnpsReference::factory()->effectiveFrom('2025-01', 9000)->create(['driver_id' => $stale->id]);
+    CnpsDeclaration::factory()->forPeriod('2025-06', 90000)->create(['driver_id' => $stale->id]);
+
+    $recent = Driver::factory()->create(['last_name' => 'RECENT']);
+    CnpsReference::factory()->effectiveFrom('2025-01', 9000)->create(['driver_id' => $recent->id]);
+    CnpsDeclaration::factory()->forPeriod('2026-07', 9000)->create(['driver_id' => $recent->id]);
+
+    $component = Livewire::actingAs(cnpsUser('gestionnaire'))
+        ->test(Index::class)
+        ->set('period', '2026-07');
+
+    $names = fn (string $state): array => $component->call('filterByState', $state)
+        ->viewData('rows')->pluck('last_name')->all();
+
+    $this->assertSame(['RECENT'], $names('paid'));
+    $this->assertSame(['ANCIEN'], $names('late'));
+});
+
 it('the current month lists undeclared drivers as pending not late', function (): void {
     $driver = Driver::factory()->create(['last_name' => 'SANSRIEN']);
     CnpsReference::factory()->effectiveFrom('2026-01', 9000)->create(['driver_id' => $driver->id]);
