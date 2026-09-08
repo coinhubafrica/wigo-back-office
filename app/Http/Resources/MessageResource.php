@@ -50,7 +50,7 @@ class MessageResource extends JsonResource
             /**
              * Évènement porté par un message système.
              *
-             * @var 'request_opened'|'request_assigned'|'request_resolved'|'request_reopened'|'driver_suspended'|'driver_reactivated'|'shop_order_ready'|'recharge_credited'|null
+             * @var 'request_opened'|'request_assigned'|'request_resolved'|'request_reopened'|'shop_order_ready'|'recharge_credited'|null
              */
             'system_event' => $this->system_event?->value,
             'system_payload' => $this->system_payload,

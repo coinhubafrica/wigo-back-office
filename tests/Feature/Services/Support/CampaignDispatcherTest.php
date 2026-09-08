@@ -37,15 +37,15 @@ it('freezes the audience at send time', function (): void {
     // Un filtre rejoué à la lecture ferait disparaître la campagne du fil
     // d'un conducteur dès que son statut change.
     Notification::fake();
-    $drivers = Driver::factory()->count(3)->create(['status' => DriverStatus::Active]);
+    $drivers = Driver::factory()->count(3)->create(['status' => DriverStatus::Working]);
     $campaign = Campaign::factory()->create([
         'audience' => CampaignAudience::Segment,
-        'segment' => ['status' => [DriverStatus::Active->value]],
+        'segment' => ['status' => [DriverStatus::Working->value]],
     ]);
 
     app(CampaignDispatcher::class)->dispatch($campaign);
 
-    $drivers->first()->forceFill(['status' => DriverStatus::Suspended])->save();
+    $drivers->first()->forceFill(['status' => DriverStatus::Fired])->save();
 
     expect($campaign->fresh()->messages()->count())->toBe(3);
 });
@@ -107,11 +107,11 @@ it('writes the notification to the database first', function (): void {
 
 it('reaches only the segment', function (): void {
     Notification::fake();
-    Driver::factory()->count(2)->create(['status' => DriverStatus::Active]);
-    Driver::factory()->count(3)->create(['status' => DriverStatus::Suspended]);
+    Driver::factory()->count(2)->create(['status' => DriverStatus::Working]);
+    Driver::factory()->count(3)->create(['status' => DriverStatus::Fired]);
     $campaign = Campaign::factory()->create([
         'audience' => CampaignAudience::Segment,
-        'segment' => ['status' => [DriverStatus::Active->value]],
+        'segment' => ['status' => [DriverStatus::Working->value]],
     ]);
 
     app(CampaignDispatcher::class)->dispatch($campaign);

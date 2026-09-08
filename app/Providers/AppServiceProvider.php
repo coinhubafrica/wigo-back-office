@@ -223,9 +223,6 @@ class AppServiceProvider extends ServiceProvider
     protected function configureAuthorization(): void
     {
         $gates = [
-            // Chauffeurs — une suspension coupe le revenu du conducteur.
-            'suspendDriver' => Permission::DriversSuspend,
-
             // Requêtes. Traiter (répondre, recatégoriser, résoudre) et écarter
             // sans réponse sont deux décisions : la seconde laisse le
             // conducteur sans réponse.

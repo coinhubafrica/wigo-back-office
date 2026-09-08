@@ -34,12 +34,12 @@ afterEach(function (): void {
 // ---------------------------------------------------------------- accès
 
 it('a permitted user reaches the audit journal', function (): void {
-    auditLine(['summary' => 'Fatou DIALLO a suspendu Abdoul COMBA.']);
+    auditLine(['summary' => 'Fatou DIALLO a publié une annonce.']);
 
     $this->actingAs(auditUser('admin'))
         ->get(route(BackOfficeModule::Audit->route()))
         ->assertOk()
-        ->assertSee('Fatou DIALLO a suspendu Abdoul COMBA.');
+        ->assertSee('Fatou DIALLO a publié une annonce.');
 });
 
 it('a user without the module permission gets 403', function (): void {
@@ -123,35 +123,35 @@ it('search matches the summary, the agent name and the ip address', function ():
 });
 
 it('the module filter groups every action of that module', function (): void {
-    auditLine(['action' => AuditAction::DriverSuspended->value, 'summary' => 'Suspension notée.']);
-    auditLine(['action' => AuditAction::DriverReactivated->value, 'summary' => 'Réactivation notée.']);
+    auditLine(['action' => AuditAction::AnnouncementPublished->value, 'summary' => 'Publication notée.']);
+    auditLine(['action' => AuditAction::AnnouncementWithdrawn->value, 'summary' => 'Retrait noté.']);
     auditLine(['action' => AuditAction::CampaignSent->value, 'summary' => 'Campagne notée.']);
 
     Livewire::actingAs(auditUser('admin'))
         ->test(Index::class)
-        ->call('filterByModule', BackOfficeModule::Drivers->value)
-        ->assertSee('Suspension notée.')
-        ->assertSee('Réactivation notée.')
+        ->call('filterByModule', BackOfficeModule::Announcements->value)
+        ->assertSee('Publication notée.')
+        ->assertSee('Retrait noté.')
         ->assertDontSee('Campagne notée.');
 });
 
 it('the action filter narrows to one slug and aligns its module chip', function (): void {
-    auditLine(['action' => AuditAction::DriverSuspended->value, 'summary' => 'Suspension notée.']);
-    auditLine(['action' => AuditAction::DriverReactivated->value, 'summary' => 'Réactivation notée.']);
+    auditLine(['action' => AuditAction::AnnouncementPublished->value, 'summary' => 'Publication notée.']);
+    auditLine(['action' => AuditAction::AnnouncementWithdrawn->value, 'summary' => 'Retrait noté.']);
 
     Livewire::actingAs(auditUser('admin'))
         ->test(Index::class)
-        ->call('filterByAction', AuditAction::DriverSuspended->value)
-        ->assertSee('Suspension notée.')
-        ->assertDontSee('Réactivation notée.')
+        ->call('filterByAction', AuditAction::AnnouncementPublished->value)
+        ->assertSee('Publication notée.')
+        ->assertDontSee('Retrait noté.')
         // La puce de module suit, sinon les deux rangées se contrediraient.
-        ->assertSet('module', BackOfficeModule::Drivers->value);
+        ->assertSet('module', BackOfficeModule::Announcements->value);
 });
 
 it('picking a module clears the action already retained', function (): void {
     Livewire::actingAs(auditUser('admin'))
         ->test(Index::class)
-        ->call('filterByAction', AuditAction::DriverSuspended->value)
+        ->call('filterByAction', AuditAction::AnnouncementPublished->value)
         ->call('filterByModule', BackOfficeModule::Campaigns->value)
         ->assertSet('action', null)
         ->assertSet('module', BackOfficeModule::Campaigns->value);

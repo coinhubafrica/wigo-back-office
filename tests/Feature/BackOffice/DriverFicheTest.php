@@ -138,64 +138,34 @@ it('the photo route is closed to a role with neither drivers nor support', funct
         ->assertForbidden();
 });
 
-it('suspending a driver requires a reason', function (): void {
-    $driver = Driver::factory()->create(['status' => DriverStatus::Active]);
+it('the fiche offers no suspension control: the status belongs to Yango', function (): void {
+    $driver = Driver::factory()->create(['status' => DriverStatus::Working]);
 
     Livewire::actingAs(driverFicheUser('direction'))
         ->test(Show::class, ['driver' => $driver])
-        ->set('showSuspendForm', true)
-        ->set('suspensionReason', '')
-        ->call('suspend')
-        ->assertHasErrors(['suspensionReason' => 'required']);
-
-    $this->assertSame(DriverStatus::Active, $driver->fresh()->status);
+        ->assertDontSee('Suspendre')
+        ->assertDontSee('Réactiver');
 });
 
-it('suspending a driver sets the status and reason', function (): void {
-    $driver = Driver::factory()->create(['status' => DriverStatus::Active]);
+it('a fired driver is flagged on the fiche, without any action attached', function (): void {
+    $driver = Driver::factory()->fired()->create();
 
     Livewire::actingAs(driverFicheUser('direction'))
         ->test(Show::class, ['driver' => $driver])
-        ->set('showSuspendForm', true)
-        ->set('suspensionReason', 'Documents expirés')
-        ->call('suspend');
-
-    $driver->refresh();
-    $this->assertSame(DriverStatus::Suspended, $driver->status);
-    $this->assertSame('Documents expirés', $driver->suspension_reason);
+        ->assertSee('Conducteur radié chez Yango')
+        ->assertDontSee('Réactiver');
 });
 
-it('reactivating a suspended driver clears the reason', function (): void {
-    $driver = Driver::factory()->suspended('Documents non conformes')->create();
+it('a driver without activity carries no warning banner', function (): void {
+    $driver = Driver::factory()->notWorking()->create();
 
     Livewire::actingAs(driverFicheUser('direction'))
         ->test(Show::class, ['driver' => $driver])
-        ->call('confirmReactivate')
-        ->assertSet('confirmingReactivation', true)
-        ->call('reactivate')
-        ->assertSet('confirmingReactivation', false);
-
-    $driver->refresh();
-    $this->assertSame(DriverStatus::Active, $driver->status);
-    $this->assertNull($driver->suspension_reason);
+        ->assertDontSee('Conducteur radié chez Yango');
 });
 
-it('cancelling the reactivation leaves the driver suspended', function (): void {
-    $driver = Driver::factory()->suspended('Documents non conformes')->create();
-
-    Livewire::actingAs(driverFicheUser('direction'))
-        ->test(Show::class, ['driver' => $driver])
-        ->call('confirmReactivate')
-        ->call('cancelReactivate')
-        ->assertSet('confirmingReactivation', false);
-
-    $driver->refresh();
-    $this->assertSame(DriverStatus::Suspended, $driver->status);
-    $this->assertSame('Documents non conformes', $driver->suspension_reason);
-});
-
-it('the fiche offers no account activation control beyond suspension', function (): void {
-    $driver = Driver::factory()->create(['status' => DriverStatus::Dormant]);
+it('the fiche offers no account activation control', function (): void {
+    $driver = Driver::factory()->create(['status' => DriverStatus::NotWorking]);
 
     Livewire::actingAs(driverFicheUser('direction'))
         ->test(Show::class, ['driver' => $driver])

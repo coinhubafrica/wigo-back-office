@@ -24,8 +24,7 @@ class DriverFactory extends Factory
             'phone' => '+225'.fake()->unique()->numerify('##########'),
             'license_number' => Str::upper(fake()->bothify('????############?')),
             'photo_url' => null,
-            'status' => DriverStatus::Active,
-            'suspension_reason' => null,
+            'status' => DriverStatus::Working,
             'terms_version' => config('wigo.terms_version'),
             'terms_accepted_at' => now(),
             'last_sync_at' => now(),
@@ -33,17 +32,20 @@ class DriverFactory extends Factory
         ];
     }
 
-    public function suspended(string $reason = 'Documents non conformes'): static
+    /**
+     * Radié chez Yango : n'écrit plus rien depuis l'application mobile.
+     */
+    public function fired(): static
     {
-        return $this->state(fn (): array => [
-            'status' => DriverStatus::Suspended,
-            'suspension_reason' => $reason,
-        ]);
+        return $this->state(fn (): array => ['status' => DriverStatus::Fired]);
     }
 
-    public function dormant(): static
+    /**
+     * Sans activité — état ordinaire, l'accès mobile reste entier.
+     */
+    public function notWorking(): static
     {
-        return $this->state(fn (): array => ['status' => DriverStatus::Dormant]);
+        return $this->state(fn (): array => ['status' => DriverStatus::NotWorking]);
     }
 
     /**

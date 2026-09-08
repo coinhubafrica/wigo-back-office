@@ -51,9 +51,6 @@ enum Permission: string
     | ensemble, exécuter un tirage et créditer ses lots non plus.
     */
 
-    // Chauffeurs — suspendre coupe le revenu d'un conducteur.
-    case DriversSuspend = 'drivers.suspend';
-
     // Requêtes.
     case SupportHandle = 'support.handle';
     case SupportDismiss = 'support.dismiss';
@@ -124,8 +121,6 @@ enum Permission: string
     public function belongsTo(): BackOfficeModule
     {
         return $this->module() ?? match ($this) {
-            self::DriversSuspend => BackOfficeModule::Drivers,
-
             self::SupportHandle,
             self::SupportDismiss,
             self::SupportReassign,
@@ -173,8 +168,6 @@ enum Permission: string
     public function label(): string
     {
         return $this->module()?->label() ?? match ($this) {
-            self::DriversSuspend => 'Suspendre ou réactiver un conducteur',
-
             self::SupportHandle => 'Traiter une requête',
             self::SupportDismiss => 'Écarter un message sans réponse',
             self::SupportReassign => 'Réattribuer une requête',
@@ -218,8 +211,6 @@ enum Permission: string
     public function hint(): ?string
     {
         return match ($this) {
-            self::DriversSuspend => 'Une suspension coupe le revenu du conducteur : il ne reçoit plus de courses.',
-
             self::SupportHandle => 'Répondre dans un fil, changer la catégorie, résoudre un ticket.',
             self::SupportDismiss => "Classer un message sans y répondre : le conducteur n'obtient aucune réponse.",
             self::SupportReassign => "Désigner un autre destinataire qu'à soi-même : c'est répartir la charge de l'équipe.",

@@ -69,13 +69,12 @@ class RolePermissionSeeder extends Seeder
             BackOfficePermission::ModuleCampaigns,
 
             // Le métier quotidien du profil : traiter les requêtes, faire
-            // avancer les commandes, suspendre un conducteur en faute.
+            // avancer les commandes, traiter les requêtes.
             BackOfficePermission::SupportHandle,
             BackOfficePermission::SupportDismiss,
             // Les réponses types sont l'outil de l'agent : il les écrit pour
             // lui-même autant que pour l'équipe.
             BackOfficePermission::SupportManageTemplates,
-            BackOfficePermission::DriversSuspend,
             BackOfficePermission::ShopFulfilOrders,
             BackOfficePermission::CampaignsManage,
         ];

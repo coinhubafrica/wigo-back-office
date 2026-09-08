@@ -270,7 +270,7 @@ class Dashboard extends Component
         $cards = [];
 
         if ($user->can(BackOfficeModule::Drivers->permission())) {
-            $active = Driver::query()->where('status', DriverStatus::Active)->count();
+            $active = Driver::query()->where('status', DriverStatus::Working)->count();
             $total = Driver::query()->count();
             $newThisMonth = Driver::query()
                 ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth())

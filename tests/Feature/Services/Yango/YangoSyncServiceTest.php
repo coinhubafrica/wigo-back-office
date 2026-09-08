@@ -52,9 +52,20 @@ it('creates a driver Yango knows and wigo does not', function (): void {
     $this->assertSame('KONE', $driver->last_name);
     $this->assertSame('+2250700000001', $driver->phone);
     $this->assertSame('CI-123456', $driver->license_number);
-    // Connu de Yango, jamais passé par l'application : aucune CGU acceptée.
-    $this->assertSame(DriverStatus::Dormant, $driver->status);
+    // Le statut est celui que Yango remonte, dès la création.
+    $this->assertSame(DriverStatus::Working, $driver->status);
     $this->assertSame(1, $result->driversSynced);
+});
+
+it('creates a driver without a work_status as inactive rather than working', function (): void {
+    yangoSyncReturns(drivers: [yangoSyncProfile(workStatus: null)]);
+
+    yangoSyncService()->sync();
+
+    // Faute de statut lisible, la création ne doit pas supposer l'activité :
+    // la prochaine passe tranchera.
+    $driver = Driver::query()->where('yango_id', 'YAN-001')->sole();
+    $this->assertSame(DriverStatus::NotWorking, $driver->status);
 });
 
 it('updates a driver already matched on the yango id and stamps the sync', function (): void {
@@ -110,18 +121,48 @@ it('skips and logs a profile with no usable phone number', function (): void {
     $this->assertSame(1, $result->driversSkipped);
 });
 
-it('never rewrites the status of a suspended driver', function (): void {
-    $driver = Driver::factory()->withYangoId('YAN-001')->suspended('Documents non conformes')->create();
+it('rewrites the status of an existing driver from the Yango work_status', function (): void {
+    $driver = Driver::factory()->withYangoId('YAN-001')->fired()->create();
 
     yangoSyncReturns(drivers: [yangoSyncProfile()]);
 
     yangoSyncService()->sync();
 
-    $driver->refresh();
+    // Yango tient le parc : c'est lui qui dit qu'un conducteur roule de
+    // nouveau, et la passe le suit sans rien préserver localement.
+    $this->assertSame(DriverStatus::Working, $driver->refresh()->status);
+});
 
-    // La suspension est une décision du back-office : Yango ne la défait pas.
-    $this->assertSame(DriverStatus::Suspended, $driver->status);
-    $this->assertSame('Documents non conformes', $driver->suspension_reason);
+it('follows Yango when a driver stops working, and when he is fired', function (): void {
+    $driver = Driver::factory()->withYangoId('YAN-001')->create();
+
+    yangoSyncReturns(drivers: [yangoSyncProfile(workStatus: 'not_working')]);
+    yangoSyncService()->sync();
+
+    $this->assertSame(DriverStatus::NotWorking, $driver->refresh()->status);
+
+    MockClient::destroyGlobal();
+    yangoSyncReturns(drivers: [yangoSyncProfile(workStatus: 'fired')]);
+    yangoSyncService()->sync();
+
+    $this->assertSame(DriverStatus::Fired, $driver->refresh()->status);
+});
+
+it('leaves the status alone when Yango reports no usable work_status', function (): void {
+    $driver = Driver::factory()->withYangoId('YAN-001')->fired()->create();
+
+    // Ni valeur absente ni valeur inconnue ne doivent inventer un statut :
+    // `null` n'est pas un statut, comme pour le solde.
+    yangoSyncReturns(drivers: [yangoSyncProfile(workStatus: null)]);
+    yangoSyncService()->sync();
+
+    $this->assertSame(DriverStatus::Fired, $driver->refresh()->status);
+
+    MockClient::destroyGlobal();
+    yangoSyncReturns(drivers: [yangoSyncProfile(workStatus: 'on_holiday')]);
+    yangoSyncService()->sync();
+
+    $this->assertSame(DriverStatus::Fired, $driver->refresh()->status);
 });
 
 // ---------------------------------------------------------------- véhicules
@@ -192,7 +233,7 @@ it('counts records Yango no longer reports without touching them', function (): 
     $this->assertSame(1, $result->staleVehicles);
 
     // Signalés, jamais modifiés.
-    $this->assertSame(DriverStatus::Active, $missing->refresh()->status);
+    $this->assertSame(DriverStatus::Working, $missing->refresh()->status);
     $this->assertTrue($missingVehicle->refresh()->is_active);
 });
 
@@ -206,16 +247,20 @@ function yangoSyncService(): YangoSyncService
 /**
  * @return array<string, mixed>
  */
-function yangoSyncProfile(string $id = 'YAN-001', ?string $phone = '+2250700000001'): array
-{
+function yangoSyncProfile(
+    string $id = 'YAN-001',
+    ?string $phone = '+2250700000001',
+    ?string $workStatus = 'working',
+): array {
     return [
-        'driver_profile' => [
+        'driver_profile' => array_filter([
             'id' => $id,
             'first_name' => 'Kouassi',
             'last_name' => 'KONE',
             'driver_license' => ['number' => 'CI-123456'],
             'phones' => $phone === null ? [] : [$phone],
-        ],
+            'work_status' => $workStatus,
+        ], fn (mixed $value): bool => $value !== null),
         'car' => yangoSyncCar(),
     ];
 }

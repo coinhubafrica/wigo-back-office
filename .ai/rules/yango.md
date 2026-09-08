@@ -5,14 +5,14 @@ paths:
 
 # Yango
 
-## Synchronisation Yango Fleet : identifiant, adoption par téléphone, statut jamais réécrit
+## Synchronisation Yango Fleet : identifiant, adoption par téléphone, statut repris de Yango
 `YangoSyncService` (commande `yango:sync`, job `SyncYangoJob`, planifié à l'heure) rapproche le parc Yango via Saloon (`app/Http/Integrations/Yango/`).
 
 Décisions à ne pas redéfaire :
 
 - **Identifiant conducteur = `driver_profile.id`**, jamais `accounts.0.id`. Le projet d'origine (alal-pro) mélangeait les deux selon le chemin de code ; `driver_profile.id` est celui que l'API attend en `contractor_profile_id`.
 - **Rapprochement en trois temps** : `yango_id`, sinon téléphone normalisé E.164 (*adoption* : on pose `yango_id` sur la ligne existante, créée à l'inscription mobile), sinon création. Un profil sans téléphone exploitable est ignoré et journalisé — `drivers.phone` est requis et unique.
-- **Le `status` d'un conducteur existant n'est jamais réécrit.** Une suspension est une décision du back-office (`suspension_reason`) ; Yango n'a pas à la défaire. Un conducteur créé par la synchronisation naît `Dormant` (aucune CGU acceptée).
+- **Le `status` est celui de Yango et la passe l'écrit à chaque tour**, depuis `driver_profile.work_status` (`working`/`not_working`/`fired`). Un statut absent ou inconnu ne réécrit rien ; un conducteur créé sans statut lisible naît `NotWorking`. La règle inverse d'autrefois (« le statut n'est jamais réécrit ») protégeait une suspension back-office **supprimée** — cf. `.ai/rules/http-middleware.md`.
 - **Les enregistrements que Yango ne remonte plus sont signalés, jamais modifiés** : compteurs dans le résumé de la commande + `Log::warning`. Pas de désactivation automatique — une absence peut venir d'une panne Yango.
 - **`YangoDirectory` lève, `YangoClient` rend `null`.** Contrat d'erreur volontairement inverse : une passe interrompue au milieu ne doit pas écrire un parc tronqué. D'où deux contrats séparés.
 - `SyncYangoJob` **échoue franchement sur 401/403** (clé refusée, inutile de réessayer), remet en file sinon — 429 compris.

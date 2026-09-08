@@ -36,7 +36,7 @@ class CnpsController extends Controller
      * `reference` est `null` tant que le conducteur n'a fixé aucun montant ;
      * `reference_amount` l'est pour les mois antérieurs au premier montant fixé.
      *
-     * Reste lisible par un conducteur suspendu, comme le profil.
+     * Reste lisible par un conducteur radié, comme le profil.
      *
      * @response array{
      *     message: string,

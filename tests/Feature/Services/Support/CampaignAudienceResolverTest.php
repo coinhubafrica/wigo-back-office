@@ -12,24 +12,24 @@ use App\Models\Driver;
 use App\Services\Support\CampaignAudienceResolver;
 
 it('counts every driver for the whole fleet', function (): void {
-    Driver::factory()->count(3)->create(['status' => DriverStatus::Active]);
-    Driver::factory()->count(2)->create(['status' => DriverStatus::Suspended]);
+    Driver::factory()->count(3)->create(['status' => DriverStatus::Working]);
+    Driver::factory()->count(2)->create(['status' => DriverStatus::Fired]);
 
     expect(app(CampaignAudienceResolver::class)->count(CampaignAudience::All))->toBe(5);
 });
 
 it('filters a segment by status', function (): void {
-    Driver::factory()->count(3)->create(['status' => DriverStatus::Active]);
-    Driver::factory()->count(2)->create(['status' => DriverStatus::Suspended]);
+    Driver::factory()->count(3)->create(['status' => DriverStatus::Working]);
+    Driver::factory()->count(2)->create(['status' => DriverStatus::Fired]);
 
     $count = app(CampaignAudienceResolver::class)
-        ->count(CampaignAudience::Segment, ['status' => [DriverStatus::Active->value]]);
+        ->count(CampaignAudience::Segment, ['status' => [DriverStatus::Working->value]]);
 
     expect($count)->toBe(3);
 });
 
 it('ignores an unknown status rather than returning nothing', function (): void {
-    Driver::factory()->count(3)->create(['status' => DriverStatus::Active]);
+    Driver::factory()->count(3)->create(['status' => DriverStatus::Working]);
 
     $count = app(CampaignAudienceResolver::class)
         ->count(CampaignAudience::Segment, ['status' => ['inexistant']]);

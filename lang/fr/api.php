@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'suspended' => 'Votre compte est suspendu. Contactez At Confort Plus.',
+    'fired' => 'Votre compte a été désactivé par Yango. Contactez At Confort Plus.',
     'not_found' => 'Ressource introuvable.',
     'unauthenticated' => 'Authentification requise.',
     'forbidden' => "Vous n'avez pas accès à cette ressource.",

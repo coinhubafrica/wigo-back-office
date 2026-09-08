@@ -36,8 +36,13 @@ properties:
   status:
     type: string
     description: |-
-      Un conducteur `suspended` conserve son jeton mais reçoit 403 sur
-      les ressources métier.
+      Statut de travail, tel que la plateforme Yango le tient. Le contrat
+      garde son vocabulaire historique : `working` est exposé `active`,
+      `not_working` `dormant`, et `fired` `suspended`.
+
+      Un conducteur `suspended` conserve son jeton mais reçoit 403 en
+      écriture sur les ressources métier ; la lecture et le support
+      restent ouverts.
     enum:
       - active
       - suspended

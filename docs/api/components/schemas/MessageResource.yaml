@@ -42,8 +42,6 @@ properties:
       - request_assigned
       - request_resolved
       - request_reopened
-      - driver_suspended
-      - driver_reactivated
       - shop_order_ready
       - recharge_credited
       - null

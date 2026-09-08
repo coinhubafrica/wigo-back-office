@@ -2,16 +2,11 @@
 
 namespace App\Livewire\Drivers;
 
-use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
-use App\Enums\DriverStatus;
 use App\Http\Resources\CnpsStatementPayload;
-use App\Livewire\Concerns\InteractsWithCurrentUser;
-use App\Models\AuditLog;
 use App\Models\Driver;
 use App\Services\Cnps\CnpsStatementService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -24,15 +19,15 @@ use Livewire\Component;
  * doit pas cliquer pour savoir s'il a une commande en cours *et* une recharge
  * en échec. Les quatre listes sont bornées, c'est ce qui rend la page tenable.
  *
- * La photo de profil n'est pas modérée et l'activation du compte ne nous
- * appartient pas : le conducteur change sa photo depuis l'application, la
- * fiche ne fait que l'afficher.
+ * La photo de profil n'est pas modérée et l'état du compte ne nous appartient
+ * pas : le conducteur change sa photo depuis l'application, et son statut de
+ * travail est celui que Yango remonte à la synchronisation. La fiche ne fait
+ * que les afficher — il n'y a aucun geste de suspension ici, cela se décide
+ * sur la plateforme Yango.
  */
 #[Layout('layouts.app', ['module' => BackOfficeModule::Drivers])]
 class Show extends Component
 {
-    use InteractsWithCurrentUser;
-
     /**
      * Lignes montrées par panneau. La fiche est un aperçu : au-delà, le module
      * dédié (Requêtes, Boutique, Recharges) est le bon endroit pour dérouler
@@ -42,86 +37,9 @@ class Show extends Component
 
     public Driver $driver;
 
-    public bool $showSuspendForm = false;
-
-    public string $suspensionReason = '';
-
-    /**
-     * Modale de confirmation plutôt que `wire:confirm` : le dialogue natif
-     * bloque l'automatisation navigateur, comme constaté sur les recharges.
-     */
-    public bool $confirmingReactivation = false;
-
     public function mount(Driver $driver): void
     {
         $this->driver = $driver->load('vehicle');
-    }
-
-    /**
-     * Suspend le conducteur : il ne reçoit plus de courses.
-     *
-     * Geste à part de l'accès au module — consulter une fiche pour répondre au
-     * téléphone n'implique pas de pouvoir couper un revenu. Journalisé avec son
-     * motif : une suspension se conteste, il faut pouvoir dire qui l'a posée.
-     */
-    public function suspend(): void
-    {
-        Gate::authorize('suspendDriver');
-
-        $this->validate([
-            'suspensionReason' => ['required', 'string', 'max:255'],
-        ]);
-
-        $this->driver->update([
-            'status' => DriverStatus::Suspended,
-            'suspension_reason' => $this->suspensionReason,
-        ]);
-
-        AuditLog::record(
-            action: AuditAction::DriverSuspended->value,
-            summary: "{$this->actor()->fullName()} a suspendu {$this->driver->fullName()}.",
-            subject: $this->driver,
-            by: $this->actor(),
-            driver: $this->driver,
-            context: ['reason' => $this->suspensionReason],
-        );
-
-        $this->showSuspendForm = false;
-        $this->suspensionReason = '';
-
-        $this->dispatch('toast', message: __('backoffice.drivers.driver_suspended'));
-    }
-
-    public function confirmReactivate(): void
-    {
-        $this->confirmingReactivation = true;
-    }
-
-    public function cancelReactivate(): void
-    {
-        $this->confirmingReactivation = false;
-    }
-
-    public function reactivate(): void
-    {
-        Gate::authorize('suspendDriver');
-
-        $this->confirmingReactivation = false;
-
-        $this->driver->update([
-            'status' => DriverStatus::Active,
-            'suspension_reason' => null,
-        ]);
-
-        AuditLog::record(
-            action: AuditAction::DriverReactivated->value,
-            summary: "{$this->actor()->fullName()} a réactivé {$this->driver->fullName()}.",
-            subject: $this->driver,
-            by: $this->actor(),
-            driver: $this->driver,
-        );
-
-        $this->dispatch('toast', message: __('backoffice.drivers.reactivated'));
     }
 
     /**

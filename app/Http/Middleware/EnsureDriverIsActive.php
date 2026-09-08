@@ -9,8 +9,12 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Un conducteur suspendu conserve son jeton mais perd l'accès aux ressources :
- * on renvoie 403 avec un motif affichable par l'application mobile.
+ * Un conducteur radié chez Yango conserve son jeton mais n'écrit plus rien :
+ * on renvoie 403 avec un message affichable par l'application mobile.
+ *
+ * Seul `fired` ferme la porte. `not_working` est un état ordinaire — un
+ * conducteur qui ne roule pas aujourd'hui garde sa boutique, ses recharges et
+ * ses cotisations.
  */
 class EnsureDriverIsActive
 {
@@ -18,10 +22,10 @@ class EnsureDriverIsActive
     {
         $driver = $request->user();
 
-        if ($driver instanceof Driver && $driver->isSuspended()) {
+        if ($driver instanceof Driver && $driver->cannotWriteFromMobile()) {
             return new JsonResponse([
-                'message' => __('api.suspended'),
-                'reason' => $driver->suspension_reason ?? __('api.suspended'),
+                'message' => __('api.fired'),
+                'reason' => __('api.fired'),
             ], Response::HTTP_FORBIDDEN);
         }
 

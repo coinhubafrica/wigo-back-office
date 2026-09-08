@@ -16,6 +16,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
 | app/Services/History/**,app/Http/Controllers/Api/V1/HistoryController.php,app/Http/Resources/HistoryEntryPayload.php,app/Enums/HistoryKind.php,database/migrations/*driver_history_view* | .ai/rules/enums-migrations.md |
 | app/Enums/Permission.php,app/Providers/AppServiceProvider.php | .ai/rules/enums-providers.md |
+| app/Enums/DriverStatus.php,app/Services/Yango/**,app/Http/Middleware/EnsureDriverIsActive.php | .ai/rules/http-middleware.md |
 | app/Http/** | .ai/rules/http.md |
 | resources/js/app.js | .ai/rules/js.md |
 | app/Services/Cnps/**,app/Http/Resources/CnpsStatementPayload.php,app/Livewire/Cnps/** | .ai/rules/livewire-cnps.md |

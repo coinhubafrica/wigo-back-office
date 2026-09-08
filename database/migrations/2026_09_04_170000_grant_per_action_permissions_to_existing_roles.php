@@ -13,10 +13,9 @@ return new class extends Migration
      * Découpe en permissions les gestes qui n'étaient gardés que par l'accès au
      * module.
      *
-     * Jusqu'ici, atteindre un module suffisait pour tout y faire : suspendre un
-     * conducteur, diffuser une campagne à toute la flotte, exécuter un tirage,
-     * créditer des lots, écraser une clé Wave. Chaque geste porte désormais sa
-     * permission.
+     * Jusqu'ici, atteindre un module suffisait pour tout y faire : diffuser une
+     * campagne à toute la flotte, exécuter un tirage, créditer des lots,
+     * écraser une clé Wave. Chaque geste porte désormais sa permission.
      *
      * **Cette migration ne retire rien à personne** : elle accorde chaque
      * nouveau droit aux rôles qui pouvaient déjà l'exercer, c'est-à-dire ceux
@@ -115,9 +114,6 @@ return new class extends Migration
     private function actionsByModule(): array
     {
         return [
-            BackOfficeModule::Drivers->value => [
-                BackOfficePermission::DriversSuspend,
-            ],
             BackOfficeModule::SupportRequests->value => [
                 BackOfficePermission::SupportHandle,
                 BackOfficePermission::SupportDismiss,

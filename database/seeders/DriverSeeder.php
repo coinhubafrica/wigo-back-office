@@ -27,7 +27,7 @@ class DriverSeeder extends Seeder
                 'first_name' => 'Abdoul Aziz',
                 'last_name' => 'COMBA',
                 'license_number' => 'COMB012500370370A',
-                'status' => DriverStatus::Active,
+                'status' => DriverStatus::Working,
             ],
             vehicle: [
                 'yango_id' => 'yango-vehicle-001',
@@ -38,16 +38,16 @@ class DriverSeeder extends Seeder
             ],
         );
 
-        // Compte suspendu : /me répond 200 avec status=suspended, les
-        // ressources métier répondront 403 avec le motif.
+        // Compte radié chez Yango : /me répond 200 avec status=suspended (le
+        // contrat mobile garde son vocabulaire), les écritures métier
+        // répondront 403.
         $this->driver(
             phone: '+2250700000002',
             attributes: [
                 'yango_id' => 'yango-driver-002',
                 'first_name' => 'Mariam',
                 'last_name' => 'TRAORE',
-                'status' => DriverStatus::Suspended,
-                'suspension_reason' => 'Documents non conformes',
+                'status' => DriverStatus::Fired,
             ],
             vehicle: [
                 'yango_id' => 'yango-vehicle-002',
@@ -58,14 +58,15 @@ class DriverSeeder extends Seeder
             ],
         );
 
-        // Compte dormant : authentification normale, non bloqué.
+        // Sans activité : authentification normale, non bloqué — un
+        // conducteur qui ne roule pas garde l'application entière.
         $this->driver(
             phone: '+2250700000003',
             attributes: [
                 'yango_id' => 'yango-driver-003',
                 'first_name' => 'Yao',
                 'last_name' => 'KOFFI',
-                'status' => DriverStatus::Dormant,
+                'status' => DriverStatus::NotWorking,
             ],
         );
 
@@ -119,13 +120,13 @@ class DriverSeeder extends Seeder
         $this->command->table(
             ['Téléphone', 'Nom', 'Statut', 'Particularité'],
             [
-                ['+2250717738299', 'Abdoul Aziz COMBA', 'active', 'nominal, véhicule affecté'],
-                ['+2250700000002', 'Mariam TRAORE', 'suspended', 'motif de suspension renseigné'],
-                ['+2250700000003', 'Yao KOFFI', 'dormant', 'sans véhicule'],
-                ['+2250700000004', 'Fatoumata BAMBA', 'active', 'CGU non acceptées'],
-                ['+2250700000005', 'Ibrahim DIALLO', 'active', 'sans yango_id'],
-                ['+2250700000006', "Aya N'GUESSAN", 'active', 'OTP verrouillé'],
-                ['+2250700000007', 'Seydou OUATTARA', 'active', 'sans véhicule'],
+                ['+2250717738299', 'Abdoul Aziz COMBA', 'working', 'nominal, véhicule affecté'],
+                ['+2250700000002', 'Mariam TRAORE', 'fired', 'radié chez Yango, écritures fermées'],
+                ['+2250700000003', 'Yao KOFFI', 'not_working', 'sans véhicule'],
+                ['+2250700000004', 'Fatoumata BAMBA', 'working', 'CGU non acceptées'],
+                ['+2250700000005', 'Ibrahim DIALLO', 'working', 'sans yango_id'],
+                ['+2250700000006', "Aya N'GUESSAN", 'working', 'OTP verrouillé'],
+                ['+2250700000007', 'Seydou OUATTARA', 'working', 'sans véhicule'],
             ],
         );
     }

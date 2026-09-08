@@ -82,9 +82,9 @@ class Index extends Component
             'cnpsStatuses' => $this->cnpsStatuses($drivers, $statement),
             'statusCounts' => [
                 null => Driver::query()->count(),
-                DriverStatus::Active->value => Driver::query()->where('status', DriverStatus::Active)->count(),
-                DriverStatus::Suspended->value => Driver::query()->where('status', DriverStatus::Suspended)->count(),
-                DriverStatus::Dormant->value => Driver::query()->where('status', DriverStatus::Dormant)->count(),
+                DriverStatus::Working->value => Driver::query()->where('status', DriverStatus::Working)->count(),
+                DriverStatus::NotWorking->value => Driver::query()->where('status', DriverStatus::NotWorking)->count(),
+                DriverStatus::Fired->value => Driver::query()->where('status', DriverStatus::Fired)->count(),
             ],
         ]);
     }

@@ -5,19 +5,19 @@
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </x-slot:icon>
         </x-kpi-card>
-        <x-kpi-card :label="__('backoffice.drivers.active')" :value="number_format($statusCounts[\App\Enums\DriverStatus::Active->value])" tone="ok">
+        <x-kpi-card :label="__('backoffice.drivers.working')" :value="number_format($statusCounts[\App\Enums\DriverStatus::Working->value])" tone="ok">
             <x-slot:icon>
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
             </x-slot:icon>
         </x-kpi-card>
-        <x-kpi-card :label="__('backoffice.drivers.suspended')" :value="number_format($statusCounts[\App\Enums\DriverStatus::Suspended->value])" tone="warn">
+        <x-kpi-card :label="__('backoffice.drivers.not_working')" :value="number_format($statusCounts[\App\Enums\DriverStatus::NotWorking->value])">
             <x-slot:icon>
                 <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
             </x-slot:icon>
         </x-kpi-card>
-        <x-kpi-card :label="__('backoffice.drivers.dormant')" :value="number_format($statusCounts[\App\Enums\DriverStatus::Dormant->value])">
+        <x-kpi-card :label="__('backoffice.drivers.fired')" :value="number_format($statusCounts[\App\Enums\DriverStatus::Fired->value])" tone="err">
             <x-slot:icon>
-                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
             </x-slot:icon>
         </x-kpi-card>
     </div>

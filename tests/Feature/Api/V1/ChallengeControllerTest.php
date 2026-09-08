@@ -359,10 +359,9 @@ it('only ever shows a driver their own progress', function (): void {
         ->assertJsonPath('data.0.ticketing.orders_completed', 200);
 });
 
-it('lets a suspended driver still read their bonus screen', function (): void {
+it('lets a fired driver still read their bonus screen', function (): void {
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents non conformes',
+        'status' => DriverStatus::Fired,
     ]);
     Sanctum::actingAs($driver, ['mobile:*']);
 

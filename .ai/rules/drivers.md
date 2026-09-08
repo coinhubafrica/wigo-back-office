@@ -5,14 +5,14 @@ paths:
 
 # Drivers
 
-## Drivers module: DriverStatus::Dormant renders as "En attente"; fiche omits unbuilt-data panels
-The prototype's driver status filter is "actif / suspendu / en attente" — a 3-state UI, matching the MCD's `active/suspended/dormant` exactly. `DriverStatus::Dormant->label()` returns "En attente" for BO display; the enum's wire value (`dormant`) is unchanged since it's shared with the mobile API contract.
+## Drivers module: le statut est celui de Yango ; fiche omits unbuilt-data panels
+Le filtre de statut suit désormais le `work_status` de Yango — « En activité / Sans activité / Radiés » (`working` / `not_working` / `fired`). L'ancien triptyque `active/suspended/dormant` du prototype et du MCD n'existe plus en base ; le contrat mobile, lui, garde ses anciennes chaînes via `DriverStatus::wireValue()`. Cf. `.ai/rules/http-middleware.md`.
 
 The fiche 360° (`Show.php`/`show.blade.php`) intentionally omits: courses/semaine, solde Yango, CNPS status — these render as "—" placeholders (grid of 3 stat cards) — and the "Requêtes du conducteur" panel is dropped entirely. All three depend on data that doesn't exist yet (Fleet trip sync, CNPS declarations, support tickets). Add them back only once those modules/tables exist; don't fake the data or the panel in the meantime.
 
 Photo moderation is real: `drivers.photo_status` (nullable, `DriverPhotoStatus` enum: pending/approved/rejected) drives a banner shown only when `hasPhotoPendingModeration()` is true. `approvePhoto()`/`rejectPhoto()` just flip the enum — no notification dispatch to mobile yet (that's a mobile-API concern, not in scope here).
 
-Suspend/reactivate is real and audited only by `suspension_reason` on the row (no audit log per earlier explicit instruction — "not need for audit log for now"). The reactivate button uses `wire:confirm`, which opens a native browser dialog — this blocks CDP-driven browser automation (Claude-in-Chrome), so verify reactivate via Livewire component tests, not live click-through.
+**Suspend/reactivate n'existe plus** : couper un conducteur se décide sur la plateforme Yango et nous revient par `fired`. La fiche n'offre aucun geste sur le statut ; elle signale seulement une radiation par un bandeau `err`, sans action attachée. `suspension_reason`, `Permission::DriversSuspend` et les actions d'audit associées sont supprimés — le module Chauffeurs n'a plus aucun geste journalisé. Ne pas les réintroduire sans demande explicite.
 
 ## The fiche CNPS panel is real now; trips and Yango balance are still placeholders
 An earlier rule recorded that the fiche 360° showed courses/semaine, solde Yango and CNPS as "—" placeholders because the data did not exist. CNPS is no longer one of them: the `cnps_declarations` / `cnps_references` tables exist, so the "CNPS ce mois" stat card and a full contributions panel (reference amount, current month with progress, twelve months of history with each payment) are live.

@@ -69,12 +69,16 @@ class DriverResource extends JsonResource
              */
             'photo_url' => self::photoUrl($this->resource),
             /**
-             * Un conducteur `suspended` conserve son jeton mais reçoit 403 sur
-             * les ressources métier.
+             * Statut de travail, tel que Yango le tient.
+             *
+             * Le contrat garde son vocabulaire historique : `working` est
+             * exposé `active`, `not_working` `dormant`, et `fired`
+             * `suspended`. Un conducteur `suspended` conserve son jeton mais
+             * reçoit 403 en écriture sur les ressources métier.
              *
              * @var 'active'|'suspended'|'dormant'
              */
-            'status' => $this->status->value,
+            'status' => $this->status->wireValue(),
             'vehicle' => $this->whenLoaded('vehicle', fn () => $this->vehicle === null ? null : [
                 'make' => $this->vehicle->brand,
                 'model' => $this->vehicle->model,

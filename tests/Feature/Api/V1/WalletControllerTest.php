@@ -206,10 +206,9 @@ it('requires the idempotency key', function (): void {
 
 // ---------------------------------------------------------------- suspension
 
-it('lets a suspended driver still read their wallet', function (): void {
+it('lets a fired driver still read their wallet', function (): void {
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents non conformes',
+        'status' => DriverStatus::Fired,
     ]);
     Sanctum::actingAs($driver, ['mobile:*']);
 
@@ -217,10 +216,9 @@ it('lets a suspended driver still read their wallet', function (): void {
     $this->getJson(route('api.v1.wallet.recharges.index'))->assertOk();
 });
 
-it('prevents a suspended driver from opening a recharge', function (): void {
+it('prevents a fired driver from opening a recharge', function (): void {
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents non conformes',
+        'status' => DriverStatus::Fired,
     ]);
     Sanctum::actingAs($driver, ['mobile:*']);
 

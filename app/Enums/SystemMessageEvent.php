@@ -15,8 +15,6 @@ enum SystemMessageEvent: string
     case RequestAssigned = 'request_assigned';
     case RequestResolved = 'request_resolved';
     case RequestReopened = 'request_reopened';
-    case DriverSuspended = 'driver_suspended';
-    case DriverReactivated = 'driver_reactivated';
     case ShopOrderReady = 'shop_order_ready';
     case RechargeCredited = 'recharge_credited';
     case CampaignMessage = 'campaign_message';
@@ -33,8 +31,6 @@ enum SystemMessageEvent: string
             self::RequestAssigned => 'Un conseiller prend en charge votre demande.',
             self::RequestResolved => 'Votre demande a été traitée.',
             self::RequestReopened => 'Votre demande a été rouverte.',
-            self::DriverSuspended => 'Votre compte a été suspendu.',
-            self::DriverReactivated => 'Votre compte a été réactivé.',
             self::ShopOrderReady => isset($payload['reference'])
                 ? "Votre commande {$payload['reference']} est prête."
                 : 'Votre commande est prête.',

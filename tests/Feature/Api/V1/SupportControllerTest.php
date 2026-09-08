@@ -187,12 +187,11 @@ it('returns zero unread for a driver who never wrote', function (): void {
     expect(Conversation::query()->count())->toBe(0);
 });
 
-it('lets a suspended driver read the support thread', function (): void {
+it('lets a fired driver read the support thread', function (): void {
     // Contester sa suspension passe par là : à rebours des autres modules, le
     // support reste ouvert. Le contraste est vérifié ci-dessous.
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents expirés',
+        'status' => DriverStatus::Fired,
     ]);
     app(MessageService::class)->sendFromDriver($driver, 'Pourquoi suis-je suspendu ?');
     Sanctum::actingAs($driver->fresh(), ['mobile:*']);

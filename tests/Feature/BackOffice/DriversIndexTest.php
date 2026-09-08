@@ -56,12 +56,12 @@ it('the search filters by plate number', function (): void {
 });
 
 it('the status filter narrows the list', function (): void {
-    Driver::factory()->create(['first_name' => 'Abdoul', 'last_name' => 'COMBA', 'status' => DriverStatus::Active]);
-    Driver::factory()->suspended()->create(['first_name' => 'Mariam', 'last_name' => 'TRAORE']);
+    Driver::factory()->create(['first_name' => 'Abdoul', 'last_name' => 'COMBA', 'status' => DriverStatus::Working]);
+    Driver::factory()->fired()->create(['first_name' => 'Mariam', 'last_name' => 'TRAORE']);
 
     Livewire::actingAs(driversIndexUser('direction'))
         ->test(Index::class)
-        ->call('filterByStatus', DriverStatus::Suspended->value)
+        ->call('filterByStatus', DriverStatus::Fired->value)
         ->assertSee('TRAORE')
         ->assertDontSee('COMBA');
 });
@@ -70,7 +70,7 @@ it('reset filters clears search and status', function (): void {
     Livewire::actingAs(driversIndexUser('direction'))
         ->test(Index::class)
         ->set('search', 'zzz')
-        ->call('filterByStatus', DriverStatus::Suspended->value)
+        ->call('filterByStatus', DriverStatus::Fired->value)
         ->call('resetFilters')
         ->assertSet('search', '')
         ->assertSet('status', null);

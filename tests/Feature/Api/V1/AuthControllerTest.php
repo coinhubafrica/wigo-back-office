@@ -317,8 +317,8 @@ it('revokes only the current token on logout', function (): void {
     $this->assertSame($kept->accessToken->id, $driver->tokens()->first()->id);
 });
 
-it('lets a suspended driver keep the profile but loses protected routes', function (): void {
-    $driver = Driver::factory()->suspended('Documents non conformes')->create();
+it('lets a fired driver keep the profile but loses protected routes', function (): void {
+    $driver = Driver::factory()->fired()->create();
     Sanctum::actingAs($driver, ['mobile:*']);
 
     // Le profil et la déconnexion restent accessibles : l'application doit

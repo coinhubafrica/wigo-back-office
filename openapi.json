@@ -274,7 +274,7 @@
                     "Auth"
                 ],
                 "operationId": "v1.me",
-                "description": "Accessible même lorsque le compte est suspendu, afin que l'application\npuisse afficher le motif et permettre la déconnexion.",
+                "description": "Accessible même lorsque le compte est radié, afin que l'application\npuisse afficher le motif et permettre la déconnexion.",
                 "summary": "Profil du conducteur",
                 "responses": {
                     "200": {
@@ -368,7 +368,7 @@
                     "Auth"
                 ],
                 "operationId": "v1.photo.update",
-                "description": "Remplace la photo du conducteur : le profil est mis à jour aussitôt, il\nn'y a pas de validation par un agent. L'ancienne photo est supprimée du\ndisque dans la foulée.\n\nAccessible même lorsque le compte est suspendu — la photo relève du\nprofil, pas des opérations métier.",
+                "description": "Remplace la photo du conducteur : le profil est mis à jour aussitôt, il\nn'y a pas de validation par un agent. L'ancienne photo est supprimée du\ndisque dans la foulée.\n\nAccessible même lorsque le compte est radié — la photo relève du\nprofil, pas des opérations métier.",
                 "summary": "Changer ma photo de profil",
                 "requestBody": {
                     "required": true,
@@ -554,7 +554,7 @@
                     "Challenge"
                 ],
                 "operationId": "v1.challenges",
-                "description": "Un élément par challenge ouvert, avec la progression propre au\nconducteur : tickets détenus et courses restantes avant le prochain pour\nune tombola, rang et prime pour un classement, gain éventuel. Les blocs\n`ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils\ns'appliquent au challenge.\n\n`ticketing.tickets` détaille les tickets détenus, du plus ancien au plus\nrécent : leur date d'obtention et leur numéro de tirage, ce dernier\nn'étant attribué qu'au gel du vivier.\n\n`rules_document` porte le règlement du challenge quand il en a un, par\nURL signée valable une heure.\n\n`meta.weekly_history` porte les douze dernières semaines de courses\nterminées, de la plus ancienne à la semaine en cours.\n\nReste accessible à un conducteur suspendu, comme le profil : ses\ncompteurs cessent simplement de progresser.",
+                "description": "Un élément par challenge ouvert, avec la progression propre au\nconducteur : tickets détenus et courses restantes avant le prochain pour\nune tombola, rang et prime pour un classement, gain éventuel. Les blocs\n`ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils\ns'appliquent au challenge.\n\n`ticketing.tickets` détaille les tickets détenus, du plus ancien au plus\nrécent : leur date d'obtention et leur numéro de tirage, ce dernier\nn'étant attribué qu'au gel du vivier.\n\n`rules_document` porte le règlement du challenge quand il en a un, par\nURL signée valable une heure.\n\n`meta.weekly_history` porte les douze dernières semaines de courses\nterminées, de la plus ancienne à la semaine en cours.\n\nReste accessible à un conducteur radié, comme le profil : ses\ncompteurs cessent simplement de progresser.",
                 "summary": "Challenges en cours du conducteur",
                 "responses": {
                     "200": {
@@ -1616,7 +1616,7 @@
                     "Cnps"
                 ],
                 "operationId": "v1.cnps.show",
-                "description": "Le montant mensuel de référence, le mois en cours et les douze mois\nprécédents, du plus récent au plus ancien.\n\nSuivi purement déclaratif : les montants sont ceux que le conducteur\ndéclare avoir payés dans Wave. Seuls les états de la CNPS font foi.\n`status` se déduit du cumul déclaré face à la référence en vigueur ce\nmois-là — le mois en cours vaut `pending`, jamais `late`.\n\nUn mois ne se lit pas seul : ce qui est versé au-delà de sa référence\nest **reporté sur le mois suivant**, de proche en proche. Un conducteur\nqui verse 15 000 en août sur une référence de 9 000 solde août et prend\n6 000 d'avance sur septembre — septembre affiche alors\n`carried_in: 6000` et `covered_amount: 6000` sans versement propre.\n\n`declared_amount` reste la somme saisie sur le mois ;\n`covered_amount` est ce qui lui est imputé, report compris. Ce sont\n`remaining`, `progress` et `status` qui suivent `covered_amount`.\nLe report ne remonte jamais vers un mois antérieur : un arriéré se\nrègle en déclarant son propre mois.\n\n`reference` est `null` tant que le conducteur n'a fixé aucun montant ;\n`reference_amount` l'est pour les mois antérieurs au premier montant fixé.\n\nReste lisible par un conducteur suspendu, comme le profil.",
+                "description": "Le montant mensuel de référence, le mois en cours et les douze mois\nprécédents, du plus récent au plus ancien.\n\nSuivi purement déclaratif : les montants sont ceux que le conducteur\ndéclare avoir payés dans Wave. Seuls les états de la CNPS font foi.\n`status` se déduit du cumul déclaré face à la référence en vigueur ce\nmois-là — le mois en cours vaut `pending`, jamais `late`.\n\nUn mois ne se lit pas seul : ce qui est versé au-delà de sa référence\nest **reporté sur le mois suivant**, de proche en proche. Un conducteur\nqui verse 15 000 en août sur une référence de 9 000 solde août et prend\n6 000 d'avance sur septembre — septembre affiche alors\n`carried_in: 6000` et `covered_amount: 6000` sans versement propre.\n\n`declared_amount` reste la somme saisie sur le mois ;\n`covered_amount` est ce qui lui est imputé, report compris. Ce sont\n`remaining`, `progress` et `status` qui suivent `covered_amount`.\nLe report ne remonte jamais vers un mois antérieur : un arriéré se\nrègle en déclarant son propre mois.\n\n`reference` est `null` tant que le conducteur n'a fixé aucun montant ;\n`reference_amount` l'est pour les mois antérieurs au premier montant fixé.\n\nReste lisible par un conducteur radié, comme le profil.",
                 "summary": "Mon relevé de cotisations CNPS",
                 "responses": {
                     "200": {
@@ -3217,7 +3217,7 @@
                     },
                     "status": {
                         "type": "string",
-                        "description": "Un conducteur `suspended` conserve son jeton mais reçoit 403 sur\nles ressources métier.",
+                        "description": "Statut de travail, tel que la plateforme Yango le tient. Le contrat\ngarde son vocabulaire historique : `working` est exposé `active`,\n`not_working` `dormant`, et `fired` `suspended`.\n\nUn conducteur `suspended` conserve son jeton mais reçoit 403 en\nécriture sur les ressources métier ; la lecture et le support\nrestent ouverts.",
                         "enum": [
                             "active",
                             "suspended",
@@ -3522,8 +3522,6 @@
                             "request_assigned",
                             "request_resolved",
                             "request_reopened",
-                            "driver_suspended",
-                            "driver_reactivated",
                             "shop_order_ready",
                             "recharge_credited",
                             null

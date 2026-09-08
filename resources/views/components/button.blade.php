@@ -9,7 +9,7 @@
       se range ici : la couleur d'un bouton dit « allez-y », pas « c'est bon »).
     - `secondary` : annuler, filtrer, ouvrir un panneau.
     - `danger` : exécute une action destructrice (dans une confirmation).
-    - `danger-outline` : ouvre un parcours destructeur (« Suspendre »,
+    - `danger-outline` : ouvre un parcours destructeur (« Supprimer »,
       « Rejeter »).
 
     `target` pose le garde-fou d'attente (`wire:loading.attr="disabled"`) :

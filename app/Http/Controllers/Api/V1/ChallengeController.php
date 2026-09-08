@@ -38,7 +38,7 @@ class ChallengeController extends Controller
      * `meta.weekly_history` porte les douze dernières semaines de courses
      * terminées, de la plus ancienne à la semaine en cours.
      *
-     * Reste accessible à un conducteur suspendu, comme le profil : ses
+     * Reste accessible à un conducteur radié, comme le profil : ses
      * compteurs cessent simplement de progresser.
      *
      * @response array{
