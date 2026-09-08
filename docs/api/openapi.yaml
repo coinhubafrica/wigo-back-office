@@ -42,6 +42,8 @@ tags:
     description: 'Catalogue, points de retrait et commandes.'
   - name: Cnps
     description: 'Déclarations CNPS et référence assuré.'
+  - name: History
+    description: "Fil d'activité du conducteur : recharges, commandes, cotisations et tickets."
   - name: Support
     description: 'Fil de discussion avec le support, pièces jointes incluses.'
   - name: Notification
@@ -61,6 +63,7 @@ paths:
     Wallet: paths/wallet.yaml
     Shop: paths/shop.yaml
     Cnps: paths/cnps.yaml
+    History: paths/history.yaml
     Support: paths/support.yaml
     Notification: paths/notifications.yaml
     Broadcast: paths/broadcast.yaml

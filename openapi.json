@@ -48,6 +48,10 @@
             "description": "Déclarations CNPS et référence assuré."
         },
         {
+            "name": "History",
+            "description": "Fil d'activité du conducteur : recharges, commandes, cotisations et tickets."
+        },
+        {
             "name": "Support",
             "description": "Fil de discussion avec le support, pièces jointes incluses."
         },
@@ -2169,6 +2173,72 @@
                 }
             }
         },
+        "/history": {
+            "get": {
+                "tags": [
+                    "History"
+                ],
+                "operationId": "v1.history.index",
+                "description": "Recharges, commandes de pièces, cotisations CNPS déclarées et tickets de\nbonus dans un seul ordre, du plus récent au plus ancien.\n\nChaque ligne porte son montant en trois parties : `amount.value` est une\nmagnitude toujours positive, `amount.sign` dit le sens (-1 sortie, +1\nentrée, 0 sans mouvement de notre côté) et `amount.unit` vaut `XOF` ou\n`ticket`. L'application se règle sur `sign` seul pour la couleur et le\npréfixe : elle n'a pas à connaître les familles.\n\nPagination par curseur : `meta.next_cursor` porte le curseur suivant\n(`null` sur la dernière page), à renvoyer dans `?cursor=`. `per_page` est\nplafonné à 50 — l'accueil demande `per_page=5` et ignore le curseur.",
+                "summary": "Fil d'activité",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Message prêt à afficher, en français."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/HistoryEntryPayload"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "Pagination par curseur : `per_page`, `next_cursor` (`null` sur la dernière page)."
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "description": "Liens de pagination (`next`, `prev`) lorsqu'ils existent."
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/support/conversation": {
             "get": {
                 "tags": [
@@ -3220,6 +3290,113 @@
                     "delivery"
                 ],
                 "title": "FulfilmentMode"
+            },
+            "HistoryEntryPayload": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Identifiant de la ligne source (recharge, commande, cotisation…), et non\ndu fil : c'est lui qui sert au lien profond.",
+                        "examples": [
+                            "01HZY3M4N5P6Q7R8S9T0V1W2X3"
+                        ]
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "recharge",
+                            "order",
+                            "cnps",
+                            "ticket",
+                            "bonus"
+                        ]
+                    },
+                    "ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Référence lisible. Nulle pour une cotisation, un ticket et un bonus, qui n'en portent pas.",
+                        "examples": [
+                            "CMD-2026-0114"
+                        ]
+                    },
+                    "label": {
+                        "type": "string",
+                        "examples": [
+                            "Commande pièces"
+                        ]
+                    },
+                    "sublabel": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Ligne grise : ce que la famille a de plus parlant, puis la date. Les\ntickets et les cotisations n'ont qu'un jour en base, leur date est donc\nsans heure.",
+                        "examples": [
+                            "Amortisseur arrière · 6 août · 09:12"
+                        ]
+                    },
+                    "amount": {
+                        "type": "object",
+                        "description": "Le montant en trois parties, à ne jamais lire séparément : `value` est une\nmagnitude toujours positive, `sign` porte le sens et `unit` l'unité.\nL'application se règle sur `sign` seul pour la couleur et le préfixe.",
+                        "properties": {
+                            "value": {
+                                "type": "integer",
+                                "examples": [
+                                    60000
+                                ]
+                            },
+                            "sign": {
+                                "type": "integer",
+                                "description": "-1 sortie (rouge, préfixe « − »), +1 entrée (verte, préfixe « + »),\n0 sans mouvement dans le portefeuille que nous tenons (noir, sans\npréfixe). Une cotisation CNPS vaut 0 : l'argent est parti du compte\nWave du conducteur, que nous n'avons jamais touché. Une commande\nannulée aussi.",
+                                "enum": [
+                                    -1,
+                                    0,
+                                    1
+                                ]
+                            },
+                            "unit": {
+                                "type": "string",
+                                "enum": [
+                                    "XOF",
+                                    "ticket"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "sign",
+                            "unit"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "settled",
+                            "failed",
+                            "cancelled"
+                        ]
+                    },
+                    "occurred_at": {
+                        "type": "string",
+                        "examples": [
+                            "2026-08-12T14:35:00Z"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "kind",
+                    "ref",
+                    "label",
+                    "sublabel",
+                    "amount",
+                    "status",
+                    "occurred_at"
+                ],
+                "title": "HistoryEntryPayload"
             },
             "MessageAttachmentResource": {
                 "type": "object",

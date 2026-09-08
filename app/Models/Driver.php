@@ -39,6 +39,8 @@ use Laravel\Sanctum\HasApiTokens;
  * @property-read Collection<int, CnpsDeclaration> $cnpsDeclarations
  * @property-read Collection<int, CnpsReference> $cnpsReferences
  * @property-read Collection<int, Transaction> $transactions
+ * @property-read Collection<int, ChallengeTicket> $challengeTickets
+ * @property-read Collection<int, ChallengeWinner> $challengeWinners
  * @property-read int|null $period_orders  alias de withCount() sur la periode d'un challenge
  */
 class Driver extends Authenticatable
@@ -145,6 +147,27 @@ class Driver extends Authenticatable
     public function dailyActivities(): HasMany
     {
         return $this->hasMany(DriverDailyActivity::class);
+    }
+
+    /**
+     * Tickets de challenge gagnés, toutes périodes confondues.
+     *
+     * Les tickets se joignaient jusqu'ici par le challenge
+     * (`DriverProgressService`) ; le fil d'activité les lit par conducteur.
+     *
+     * @return HasMany<ChallengeTicket, $this>
+     */
+    public function challengeTickets(): HasMany
+    {
+        return $this->hasMany(ChallengeTicket::class);
+    }
+
+    /**
+     * @return HasMany<ChallengeWinner, $this>
+     */
+    public function challengeWinners(): HasMany
+    {
+        return $this->hasMany(ChallengeWinner::class);
     }
 
     /**
