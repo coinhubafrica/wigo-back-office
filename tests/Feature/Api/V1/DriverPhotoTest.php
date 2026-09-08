@@ -52,10 +52,9 @@ it('deletes the previous photo', function (): void {
     Storage::disk('local')->assertExists($driver->photo_url);
 });
 
-it('lets a suspended driver still change their photo', function (): void {
+it('lets a fired driver still change their photo', function (): void {
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents expirés',
+        'status' => DriverStatus::Fired,
     ]);
     Sanctum::actingAs($driver, ['mobile:*']);
 

@@ -77,7 +77,7 @@ it('opens the file with a utf-8 bom and semicolon separators', function (): void
      * met toute la ligne dans une seule colonne. Chaque phrase de ce journal
      * porte des accents.
      */
-    auditExportLine(['summary' => 'Éric a suspendu Aïcha.']);
+    auditExportLine(['summary' => 'Éric a publié une annonce.']);
 
     $content = $this->actingAs(auditExportUser('admin'))
         ->get(route('bo.audit.export'))
@@ -85,7 +85,7 @@ it('opens the file with a utf-8 bom and semicolon separators', function (): void
 
     expect($content)->toStartWith("\xEF\xBB\xBF")
         ->and($content)->toContain('Horodatage;Action;')
-        ->and($content)->toContain('Éric a suspendu Aïcha.');
+        ->and($content)->toContain('Éric a publié une annonce.');
 });
 
 it('writes french headers', function (): void {
@@ -100,14 +100,14 @@ it('writes french headers', function (): void {
 
 it('keeps both the raw slug and its french label', function (): void {
     // Le slug réconcilie avec la base, le libellé se lit. Les deux, pas l'un.
-    auditExportLine(['action' => AuditAction::DriverSuspended->value, 'summary' => 'Suspension.']);
+    auditExportLine(['action' => AuditAction::AnnouncementPublished->value, 'summary' => 'Publication.']);
 
     $content = $this->actingAs(auditExportUser('admin'))
         ->get(route('bo.audit.export'))
         ->streamedContent();
 
-    expect($content)->toContain('driver.suspended')
-        ->and($content)->toContain('Conducteur suspendu');
+    expect($content)->toContain('announcement.published')
+        ->and($content)->toContain('Annonce publiée');
 });
 
 it('serialises the context as json in one column', function (): void {
@@ -145,11 +145,11 @@ it('shows an automated write as an automated actor', function (): void {
 // ---------------------------------------------------------------- filtres
 
 it('respects the active action filter', function (): void {
-    auditExportLine(['action' => AuditAction::DriverSuspended->value, 'summary' => 'Ligne retenue.']);
+    auditExportLine(['action' => AuditAction::AnnouncementPublished->value, 'summary' => 'Ligne retenue.']);
     auditExportLine(['action' => AuditAction::CampaignSent->value, 'summary' => 'Ligne écartée.']);
 
     $content = $this->actingAs(auditExportUser('admin'))
-        ->get(route('bo.audit.export', ['action' => AuditAction::DriverSuspended->value]))
+        ->get(route('bo.audit.export', ['action' => AuditAction::AnnouncementPublished->value]))
         ->streamedContent();
 
     expect($content)->toContain('Ligne retenue.')

@@ -31,10 +31,6 @@ namespace App\Enums;
  */
 enum AuditAction: string
 {
-    // Chauffeurs — suspendre coupe le revenu d'un conducteur.
-    case DriverSuspended = 'driver.suspended';
-    case DriverReactivated = 'driver.reactivated';
-
     /*
     | Requêtes. Répondre n'est pas journalisé : le message *est* sa propre
     | trace, horodatée et attribuée dans le fil. Ne restent que les gestes
@@ -116,9 +112,6 @@ enum AuditAction: string
     public function label(): string
     {
         return match ($this) {
-            self::DriverSuspended => 'Conducteur suspendu',
-            self::DriverReactivated => 'Conducteur réactivé',
-
             self::SupportDismissed => 'Messages écartés sans réponse',
             self::SupportReassigned => 'Requête réattribuée',
             self::SupportTemplateDeleted => 'Réponse type supprimée',
@@ -179,9 +172,6 @@ enum AuditAction: string
     public function belongsTo(): BackOfficeModule
     {
         return match ($this) {
-            self::DriverSuspended,
-            self::DriverReactivated => BackOfficeModule::Drivers,
-
             self::SupportDismissed,
             self::SupportReassigned,
             self::SupportTemplateDeleted => BackOfficeModule::SupportRequests,
@@ -247,7 +237,6 @@ enum AuditAction: string
     public function badgeClasses(): string
     {
         return match ($this) {
-            self::DriverSuspended,
             self::UserDisabled,
             self::SupportDismissed,
             self::ChallengeRejected,
@@ -273,7 +262,6 @@ enum AuditAction: string
             self::RoleUpdated,
             self::AuditExported => 'bg-warn-bg text-warn-text',
 
-            self::DriverReactivated,
             self::UserEnabled,
             self::RechargeCredited,
             self::RechargeMarkedCredited,

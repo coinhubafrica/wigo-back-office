@@ -78,12 +78,12 @@ it('shows a dash rather than a zero rate when nothing was delivered', function (
 });
 
 it('estimates what a draft would reach today', function (): void {
-    Driver::factory()->count(3)->create(['status' => DriverStatus::Active]);
-    Driver::factory()->count(2)->create(['status' => DriverStatus::Suspended]);
+    Driver::factory()->count(3)->create(['status' => DriverStatus::Working]);
+    Driver::factory()->count(2)->create(['status' => DriverStatus::Fired]);
     $campaign = Campaign::factory()->create([
         'status' => CampaignStatus::Draft,
         'audience' => CampaignAudience::Segment,
-        'segment' => ['status' => [DriverStatus::Active->value]],
+        'segment' => ['status' => [DriverStatus::Working->value]],
     ]);
 
     Livewire::actingAs(showUser('bonus'))
@@ -105,12 +105,12 @@ it('does not estimate for a campaign already sent', function (): void {
 it('spells out the segment rather than showing raw json', function (): void {
     $campaign = Campaign::factory()->create([
         'audience' => CampaignAudience::Segment,
-        'segment' => ['status' => [DriverStatus::Active->value], 'has_vehicle' => true],
+        'segment' => ['status' => [DriverStatus::Working->value], 'has_vehicle' => true],
     ]);
 
     Livewire::actingAs(showUser('bonus'))
         ->test(Show::class, ['campaign' => $campaign])
-        ->assertViewHas('segmentLabels', ['Actif', 'Avec véhicule'])
+        ->assertViewHas('segmentLabels', ['En activité', 'Avec véhicule'])
         ->assertDontSee('has_vehicle');
 });
 

@@ -22,6 +22,11 @@ use Illuminate\Support\Arr;
  * plafond de découvert, et non `balance`. Faire passer l'un pour l'autre
  * afficherait un solde faux — `YangoAccountBalance::read()` ne trouvera donc
  * pas de bloc `accounts`, rendra `null`, et la passe ne réécrira rien.
+ *
+ * Le statut de travail, lui, est bien traduit : la v2 le porte sous
+ * `profile.work_status` là où la v1 le met dans `driver_profile`. Sans cette
+ * ligne, un conducteur rapatrié nommément n'aurait jamais de statut — et
+ * `syncDriver()` le laisserait « sans activité » à sa création.
  */
 final class YangoProfileShape
 {
@@ -37,6 +42,7 @@ final class YangoProfileShape
                 'first_name' => Arr::get($profile, 'person.full_name.first_name'),
                 'last_name' => Arr::get($profile, 'person.full_name.last_name'),
                 'phones' => self::phones($profile),
+                'work_status' => Arr::get($profile, 'profile.work_status'),
                 'driver_license' => array_filter([
                     'number' => Arr::get($profile, 'person.driver_license.number'),
                 ], fn (mixed $value): bool => $value !== null),

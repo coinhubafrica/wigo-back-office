@@ -56,8 +56,8 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
         Broadcast::routes(['middleware' => ['auth:sanctum', 'ability:mobile:*', 'throttle:mobile']]);
 
         Route::middleware(['auth:sanctum', 'ability:mobile:*', 'throttle:mobile'])->group(function (): void {
-            // Profil : accessible même suspendu, pour que l'application puisse
-            // afficher le motif de la suspension et permettre la déconnexion.
+            // Profil : accessible même radié, pour que l'application puisse
+            // afficher l'état du compte et permettre la déconnexion.
             Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
             /*
@@ -69,7 +69,7 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
                 Route::get('/', [AuthController::class, 'me'])->name('me');
                 Route::put('push-token', [AuthController::class, 'updatePushToken'])->name('push-token');
 
-                // Photo : lecture par URL signée, dépôt ouvert même suspendu.
+                // Photo : lecture par URL signée, dépôt ouvert même radié.
                 Route::post('photo', [AuthController::class, 'updatePhoto'])->name('photo.update');
                 Route::get('photo/{driver}', [AuthController::class, 'photo'])
                     ->middleware('signed')
@@ -85,14 +85,14 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
                 ->name('challenges.rules');
 
             // Cotisations CNPS : la lecture reste ouverte à un conducteur
-            // suspendu, comme le profil — ses versements passés le regardent.
+            // radié, comme le profil — ses versements passés le regardent.
             Route::get('cnps', [CnpsController::class, 'show'])->name('cnps.show');
             Route::get('cnps/declarations/{declaration}/proof', [CnpsController::class, 'proof'])
                 ->middleware('signed')
                 ->name('cnps.declarations.proof');
 
-            // En écriture, en revanche : un conducteur suspendu n'enregistre plus
-            // rien tant que son compte n'est pas rétabli.
+            // En écriture, en revanche : un conducteur radié chez Yango
+            // n'enregistre plus rien tant que la plateforme ne le rétablit pas.
             Route::middleware('driver.active')->group(function (): void {
                 Route::post('cnps/declarations', [CnpsController::class, 'storeDeclaration'])
                     ->name('cnps.declarations.store');
@@ -102,7 +102,7 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
 
             Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
 
-            // Boutique : la lecture reste ouverte à un conducteur suspendu, la
+            // Boutique : la lecture reste ouverte à un conducteur radié, la
             // commande non — comme pour les cotisations.
             Route::get('shop/products', [ShopController::class, 'index'])->name('shop.products');
             Route::get('shop/pickup-points', [ShopController::class, 'pickupPoints'])->name('shop.pickup-points');
@@ -116,7 +116,7 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
                 ->name('shop.orders.documents.show');
 
             // Portefeuille : le solde et l'historique restent lisibles par un
-            // conducteur suspendu — ses recharges passées le regardent —, mais il
+            // conducteur radié — ses recharges passées le regardent —, mais il
             // ne peut plus en lancer de nouvelle.
             Route::get('wallet', [WalletController::class, 'show'])->name('wallet.show');
             Route::get('wallet/recharges', [WalletController::class, 'recharges'])->name('wallet.recharges.index');
@@ -125,7 +125,7 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
 
             /*
             | Fil d'activité : recharges, commandes, cotisations et tickets dans
-            | un seul ordre. Lisible par un conducteur suspendu, comme le
+            | un seul ordre. Lisible par un conducteur radié, comme le
             | portefeuille — son passé le regarde.
             |
             | La fusion des quatre sources vit dans la vue `driver_history`, pas
@@ -135,10 +135,9 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
 
             /*
             | Support. La lecture ET l'écriture restent ouvertes à un conducteur
-            | suspendu, à rebours des autres modules : contester sa suspension est
-            | précisément ce pour quoi il a besoin du support, et
-            | `EnsureDriverIsActive` renvoie déjà le motif pour que l'application
-            | l'affiche. L'écriture arrive à l'étape suivante.
+            | radié, à rebours des autres modules : contester sa radiation est
+            | précisément ce pour quoi il a besoin du support. La décision, elle,
+            | se prend sur la plateforme Yango.
             */
             Route::prefix('support')->name('support.')->group(function (): void {
                 Route::get('conversation', [SupportController::class, 'conversation'])->name('conversation');
@@ -161,7 +160,7 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
             });
 
             // Écran « Notifications » : la table est écrite d'abord, le push n'est
-            // qu'un réveil. Lisible même suspendu, comme le profil.
+            // qu'un réveil. Lisible même radié, comme le profil.
             Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
             Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
             Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');

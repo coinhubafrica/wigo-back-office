@@ -34,15 +34,6 @@ class SupportSettings extends Settings
     /** Taille maximale d'une pièce jointe, en kilooctets. */
     public int $attachment_max_kilobytes;
 
-    /**
-     * Un conducteur suspendu peut-il écrire au support ?
-     *
-     * Par défaut oui : contester sa suspension est précisément ce pour quoi il
-     * a besoin du support. Le réglage existe pour pouvoir refermer cette porte
-     * sans redéploiement si elle devait être abusée.
-     */
-    public bool $suspended_drivers_may_write;
-
     public static function group(): string
     {
         return 'support';

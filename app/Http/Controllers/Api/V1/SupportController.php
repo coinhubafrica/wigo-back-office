@@ -14,7 +14,6 @@ use App\Models\Driver;
 use App\Models\MessageAttachment;
 use App\Services\Support\ConversationResolver;
 use App\Services\Support\MessageService;
-use App\Settings\SupportSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +33,6 @@ class SupportController extends Controller
     public function __construct(
         private ConversationResolver $conversations,
         private MessageService $messages,
-        private SupportSettings $settings,
     ) {}
 
     /**
@@ -126,12 +124,6 @@ class SupportController extends Controller
     {
         $driver = $this->driver($request);
 
-        abort_unless(
-            $this->settings->suspended_drivers_may_write || ! $driver->isSuspended(),
-            403,
-            __('api.forbidden'),
-        );
-
         $attachments = $this->claimAttachments($request, $driver);
 
         $message = $this->messages->sendFromDriver(
@@ -159,12 +151,6 @@ class SupportController extends Controller
     public function uploadAttachment(StoreSupportAttachmentRequest $request): JsonResponse
     {
         $driver = $this->driver($request);
-
-        abort_unless(
-            $this->settings->suspended_drivers_may_write || ! $driver->isSuspended(),
-            403,
-            __('api.forbidden'),
-        );
 
         $conversation = $this->conversations->for($driver);
         $file = $request->file('file');

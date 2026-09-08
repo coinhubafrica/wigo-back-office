@@ -172,8 +172,8 @@ it('lets a driver list the active pickup points', function (): void {
     $this->assertSame(['Agence Cocody', 'Agence Yopougon'], $response->json('data.*.name'));
 });
 
-it('lets a suspended driver still list the pickup points', function (): void {
-    Sanctum::actingAs(Driver::factory()->create(['status' => DriverStatus::Suspended]), ['mobile:*']);
+it('lets a fired driver still list the pickup points', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(['status' => DriverStatus::Fired]), ['mobile:*']);
     PickupPoint::factory()->create();
 
     $this->getJson(route('api.v1.shop.pickup-points'))
@@ -245,10 +245,9 @@ it('refuses ordering a reference closed to ordering', function (): void {
     $this->assertSame(0, ShopOrder::query()->count());
 });
 
-it('prevents a suspended driver from ordering', function (): void {
+it('prevents a fired driver from ordering', function (): void {
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents expirés',
+        'status' => DriverStatus::Fired,
     ]);
     Sanctum::actingAs($driver, ['mobile:*']);
 
@@ -263,8 +262,8 @@ it('prevents a suspended driver from ordering', function (): void {
         ->assertForbidden();
 });
 
-it('lets a suspended driver still read the catalogue', function (): void {
-    Sanctum::actingAs(Driver::factory()->create(['status' => DriverStatus::Suspended]), ['mobile:*']);
+it('lets a fired driver still read the catalogue', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(['status' => DriverStatus::Fired]), ['mobile:*']);
     Product::factory()->create();
 
     $this->getJson(route('api.v1.shop.products'))->assertOk();

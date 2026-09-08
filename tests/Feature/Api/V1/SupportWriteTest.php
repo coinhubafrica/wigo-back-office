@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Services\Fcm\LogPushSender;
 use App\Services\Support\MessageService;
 use App\Services\Support\SupportRequestService;
-use App\Settings\SupportSettings;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -94,12 +93,11 @@ it('attaches the message to the live ticket', function (): void {
     expect($request->fresh()->messages()->where('body', 'Une précision')->exists())->toBeTrue();
 });
 
-it('lets a suspended driver write to support', function (): void {
+it('lets a fired driver write to support', function (): void {
     // Contester sa suspension passe par là. Le contraste avec la boutique est
     // vérifié dans le même test pour que l'écart soit visible.
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents expirés',
+        'status' => DriverStatus::Fired,
     ]);
     Sanctum::actingAs($driver->fresh(), ['mobile:*']);
 
@@ -110,16 +108,12 @@ it('lets a suspended driver write to support', function (): void {
         ->assertForbidden();
 });
 
-it('can close the door on suspended drivers from the settings', function (): void {
-    $settings = app(SupportSettings::class);
-    $settings->suspended_drivers_may_write = false;
-    $settings->save();
-
-    $driver = Driver::factory()->create(['status' => DriverStatus::Suspended]);
+it('keeps support writing open to a fired driver: that is where he contests', function (): void {
+    $driver = Driver::factory()->fired()->create();
     Sanctum::actingAs($driver->fresh(), ['mobile:*']);
 
     $this->postJson(route('api.v1.support.messages.store'), ['body' => 'Je conteste'], supportIdempotent())
-        ->assertForbidden();
+        ->assertCreated();
 });
 
 it('uploads an attachment to the private disk', function (): void {

@@ -128,7 +128,7 @@ class AuthController extends Controller
     /**
      * Profil du conducteur
      *
-     * Accessible même lorsque le compte est suspendu, afin que l'application
+     * Accessible même lorsque le compte est radié, afin que l'application
      * puisse afficher le motif et permettre la déconnexion.
      */
     public function me(Request $request): JsonResponse
@@ -159,7 +159,7 @@ class AuthController extends Controller
      * n'y a pas de validation par un agent. L'ancienne photo est supprimée du
      * disque dans la foulée.
      *
-     * Accessible même lorsque le compte est suspendu — la photo relève du
+     * Accessible même lorsque le compte est radié — la photo relève du
      * profil, pas des opérations métier.
      *
      * @response array{

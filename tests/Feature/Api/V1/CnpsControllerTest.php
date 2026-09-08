@@ -172,10 +172,9 @@ it('only ever shows a driver their own statement', function (): void {
         ->assertJsonPath('data.current.declared_amount', 9000);
 });
 
-it('lets a suspended driver still read their statement', function (): void {
+it('lets a fired driver still read their statement', function (): void {
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents non conformes',
+        'status' => DriverStatus::Fired,
     ]);
     Sanctum::actingAs($driver, ['mobile:*']);
 
@@ -339,10 +338,9 @@ it('keeps the reference within the rsti bounds', function (): void {
     $this->putJson(route('api.v1.cnps.reference.update'), ['amount' => 21600])->assertOk();
 });
 
-it('prevents a suspended driver from declaring or changing the reference', function (): void {
+it('prevents a fired driver from declaring or changing the reference', function (): void {
     $driver = Driver::factory()->create([
-        'status' => DriverStatus::Suspended,
-        'suspension_reason' => 'Documents non conformes',
+        'status' => DriverStatus::Fired,
     ]);
     Sanctum::actingAs($driver, ['mobile:*']);
 

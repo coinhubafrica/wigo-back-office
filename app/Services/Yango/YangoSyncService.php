@@ -26,10 +26,15 @@ use Illuminate\Support\Str;
  * arrive dans la même page, autant le lire plutôt que de le jeter et de le
  * redemander conducteur par conducteur.
  *
- * Ce que la synchronisation ne fait jamais : réécrire le `status` d'un
- * conducteur (une suspension est une décision du back-office, Yango n'a pas à
- * la défaire), désactiver un véhicule absent, ou supprimer quoi que ce soit.
- * Ce que Yango ne remonte plus est signalé, pas effacé.
+ * Le `status` du conducteur est celui de Yango : la passe écrit le
+ * `work_status` du profil (`working`/`not_working`/`fired`) à chaque tour. Il
+ * n'y a plus de suspension locale à préserver — couper un conducteur se
+ * décide sur la plateforme Yango. Un `work_status` absent ou inconnu ne
+ * réécrit rien, comme pour le solde : `null` n'est pas un statut.
+ *
+ * Ce que la synchronisation ne fait jamais : désactiver un véhicule absent, ou
+ * supprimer quoi que ce soit. Ce que Yango ne remonte plus est signalé, pas
+ * effacé.
  */
 class YangoSyncService
 {
@@ -137,7 +142,7 @@ class YangoSyncService
      * Point d'entrée de `YangoDriverResolver`, qui rapatrie à la demande les
      * conducteurs qu'un tour de parc n'a pas encore atteints. Le chemin
      * d'écriture est celui de la passe, sans copie : l'adoption par téléphone,
-     * le `status` jamais réécrit et le véhicule sur une seule ligne doivent
+     * le `status` repris de Yango et le véhicule sur une seule ligne doivent
      * valoir des deux côtés.
      *
      * Rend `null` quand le profil n'est pas écrivable — sans identifiant, ou
@@ -211,9 +216,10 @@ class YangoSyncService
             $driver = new Driver([
                 'yango_id' => $yangoId,
                 'phone' => $phone,
-                // Connu de Yango, pas encore de l'application : aucune CGU
-                // acceptée, donc « en attente ».
-                'status' => DriverStatus::Dormant,
+                // Statut d'attente le temps de lire celui de Yango juste
+                // après : un profil dont le `work_status` manque ne doit pas
+                // naître « en activité » par défaut.
+                'status' => DriverStatus::NotWorking,
             ]);
         }
 
@@ -223,6 +229,14 @@ class YangoSyncService
             'license_number' => Arr::get($profile, 'driver_profile.driver_license.number', $driver->license_number),
             'last_sync_at' => Carbon::now(),
         ]);
+
+        // Le statut vient de Yango, sans exception : la plateforme tient le
+        // parc, et c'est là que se décide qu'un conducteur ne roule plus.
+        $status = DriverStatus::fromYango(Arr::get($profile, 'driver_profile.work_status'));
+
+        if ($status !== null) {
+            $driver->status = $status;
+        }
 
         // La page de conducteurs porte déjà les comptes : le solde de tout le
         // parc s'écrit sans un appel de plus. Un solde absent n'est pas un

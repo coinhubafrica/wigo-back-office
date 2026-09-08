@@ -27,10 +27,10 @@ it('falls back to the raw slug for an unknown action', function (): void {
 });
 
 it('lists the actions of a module', function (): void {
-    $drivers = AuditAction::forModule(BackOfficeModule::Drivers);
+    $announcements = AuditAction::forModule(BackOfficeModule::Announcements);
 
-    expect($drivers)->toContain(AuditAction::DriverSuspended)
-        ->and($drivers)->not->toContain(AuditAction::CampaignSent);
+    expect($announcements)->toContain(AuditAction::AnnouncementPublished)
+        ->and($announcements)->not->toContain(AuditAction::CampaignSent);
 });
 
 it('only lists modules that carry a journalised action', function (): void {
@@ -38,7 +38,10 @@ it('only lists modules that carry a journalised action', function (): void {
     // pure lecture n'en ont pas.
     $modules = AuditAction::modules();
 
-    expect($modules)->toContain(BackOfficeModule::Drivers)
+    expect($modules)->toContain(BackOfficeModule::Announcements)
+        // Les chauffeurs n'ont plus de geste journalisé : la suspension se
+        // décide chez Yango, plus dans le back-office.
+        ->and($modules)->not->toContain(BackOfficeModule::Drivers)
         ->and($modules)->not->toContain(BackOfficeModule::Vehicles)
         ->and($modules)->not->toContain(BackOfficeModule::Dashboard);
 });

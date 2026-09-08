@@ -34,8 +34,9 @@ it('fetches a driver Yango knows but the park pass has not reached', function ()
         ->and($driver->phone)->toBe('+2250700000009')
         ->and($driver->first_name)->toBe('Awa')
         ->and($driver->last_name)->toBe('TRAORE')
-        // Connu de Yango, pas de l'application : aucune CGU acceptée.
-        ->and($driver->status)->toBe(DriverStatus::Dormant);
+        // Le statut vient de Yango, y compris par ce chemin : la réponse v2
+        // porte `profile.work_status`, traduit par `YangoProfileShape`.
+        ->and($driver->status)->toBe(DriverStatus::Working);
 });
 
 it('prefers the local row and never calls Yango for a driver already known', function (): void {

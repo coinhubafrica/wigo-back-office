@@ -111,8 +111,8 @@ it('writes nothing when the order is refused', function (): void {
     $this->assertSame(0, ShopOrderDocument::query()->count());
 });
 
-it('prevents a suspended driver from ordering with documents', function (): void {
-    Sanctum::actingAs(Driver::factory()->create(['status' => DriverStatus::Suspended]), ['mobile:*']);
+it('prevents a fired driver from ordering with documents', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(['status' => DriverStatus::Fired]), ['mobile:*']);
 
     shopDocumentOrder()->assertForbidden();
 

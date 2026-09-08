@@ -93,8 +93,8 @@ it('marks everything as read at once', function (): void {
     expect($driver->fresh()->unreadNotifications()->count())->toBe(0);
 });
 
-it('stays readable for a suspended driver', function (): void {
-    $driver = Driver::factory()->suspended()->create();
+it('stays readable for a fired driver', function (): void {
+    $driver = Driver::factory()->fired()->create();
     $driver->notify(new RechargeCredited(Transaction::factory()->for($driver)->create()));
     Sanctum::actingAs($driver->fresh(), ['mobile:*']);
 

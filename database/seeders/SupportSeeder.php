@@ -127,7 +127,7 @@ class SupportSeeder extends Seeder
             'title' => 'Nouveaux casques en boutique',
             'body' => 'Les casques homologués sont disponibles au retrait.',
             'audience' => CampaignAudience::Segment,
-            'segment' => ['status' => [DriverStatus::Active->value]],
+            'segment' => ['status' => [DriverStatus::Working->value]],
             'status' => CampaignStatus::Draft,
             'created_by_user_id' => $agent->getKey(),
         ]);
@@ -256,8 +256,10 @@ class SupportSeeder extends Seeder
         app(SlaCalculator::class)->apply($request, $nineDaysAgo);
         $request->save();
 
-        // Suspendu, il écrit pour contester : nouveau sujet, donc nouveau tri.
-        $messages->sendFromDriver($driver->fresh(), 'Pourquoi mon compte est-il suspendu ?');
+        // Radié, il écrit pour contester : nouveau sujet, donc nouveau tri.
+        // Le support reste ouvert à un conducteur radié — c'est là qu'il
+        // conteste, et la décision se prend chez Yango.
+        $messages->sendFromDriver($driver->fresh(), 'Pourquoi mon compte est-il désactivé ?');
     }
 
     /**

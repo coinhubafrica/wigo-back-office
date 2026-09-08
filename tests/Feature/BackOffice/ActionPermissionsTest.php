@@ -3,8 +3,8 @@
 /**
  * Chaque geste mutant du back-office porte sa permission.
  *
- * L'accès à un module ouvrait tout ce qu'on y faisait : suspendre un
- * conducteur, diffuser une campagne, exécuter un tirage, écraser une clé Wave.
+ * L'accès à un module ouvrait tout ce qu'on y faisait : diffuser une campagne,
+ * exécuter un tirage, écraser une clé Wave.
  * Ce fichier est le garde-fou de la séparation — il vérifie qu'un agent qui
  * atteint l'écran sans le droit du geste reçoit un 403, et que le droit seul
  * suffit à l'exercer.
@@ -13,18 +13,15 @@
 use App\Enums\BackOfficeModule;
 use App\Enums\ChallengeStatus;
 use App\Enums\ChallengeType;
-use App\Enums\DriverStatus;
 use App\Enums\Permission;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Campaigns\Show as CampaignsShow;
 use App\Livewire\Challenges\Show as ChallengesShow;
-use App\Livewire\Drivers\Show as DriversShow;
 use App\Livewire\Settings\Index as SettingsIndex;
 use App\Models\Announcement;
 use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\Challenge;
-use App\Models\Driver;
 use App\Models\User;
 use App\Settings\OtpSettings;
 use App\Settings\YangoSettings;
@@ -34,40 +31,6 @@ use Livewire\Livewire;
 
 beforeEach(function (): void {
     $this->seed(RolePermissionSeeder::class);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Chauffeurs
-|--------------------------------------------------------------------------
-*/
-
-it('refuses a suspension without drivers.suspend', function (): void {
-    $driver = Driver::factory()->create(['status' => DriverStatus::Active]);
-
-    Livewire::actingAs(actionUser([BackOfficeModule::Drivers->permission()]))
-        ->test(DriversShow::class, ['driver' => $driver])
-        ->set('suspensionReason', 'Comportement')
-        ->call('suspend')
-        ->assertForbidden();
-
-    expect($driver->fresh()->status)->toBe(DriverStatus::Active);
-});
-
-it('suspends and audits with drivers.suspend', function (): void {
-    $driver = Driver::factory()->create(['status' => DriverStatus::Active]);
-
-    Livewire::actingAs(actionUser([
-        BackOfficeModule::Drivers->permission(),
-        Permission::DriversSuspend->value,
-    ]))
-        ->test(DriversShow::class, ['driver' => $driver])
-        ->set('suspensionReason', 'Comportement')
-        ->call('suspend')
-        ->assertOk();
-
-    expect($driver->fresh()->status)->toBe(DriverStatus::Suspended)
-        ->and(AuditLog::query()->where('action', 'driver.suspended')->exists())->toBeTrue();
 });
 
 /*

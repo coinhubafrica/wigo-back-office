@@ -75,7 +75,7 @@ it('guards every mutating Livewire method with a gate', function (): void {
     $writers = [
         'Announcements/Index', 'Campaigns/Index', 'Campaigns/Show',
         'Challenges/Prizes', 'Challenges/Show', 'Challenges/Wizard',
-        'Drivers/Show', 'Recharges/Index', 'Settings/Index',
+        'Recharges/Index', 'Settings/Index',
         'Shop/Catalogue', 'Shop/Orders', 'SupportRequests/Index',
         'SupportRequests/Templates', 'Users/Index', 'Users/Roles',
     ];

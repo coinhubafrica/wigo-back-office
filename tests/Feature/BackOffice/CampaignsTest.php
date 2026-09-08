@@ -48,13 +48,13 @@ it('counts the whole fleet before sending', function (): void {
 });
 
 it('counts only the segment', function (): void {
-    Driver::factory()->count(4)->create(['status' => DriverStatus::Active]);
-    Driver::factory()->count(3)->create(['status' => DriverStatus::Suspended]);
+    Driver::factory()->count(4)->create(['status' => DriverStatus::Working]);
+    Driver::factory()->count(3)->create(['status' => DriverStatus::Fired]);
 
     Livewire::actingAs(campaignsUser('bonus'))
         ->test(Index::class)
         ->set('audience', CampaignAudience::Segment->value)
-        ->call('toggleStatus', DriverStatus::Active->value)
+        ->call('toggleStatus', DriverStatus::Working->value)
         ->assertViewHas('recipientCount', 4);
 });
 
@@ -183,13 +183,13 @@ it('confirms a draft against its own audience not the composers', function (): v
     // Le nombre affiché à la confirmation est ce sur quoi l'agent s'engage.
     // Celui du composeur — « tous » par défaut — n'a rien à voir avec le
     // brouillon qu'on renvoie, et se tromperait d'un ordre de grandeur.
-    Driver::factory()->count(9)->create(['status' => DriverStatus::Active]);
-    Driver::factory()->count(4)->create(['status' => DriverStatus::Suspended]);
+    Driver::factory()->count(9)->create(['status' => DriverStatus::Working]);
+    Driver::factory()->count(4)->create(['status' => DriverStatus::Fired]);
 
     $draft = Campaign::factory()->create([
         'status' => CampaignStatus::Draft,
         'audience' => CampaignAudience::Segment,
-        'segment' => ['status' => [DriverStatus::Suspended->value]],
+        'segment' => ['status' => [DriverStatus::Fired->value]],
     ]);
 
     Livewire::actingAs(campaignsUser('bonus'))

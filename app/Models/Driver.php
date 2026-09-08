@@ -27,7 +27,6 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $license_number
  * @property string|null $photo_url
  * @property DriverStatus $status
- * @property string|null $suspension_reason
  * @property string|null $terms_version
  * @property CarbonImmutable|null $terms_accepted_at
  * @property string|null $fcm_token
@@ -196,9 +195,15 @@ class Driver extends Authenticatable
         return $this->hasMany(Transaction::class)->latest('initiated_at');
     }
 
-    public function isSuspended(): bool
+    /**
+     * Le conducteur est-il radié chez Yango ?
+     *
+     * Seul `fired` coupe l'écriture depuis l'application mobile ; `not_working`
+     * est un état ordinaire (cf. `DriverStatus::blocksMobileWrites()`).
+     */
+    public function cannotWriteFromMobile(): bool
     {
-        return $this->status === DriverStatus::Suspended;
+        return $this->status->blocksMobileWrites();
     }
 
     public function fullName(): string

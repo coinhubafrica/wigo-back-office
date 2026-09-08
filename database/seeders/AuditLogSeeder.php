@@ -92,16 +92,12 @@ class AuditLogSeeder extends Seeder
         $driver = $drivers->first();
         $other = $drivers->get(1) ?? $driver;
 
-        $name = fn (?Driver $subject): string => $subject?->fullName() ?? 'un conducteur';
-
         return [
-            [AuditAction::DriverSuspended, "{$first->fullName()} a suspendu {$name($driver)}.", $first, $driver, ['reason' => 'Notes répétées sous 3,5.']],
             [AuditAction::SettingsSecretRevealed, "{$third->fullName()} a relevé en clair le secret « waveTopupApiKey ».", $third, null, ['field' => 'waveTopupApiKey']],
             [AuditAction::UserDisabled, "{$third->fullName()} a désactivé le compte de {$second->fullName()}.", $third, null, ['is_active_before' => true, 'is_active_after' => false]],
             [AuditAction::CampaignSent, "{$second->fullName()} a diffusé la campagne « Bonus de fin de mois ».", $second, null, ['audience' => 'Tous les conducteurs']],
             [AuditAction::ChallengeDrawn, "{$second->fullName()} a exécuté le tirage du challenge « Semaine 36 ».", $second, null, ['winners' => 3]],
             [AuditAction::RechargeCredited, 'Recharge TX-88214 créditée sur le solde Yango', null, $driver, ['amount' => 15000]],
-            [AuditAction::DriverReactivated, "{$first->fullName()} a réactivé {$name($driver)}.", $first, $driver, []],
             [AuditAction::AnnouncementPublished, "{$second->fullName()} a publié l'annonce « Nouvelle boutique de pièces ».", $second, null, []],
             [AuditAction::RoleUpdated, "{$third->fullName()} a modifié le rôle « Responsable Bonus / Animation ».", $third, null, ['permissions_before' => ['challenges.draw'], 'permissions_after' => ['challenges.draw', 'challenges.credit']]],
             [AuditAction::ChallengeSeedRegenerated, "{$first->fullName()} a republié la graine du challenge « Semaine 35 ».", $first, null, ['seed' => 'a3f9c1']],
@@ -116,7 +112,6 @@ class AuditLogSeeder extends Seeder
             [AuditAction::UserUpdated, "{$third->fullName()} a modifié le compte de {$second->fullName()}.", $third, null, ['roles_before' => ['gestionnaire'], 'roles_after' => ['bonus']]],
             [AuditAction::UserEnabled, "{$third->fullName()} a réactivé le compte de {$second->fullName()}.", $third, null, ['is_active_before' => false, 'is_active_after' => true]],
             [AuditAction::RoleCreated, "{$third->fullName()} a créé le rôle « Auditeur ».", $third, null, ['role' => 'auditeur']],
-            [AuditAction::DriverSuspended, "{$first->fullName()} a suspendu {$name($other)}.", $first, $other, ['reason' => 'Documents CNPS expirés.']],
             [AuditAction::RechargeReplayed, 'Rejeu de la transaction Wave TX-87990', $first, $other, ['amount' => 7500]],
             [AuditAction::CampaignSent, "{$second->fullName()} a diffusé la campagne « Rappel CNPS ».", $second, null, ['audience' => 'Segment : sans déclaration']],
             [AuditAction::ChallengeDrawn, "{$second->fullName()} a exécuté le tirage du challenge « Semaine 34 ».", $second, null, ['winners' => 5]],

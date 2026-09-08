@@ -186,6 +186,7 @@ function yangoProfile(
     string $firstName = 'Kouassi',
     string $lastName = 'KONE',
     ?array $car = null,
+    ?string $workStatus = 'working',
 ): array {
     $profile = [
         'driver_profile' => array_filter([
@@ -193,6 +194,7 @@ function yangoProfile(
             'first_name' => $firstName,
             'last_name' => $lastName,
             'phones' => $phone === null ? null : [$phone],
+            'work_status' => $workStatus,
         ], fn (mixed $value): bool => $value !== null),
     ];
 

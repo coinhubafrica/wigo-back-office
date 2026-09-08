@@ -41,37 +41,16 @@
                     @endif
                 </p>
             </div>
-
-            {{-- Suspendre ouvre un parcours destructeur (liseré rouge) ; la
-                 confirmation, elle, est le bouton plein. --}}
-            @if ($driver->isSuspended())
-                <x-button wire:click="confirmReactivate" target="confirmReactivate">{{ __('backoffice.drivers.reactivate') }}</x-button>
-            @elseif (! $showSuspendForm)
-                <x-button variant="danger-outline" wire:click="$toggle('showSuspendForm')">{{ __('backoffice.drivers.suspend') }}</x-button>
-            @endif
         </div>
     </x-panel>
 
-    @if ($driver->isSuspended())
-        <x-banner tone="warn" :title="__('backoffice.drivers.suspension_reason')">
-            {{ $driver->suspension_reason }}
+    {{-- Le statut vient de Yango et ne se change pas d'ici : la radiation est
+         signalée pour qu'un agent au téléphone sache à quoi s'en tenir, sans
+         geste associé (cf. .ai/rules/drivers.md). --}}
+    @if ($driver->cannotWriteFromMobile())
+        <x-banner tone="err" :title="__('backoffice.drivers.fired_title')">
+            {{ __('backoffice.drivers.fired_body') }}
         </x-banner>
-    @elseif ($showSuspendForm)
-        <x-panel :title="__('backoffice.drivers.suspend')">
-            <form id="driver-suspend" wire:submit="suspend">
-                <x-field :label="__('backoffice.drivers.suspension_reason')" name="suspensionReason"
-                         wire:model="suspensionReason" required autofocus />
-            </form>
-            <x-slot:footer>
-                <div class="flex justify-end gap-2.5">
-                    <x-button variant="secondary" wire:click="$toggle('showSuspendForm')">{{ __('backoffice.drivers.cancel') }}</x-button>
-                    <x-button variant="danger" type="submit" form="driver-suspend" target="suspend">
-                        {{ __('backoffice.drivers.confirm_suspend') }}
-                        <x-slot:loading>{{ __('backoffice.common.working') }}</x-slot:loading>
-                    </x-button>
-                </div>
-            </x-slot:footer>
-        </x-panel>
     @endif
 
     {{-- Les trois indicateurs qui disent l'état du conducteur. Les courses de
@@ -289,11 +268,4 @@
             </x-table>
         </x-panel>
     </div>
-
-    @if ($confirmingReactivation)
-        <x-confirm close="cancelReactivate" action="reactivate"
-                   :title="__('backoffice.drivers.reactivate')"
-                   :body="__('backoffice.drivers.confirm_reactivate')"
-                   :confirm-label="__('backoffice.drivers.reactivate')" />
-    @endif
 </div>

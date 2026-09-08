@@ -117,8 +117,8 @@ it('mixes the four families in one reverse-chronological list', function (): voi
         ->toBe(['recharge', 'ticket', 'cnps', 'order']);
 });
 
-it('lets a suspended driver read their own history', function (): void {
-    $driver = historyDriver(['status' => DriverStatus::Suspended, 'suspension_reason' => 'Documents expirés']);
+it('lets a fired driver read their own history', function (): void {
+    $driver = historyDriver(['status' => DriverStatus::Fired]);
 
     historyRecharge($driver, '2026-08-12 14:35:00');
 

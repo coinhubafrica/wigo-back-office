@@ -148,9 +148,9 @@ return [
 
     'drivers' => [
         'fleet_size' => 'Parc référencé',
-        'active' => 'Actifs',
-        'suspended' => 'Suspendus',
-        'dormant' => 'En attente',
+        'working' => 'En activité',
+        'not_working' => 'Sans activité',
+        'fired' => 'Radiés',
         'all' => 'Tout le parc',
         'search_placeholder' => 'Rechercher un chauffeur, une plaque…',
         'column_driver' => 'Chauffeur',
@@ -191,14 +191,12 @@ return [
         'no_requests' => 'Aucune requête de ce conducteur.',
         'no_orders' => 'Aucune commande de pièces.',
         'no_topups' => 'Aucune recharge enregistrée.',
-        'suspend' => 'Suspendre',
-        'suspension_reason' => 'Motif de suspension',
-        'confirm_suspend' => 'Confirmer la suspension',
-        'confirm_reactivate' => 'Réactiver ce conducteur ?',
         'cancel' => 'Annuler',
-        'reactivate' => 'Réactiver',
-        'driver_suspended' => 'Conducteur suspendu.',
-        'reactivated' => 'Conducteur réactivé.',
+
+        // Radiation : signalée, jamais décidée ici (la plateforme Yango tient
+        // le parc et c'est la synchronisation qui remonte le statut).
+        'fired_title' => 'Conducteur radié chez Yango',
+        'fired_body' => "Ce conducteur ne reçoit plus de courses et n'enregistre plus rien depuis l'application. Le statut vient de la plateforme Yango : il s'y modifie, pas ici.",
     ],
 
     'shop' => [
