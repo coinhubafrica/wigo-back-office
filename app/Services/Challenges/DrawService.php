@@ -227,6 +227,18 @@ class DrawService
     }
 
     /**
+     * Bonus surprise : des gagnants tirés au sort parmi ceux qui ont roulé,
+     * sans classement ni ticket.
+     *
+     * Le nombre de gagnants vient de `Challenge::effectiveWinnersCount()`, et
+     * non d'une colonne lue à la main. La version d'avant lisait
+     * `$challenge->max_winners` — **une colonne qui n'existe pas** : le schéma
+     * porte `population_max` et `winners_count`. L'attribut valait donc
+     * toujours `null`, retombait sur `?? 1`, et tout bonus surprise ne
+     * désignait qu'un seul gagnant quel que soit le nombre annoncé à l'écran,
+     * qui lisait lui `effectiveWinnersCount()`. Deux réponses pour la même
+     * question, dont une fausse.
+     *
      * @return array<int, ChallengeWinner>
      */
     private function drawSurprise(Challenge $challenge): array
@@ -239,7 +251,7 @@ class DrawService
             ->pluck('id')
             ->all();
 
-        $maxWinners = min($challenge->max_winners ?? 1, count($eligibleDriverIds));
+        $maxWinners = min($challenge->effectiveWinnersCount(), count($eligibleDriverIds));
         $winners = [];
 
         for ($i = 0; $i < $maxWinners; $i++) {

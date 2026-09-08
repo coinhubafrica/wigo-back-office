@@ -9,12 +9,14 @@
  * l'obtiennent.
  */
 
+use App\Enums\AwardMode;
 use App\Enums\ChallengeStatus;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\Driver;
 use App\Models\YangoOrder;
 use App\Services\Challenges\DrawService;
+use Carbon\CarbonImmutable;
 
 it('drops the tickets of holders under the orders threshold when freezing', function (): void {
     $challenge = Challenge::factory()->raffle(tripsPerTicket: 50)->active()->create();
@@ -88,4 +90,69 @@ it('enters every driver with a completed order when the challenge has no tickets
     expect($tickets)->toHaveCount(2)
         ->and($tickets->pluck('driver_id')->sort()->values()->all())->toBe(collect([$first->id, $second->id])->sort()->values()->all())
         ->and($tickets->pluck('range_number')->all())->toBe([1, 2]);
+});
+
+it('draws as many surprise winners as the challenge announces', function (): void {
+    // `population_max` = 3 sur la fabrique, en attribution collective : trois
+    // gagnants. La version d'avant lisait `max_winners`, une colonne qui
+    // n'existe pas, retombait sur `?? 1` et n'en désignait qu'un — alors que
+    // l'écran, qui lit `effectiveWinnersCount()`, en annonçait trois.
+    $challenge = Challenge::factory()->surprise()->active()->create([
+        'period_start' => '2026-09-07 00:00:00',
+        'period_end' => '2026-09-13 23:59:59',
+    ]);
+
+    foreach (range(1, 5) as $index) {
+        $driver = Driver::factory()->create();
+        YangoOrder::factory()->for($driver)->completedOn(CarbonImmutable::parse('2026-09-08 09:00'))->create();
+    }
+
+    $draw = app(DrawService::class);
+    $draw->freezePool($challenge);
+    $draw->publishSeed($challenge->refresh());
+
+    $winners = $draw->draw($challenge->refresh());
+
+    expect($winners)->toHaveCount(3)
+        ->and($challenge->winners()->count())->toBe(3)
+        // Trois personnes distinctes : on ne récompense pas deux fois la même.
+        ->and($challenge->winners()->distinct()->count('driver_id'))->toBe(3)
+        ->and($challenge->winners()->pluck('amount')->unique()->all())->toBe([1_500]);
+});
+
+it('never names more surprise winners than there are drivers who drove', function (): void {
+    $challenge = Challenge::factory()->surprise()->active()->create([
+        'period_start' => '2026-09-07 00:00:00',
+        'period_end' => '2026-09-13 23:59:59',
+    ]);
+
+    // Un seul conducteur a roulé, pour trois places annoncées.
+    $driver = Driver::factory()->create();
+    YangoOrder::factory()->for($driver)->completedOn(CarbonImmutable::parse('2026-09-08 09:00'))->create();
+
+    $draw = app(DrawService::class);
+    $draw->freezePool($challenge);
+    $draw->publishSeed($challenge->refresh());
+
+    expect($draw->draw($challenge->refresh()))->toHaveCount(1);
+});
+
+it('gives a single winner challenge exactly one surprise winner', function (): void {
+    $challenge = Challenge::factory()->surprise()->active()->create([
+        'award_mode' => AwardMode::SingleWinner,
+        'period_start' => '2026-09-07 00:00:00',
+        'period_end' => '2026-09-13 23:59:59',
+    ]);
+
+    foreach (range(1, 4) as $index) {
+        YangoOrder::factory()->for(Driver::factory()->create())->completedOn(CarbonImmutable::parse('2026-09-08 09:00'))->create();
+    }
+
+    $draw = app(DrawService::class);
+    $draw->freezePool($challenge);
+    $draw->publishSeed($challenge->refresh());
+
+    // `effectiveWinnersCount()` rend 1 dès que l'attribution est unique, quel
+    // que soit `population_max`.
+    expect($draw->draw($challenge->refresh()))->toHaveCount(1);
 });
