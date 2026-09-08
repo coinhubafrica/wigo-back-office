@@ -1,9 +1,9 @@
 {{--
     Tableau de bord.
 
-    Trois étages : la semaine observée, les indicateurs avec la courbe
-    d'évolution à leur droite, puis le détail — l'activité et la file du
-    support à gauche, ce qui réclame un geste à droite.
+    Quatre étages : la semaine observée, la rangée d'indicateurs, la courbe
+    d'évolution sur toute la largeur, puis le détail — l'activité et la file
+    du support à gauche, ce qui réclame un geste à droite.
 
     Chaque carte est un lien vers le module qui porte le détail : l'écran
     constate, il ne remplace aucun module. Les blocs absents le sont parce que
@@ -40,7 +40,7 @@
         </x-toolbar>
 
         {{-- ------------------------------------------------------------ --}}
-        {{-- Indicateurs, la courbe occupant les deux colonnes de droite.  --}}
+        {{-- Indicateurs : cinq cartes sur une rangée.                    --}}
         {{-- ------------------------------------------------------------ --}}
         <div class="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-5">
             @foreach ($cards as $card)
@@ -55,18 +55,22 @@
                     </x-slot:icon>
                 </x-kpi-card>
             @endforeach
-
-            @if ($weeklyTrend !== [])
-                <x-panel :title="__('backoffice.dashboard.trend_12_weeks')"
-                         class="sm:col-span-2 xl:col-span-2 xl:col-start-4 xl:row-span-2 xl:row-start-1 xl:flex xl:flex-col">
-                    <x-slot:actions>
-                        <span class="text-[11.5px] text-muted">{{ __('backoffice.dashboard.trend_last_point') }}</span>
-                    </x-slot:actions>
-
-                    <x-trend-chart :points="$weeklyTrend" :label="__('backoffice.dashboard.trend_12_weeks')" />
-                </x-panel>
-            @endif
         </div>
+
+        {{-- ------------------------------------------------------------ --}}
+        {{-- La courbe des douze semaines, sur toute la largeur : douze    --}}
+        {{-- périodes et leurs valeurs ne tiennent pas dans une colonne    --}}
+        {{-- d'indicateur, et c'est là qu'on vient lire la tendance.       --}}
+        {{-- ------------------------------------------------------------ --}}
+        @if ($weeklyTrend !== [])
+            <x-panel :title="__('backoffice.dashboard.trend_12_weeks')" class="mt-4">
+                <x-slot:actions>
+                    <span class="text-[11.5px] text-muted">{{ __('backoffice.dashboard.trend_last_point') }}</span>
+                </x-slot:actions>
+
+                <x-trend-chart :points="$weeklyTrend" :label="__('backoffice.dashboard.trend_12_weeks')" />
+            </x-panel>
+        @endif
 
         {{-- ------------------------------------------------------------ --}}
         {{-- Le détail : l'activité et la file à gauche, les gestes à      --}}
