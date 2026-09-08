@@ -24,9 +24,12 @@ class DailyActivityService
     public function recordDay(Driver $driver, CarbonInterface $date): void
     {
         DB::transaction(function () use ($driver, $date): void {
+            // Bornes de la journée et non `whereDate()` : `DATE(completed_at)`
+            // rendrait l'index `(driver_id, status, completed_at)` inutilisable
+            // et relirait toutes les courses terminées du conducteur.
             $ordersCompleted = $driver->yangoOrders()
                 ->where('status', YangoOrderStatus::Complete)
-                ->whereDate('completed_at', $date)
+                ->whereBetween('completed_at', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
                 ->count();
 
             $previousDay = DriverDailyActivity::query()
