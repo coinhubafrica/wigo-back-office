@@ -14,7 +14,7 @@ Le découpage suit les **conséquences**, pas les verbes CRUD : répondre à un 
 
 **Jamais `hasRole()` / `hasAnyRole()`**, ni dans une méthode, ni dans un helper lu par la vue (`canManageBonus()` masquait des boutons que les portails autorisaient), ni pour choisir un statut (`Wizard::save` pose `PendingApproval` selon `approveSurpriseChallenge`, pas selon le nom du rôle).
 
-Exceptions délibérées, non gardées : `assignToMe` (tout agent reprend son propre ticket) et `select()` (horodatage de lecture, pas une décision).
+Exceptions délibérées, non gardées : `assignToMe` (tout agent reprend son propre ticket) et le marquage de lecture du support — `select()` **et** `SupportRequests\Index::render()`, qui l'appelle aussi pour qu'un message arrivé dans un fil déjà ouvert soit lu sans reclic. Horodater une lecture n'est pas une décision, et l'accès au fil est déjà porté par le module.
 
 Les gestes irréversibles ou qui touchent à l'argent sont **journalisés** (`AuditLog::record`) : suspension, envoi de campagne, tirage, republication de graine, crédit de lot, publication/suppression d'annonce.
 

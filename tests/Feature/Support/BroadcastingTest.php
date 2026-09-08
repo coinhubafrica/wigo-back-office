@@ -101,3 +101,26 @@ it('queues the campaign rather than sending it inline', function (): void {
 
     expect(new MessageSent($message))->not->toBeInstanceOf(ShouldBroadcastNow::class);
 });
+
+it('campaigns a read receipt from the agent side too', function (): void {
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Une question');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    Event::fake([MessageRead::class]);
+    app(MessageService::class)->markConversationReadForStaff($conversation);
+
+    Event::assertDispatched(MessageRead::class, fn (MessageRead $e): bool => $e->readerType === 'user');
+});
+
+it('keeps the read receipt off the queue channel', function (): void {
+    // L'état de lecture d'un fil n'a rien à faire sur le canal de la file :
+    // il n'y sert à rien et l'exposerait à tout onglet abonné.
+    $conversation = Conversation::factory()->create();
+
+    $channels = collect((new MessageRead($conversation, 'user'))->broadcastOn())
+        ->map(fn ($channel): string => $channel->name)
+        ->all();
+
+    expect($channels)->toBe(['private-conversation.'.$conversation->id]);
+});
