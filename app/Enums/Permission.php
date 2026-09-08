@@ -66,6 +66,7 @@ enum Permission: string
     case ChallengesCredit = 'challenges.credit';
     case ChallengesManagePrizes = 'challenges.manage-prizes';
     case ChallengesManageRules = 'challenges.manage-rules';
+    case ChallengesResyncOrders = 'challenges.resync-orders';
 
     // Annonces.
     case AnnouncementsManage = 'announcements.manage';
@@ -133,7 +134,8 @@ enum Permission: string
             self::ChallengesRegenerateSeed,
             self::ChallengesCredit,
             self::ChallengesManagePrizes,
-            self::ChallengesManageRules => BackOfficeModule::Challenges,
+            self::ChallengesManageRules,
+            self::ChallengesResyncOrders => BackOfficeModule::Challenges,
 
             self::AnnouncementsManage,
             self::AnnouncementsPublish => BackOfficeModule::Announcements,
@@ -181,6 +183,7 @@ enum Permission: string
             self::ChallengesCredit => 'Marquer un lot crédité',
             self::ChallengesManagePrizes => 'Gérer le catalogue des lots',
             self::ChallengesManageRules => 'Joindre le règlement du challenge',
+            self::ChallengesResyncOrders => 'Resynchroniser les courses du challenge',
 
             self::AnnouncementsManage => 'Gérer les annonces',
             self::AnnouncementsPublish => 'Publier ou retirer une annonce',
@@ -224,6 +227,7 @@ enum Permission: string
             self::ChallengesCredit => "Déclare le lot remis au gagnant. Touche à ce qu'on lui doit.",
             self::ChallengesManagePrizes => 'Les lots proposés aux challenges, et leur valeur.',
             self::ChallengesManageRules => "Le règlement publié aux conducteurs : ils s'y fient pour savoir ce qui est promis.",
+            self::ChallengesResyncOrders => 'Redemande à Yango les courses de la période, puis recompte les tickets. Rien ne se perd, la passe se rejoue.',
 
             self::AnnouncementsManage => "Créer, modifier, réordonner ou supprimer une bannière de l'accueil.",
             self::AnnouncementsPublish => "Une annonce active s'affiche à tous les conducteurs.",

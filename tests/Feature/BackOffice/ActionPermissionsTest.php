@@ -129,6 +129,7 @@ it('refuses each challenge lifecycle step without its own permission', function 
     'exécuter le tirage' => ['executeDraw', Permission::ChallengesClosePeriod->value],
     'republier la graine' => ['regenerateSeed', Permission::ChallengesDraw->value],
     'créditer en lot' => ['creditAll', Permission::ChallengesDraw->value],
+    'resynchroniser les courses' => ['resyncOrders', Permission::ChallengesDraw->value],
 ]);
 
 it('regenerating the seed is reserved and audited', function (): void {

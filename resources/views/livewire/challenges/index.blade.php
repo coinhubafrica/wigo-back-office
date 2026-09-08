@@ -65,7 +65,7 @@
                         <span class="block text-muted">{{ $challenge->prizeSubLabel() }}</span>
                     </x-td>
                     <x-td align="right" nowrap class="text-[13.5px] font-semibold tabular-nums">
-                        {{ $challenge->participants_count === null ? '—' : number_format($challenge->participants_count, 0, ',', ' ') }}
+                        {{ number_format($challenge->participantsCount(), 0, ',', ' ') }}
                     </x-td>
                     <x-td><x-badge :classes="$challenge->status->badgeClasses()">{{ $challenge->status->label() }}</x-badge></x-td>
                     <x-td align="right">

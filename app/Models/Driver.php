@@ -31,6 +31,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property CarbonImmutable|null $terms_accepted_at
  * @property string|null $fcm_token
  * @property CarbonImmutable|null $last_sync_at
+ * @property CarbonImmutable|null $orders_sync_requested_at
  * @property CarbonImmutable|null $last_login_at
  * @property-read Vehicle|null $vehicle
  * @property-read Collection<int, OtpCode> $otpCodes
@@ -69,6 +70,7 @@ class Driver extends Authenticatable
             'balance_read_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'last_sync_at' => 'datetime',
+            'orders_sync_requested_at' => 'datetime',
             'last_login_at' => 'datetime',
         ];
     }

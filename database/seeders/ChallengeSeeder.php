@@ -66,7 +66,6 @@ class ChallengeSeeder extends Seeder
             'reward_amount' => 5_000,
             'award_mode' => AwardMode::Collective,
             'winners_count' => 100,
-            'participants_count' => 1_284,
             'created_by' => $bonus->id,
         ]);
 
@@ -89,7 +88,6 @@ class ChallengeSeeder extends Seeder
             'reward_amount' => 5_000,
             'award_mode' => AwardMode::Collective,
             'winners_count' => 100,
-            'participants_count' => 1_251,
             'created_by' => $bonus->id,
         ]);
 
@@ -113,7 +111,6 @@ class ChallengeSeeder extends Seeder
             'winners_count' => 1,
             'is_ticket_based' => true,
             'trips_per_ticket' => 50,
-            'participants_count' => 1_251,
             'created_by' => $bonus->id,
         ]);
 
@@ -135,7 +132,6 @@ class ChallengeSeeder extends Seeder
             'winners_count' => 1,
             'is_ticket_based' => true,
             'trips_per_ticket' => 50,
-            'participants_count' => 1_198,
             'created_by' => $bonus->id,
         ]);
 
@@ -155,7 +151,6 @@ class ChallengeSeeder extends Seeder
             'reward_amount' => 1_500,
             'award_mode' => AwardMode::Collective,
             'population_max' => 2,
-            'participants_count' => 1_251,
             'created_by' => $bonus->id,
         ]);
 
@@ -173,7 +168,6 @@ class ChallengeSeeder extends Seeder
             'reward_amount' => 2_000,
             'award_mode' => AwardMode::Collective,
             'population_max' => 3,
-            'participants_count' => 1_176,
             'created_by' => $bonus->id,
         ]);
 

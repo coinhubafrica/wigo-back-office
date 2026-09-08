@@ -70,7 +70,9 @@ class Index extends Component
         $filters = $this->filters();
         $active = $filters[$this->filter] ?? $filters['tous'];
 
-        $challenges = ($active['apply'])(Challenge::query()->with('prize'))
+        // Le compte des participants arrive en colonne calculée : une ligne de
+        // la liste ne doit pas déclencher sa propre requête.
+        $challenges = ($active['apply'])(Challenge::query()->with('prize')->withParticipantsCount())
             ->latest('period_start')
             ->paginate(20);
 

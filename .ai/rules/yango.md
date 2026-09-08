@@ -116,3 +116,13 @@ La passe parc est coupée par un quota avant la fin d'un grand parc (cf. « Un t
 - **Un identifiant introuvable est mémorisé pour la durée de la passe.** Une journée de courses concentre des centaines de lignes sur les mêmes conducteurs ; sans cette mémoire, un profil absent coûterait un appel par course. D'où : `YangoDriverResolver` **ne doit pas être un singleton** — il est résolu par passe et sa mémoire meurt avec elle.
 
 Reste orphelin ce que Yango lui-même ne nomme pas, ou ce qui n'est pas écrivable faute de téléphone exploitable (`drivers.phone` requis et unique).
+
+## Le filtre par conducteur des courses est une chaîne, et il coûte une passe par personne
+`/v1/parks/orders/list` accepte `query.park.driver_profile.id` — **une chaîne, un seul identifiant**. C'est la liste des profils du parc qui en prend un tableau, pas cet endpoint. Une passe pour dix conducteurs, c'est donc dix boucles de curseur.
+
+D'où deux chemins, et pas un :
+
+- `YangoOrderSyncService::syncDriver()` vise **une** personne, sur une période entière. Réservé à ce qui la nomme : la lecture mobile de `GET /api/v1/challenges` (`ChallengeSyncRequester`, une fois l'heure par conducteur, repère `drivers.orders_sync_requested_at` **en base** — un cache vidé ferait repartir tout le parc en rafale). Le job est unique par conducteur, pas par fenêtre : deux lectures rapprochées demanderaient deux fenêtres à peine différentes et l'unicité ne servirait à rien.
+- `syncDay()` vise le parc, une journée. C'est lui que le rattrapage d'un challenge met en file, **une fois par journée de la période** : tout le parc participe à un challenge (cf. `.ai/rules/challenges.md`), et un job par participant se ferait refuser bien avant la fin.
+
+`syncDriver()` porte une **garde** : une course qui nomme un autre conducteur interrompt la passe (`Log::warning`). Un filtre ignoré par Yango ne se verrait pas autrement — la passe rendrait tout le parc sur toute la période, en silence et à grands frais. `yango:sync-orders --driver=<yango_id> --now` est l'outil qui le vérifie contre l'API vivante.

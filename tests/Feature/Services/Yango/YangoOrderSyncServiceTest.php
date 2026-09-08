@@ -3,6 +3,7 @@
 use App\Enums\YangoOrderStatus;
 use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
+use App\Models\Challenge;
 use App\Models\Driver;
 use App\Models\DriverDailyActivity;
 use App\Models\YangoOrder;
@@ -158,4 +159,91 @@ it('keeps an order whose end date is unreadable, without a week', function (): v
 
     expect($order->completed_at)->toBeNull()
         ->and($order->week_iso)->toBeNull();
+});
+
+it('narrows the pass to one driver and mints across the days touched', function (): void {
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+
+    $challenge = Challenge::factory()->raffle(tripsPerTicket: 2)->active()->create([
+        'period_start' => '2026-09-01 00:00:00',
+        'period_end' => '2026-09-30 23:59:59',
+    ]);
+
+    MockClient::global([
+        GetOrdersRequest::class => yangoOrdersResponse([
+            yangoOrderRow(id: 'ORD-1', endedAt: '2026-09-03T18:30:00+00:00'),
+            yangoOrderRow(id: 'ORD-2', endedAt: '2026-09-04T09:00:00+00:00'),
+        ]),
+    ]);
+
+    $result = app(YangoOrderSyncService::class)->syncDriver(
+        $driver,
+        Carbon::parse('2026-09-01'),
+        Carbon::parse('2026-09-30 23:59:59'),
+    );
+
+    expect($result->ordersSynced)->toBe(2)
+        // Le grand livre est écrit pour chaque journée touchée, pas pour les
+        // trente de la période.
+        ->and(DriverDailyActivity::query()->where('driver_id', $driver->id)->count())->toBe(2)
+        ->and($challenge->tickets()->count())->toBe(1);
+
+    MockClient::global()->assertSent(function ($request): bool {
+        $body = $request->body()->all();
+
+        // Le filtre est une chaîne, jamais un tableau : cet endpoint ne prend
+        // qu'un conducteur.
+        return $body['query']['park']['driver_profile']['id'] === 'YAN-001';
+    });
+});
+
+it('sends no driver filter on a whole day pass', function (): void {
+    Driver::factory()->create(['yango_id' => 'YAN-001']);
+
+    yangoOrdersReturn([yangoOrderRow(endedAt: '2026-09-03T18:30:00+00:00')]);
+
+    app(YangoOrderSyncService::class)->syncDay(Carbon::parse('2026-09-03'));
+
+    MockClient::global()->assertSent(fn ($request): bool => ! isset($request->body()->all()['query']['park']['driver_profile']));
+});
+
+it('stops the pass when Yango returns another driver than the one asked for', function (): void {
+    Log::spy();
+
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+    Driver::factory()->create(['yango_id' => 'YAN-999']);
+
+    /*
+    | Un filtre ignoré par Yango ne se voit pas : la passe rendrait tout le
+    | parc sur toute la période, en silence et à grands frais. La garde
+    | l'interrompt avant d'écrire quoi que ce soit.
+    */
+    MockClient::global([
+        GetOrdersRequest::class => yangoOrdersResponse([
+            yangoOrderRow(id: 'ORD-1', driverYangoId: 'YAN-999', endedAt: '2026-09-03T18:30:00+00:00'),
+        ]),
+    ]);
+
+    $result = app(YangoOrderSyncService::class)->syncDriver(
+        $driver,
+        Carbon::parse('2026-09-01'),
+        Carbon::parse('2026-09-30 23:59:59'),
+    );
+
+    expect($result->ordersSynced)->toBe(0)
+        ->and(YangoOrder::query()->count())->toBe(0);
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message): bool => str_contains($message, 'filtre par conducteur ignoré'))
+        ->once();
+});
+
+it('refuses a driver that carries no Yango identifier', function (): void {
+    $driver = Driver::factory()->create(['yango_id' => null]);
+
+    expect(fn () => app(YangoOrderSyncService::class)->syncDriver(
+        $driver,
+        Carbon::parse('2026-09-01'),
+        Carbon::parse('2026-09-30 23:59:59'),
+    ))->toThrow(InvalidArgumentException::class);
 });

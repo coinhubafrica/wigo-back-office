@@ -9,18 +9,20 @@ use App\Enums\ChallengeRecurrence;
 use App\Enums\ChallengeStatus;
 use App\Enums\ChallengeType;
 use App\Enums\PrizeNature;
-use App\Enums\YangoOrderStatus;
+use App\Jobs\SyncYangoOrdersJob;
 use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\AuditLog;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
 use App\Models\Driver;
-use App\Models\YangoOrder;
+use App\Services\Challenges\ChallengeLifecycleService;
+use App\Services\Challenges\ChallengeRanking;
 use App\Services\Challenges\DrawService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -86,6 +88,8 @@ class Show extends Component
     private ?int $eligibleCount = null;
 
     private ?int $ticketCount = null;
+
+    private ?ChallengeRanking $ranking = null;
 
     /**
      * Lignes affichées de la liste et de l'instantané du vivier.
@@ -174,28 +178,9 @@ class Show extends Component
 
         $this->pendingAction = null;
 
-        $draw = app(DrawService::class);
-        $draw->freezePool($this->challenge);
-        $this->challenge->refresh();
-
-        /*
-        | Gèle le vivier : plus personne n'entre après. C'est l'ancre à
-        | laquelle `challenge.seed_regenerated` se réfère — sans elle, « la
-        | graine a été republiée après le gel » n'a pas de gel à comparer.
-        */
-        AuditLog::record(
-            action: AuditAction::ChallengePeriodClosed->value,
-            summary: "{$this->actor()->fullName()} a clos la période du challenge « {$this->challenge->name} ».",
-            subject: $this->challenge,
-            by: $this->actor(),
-            context: ['pool' => $this->challenge->tickets()->count()],
-        );
-
-        if ($this->challenge->type === ChallengeType::Leaderboard) {
-            $this->awardLeaderboard();
-        } else {
-            $draw->publishSeed($this->challenge);
-        }
+        // Gel, journal et attribution vivent dans le service : le
+        // planificateur clôt à l'échéance par le même chemin, acteur nul.
+        app(ChallengeLifecycleService::class)->close($this->challenge, $this->actor());
 
         $this->challenge->refresh();
 
@@ -424,35 +409,43 @@ class Show extends Component
         $this->dispatch('toast', message: __('backoffice.challenges.rules_removed'));
     }
 
+    /**
+     * Redemande à Yango les courses de la période, puis recompte les tickets.
+     *
+     * Une passe parc **par journée**, et non une passe par conducteur : tout
+     * le parc participe à un challenge, et le filtre `driver_profile.id` de
+     * Yango ne prend qu'un identifiant à la fois — un job par participant
+     * coûterait une boucle de curseur par participant, et se ferait refuser
+     * bien avant la fin. Les jobs sont uniques par journée, donc un second
+     * clic ne double rien.
+     *
+     * Non journalisé : la passe rejoue des données Yango, ne touche à aucun
+     * argent et se relance sans conséquence. Ce qu'elle produit — les tickets
+     * — se lit dans le vivier.
+     */
+    public function resyncOrders(): void
+    {
+        Gate::authorize('resyncChallengeOrders');
+
+        $today = Carbon::today();
+        $day = $this->challenge->period_start->copy()->startOfDay();
+        $last = $this->challenge->period_end->copy()->startOfDay()->min($today);
+
+        $queued = 0;
+
+        while ($day->lessThanOrEqualTo($last)) {
+            SyncYangoOrdersJob::dispatch($day->toDateString());
+
+            $day = $day->addDay();
+            $queued++;
+        }
+
+        $this->dispatch('toast', message: trans_choice('backoffice.challenges.resync_queued', $queued, ['count' => $queued]));
+    }
+
     public function duplicateTemplateKey(): string
     {
         return 'duplicate:'.$this->challenge->id;
-    }
-
-    /**
-     * Classement : les gagnants sont les N premiers par courses terminées sur
-     * la période — aucun tirage n'intervient.
-     */
-    private function awardLeaderboard(): void
-    {
-        if ($this->challenge->winners()->exists()) {
-            return;
-        }
-
-        $ranking = $this->rankedQuery()
-            ->limit((int) ($this->challenge->winners_count ?? 0))
-            ->get();
-
-        foreach ($ranking as $row) {
-            ChallengeWinner::query()->create([
-                'challenge_id' => $this->challenge->id,
-                'driver_id' => $row->id,
-                'rank' => (int) $row->place,
-                'amount' => $this->challenge->reward_amount,
-            ]);
-        }
-
-        $this->challenge->update(['status' => ChallengeStatus::PayoutPending]);
     }
 
     private function completeIfFullyCredited(): void
@@ -464,64 +457,12 @@ class Show extends Component
     }
 
     /**
-     * Les participants : conducteurs ayant terminé au moins une course sur la
-     * période — ou porteurs d'un ticket pour une tombola —, avec leurs deux
-     * compteurs en colonnes calculées. Sans ordre : `rankedQuery()` le pose.
-     *
-     * Tout reste en base. L'ancienne version hydratait le parc entier, puis
-     * filtrait et triait en PHP, quatre fois par rendu : la page tombait en
-     * délai d'attente dès que le parc a grossi. Ici les sous-requêtes ne sont
-     * évaluées que pour les lignes que `whereHas` retient, et s'appuient sur
-     * `yango_orders (driver_id, status, completed_at)` et
-     * `challenge_tickets (challenge_id, driver_id)`.
-     *
-     * @return Builder<Driver> colonnes ajoutées : `period_orders`, `period_tickets`
+     * Le classement, en base. Mémoïsé par rendu : la vue le relit pour le
+     * nombre de participants, la liste et son résumé.
      */
-    private function rankingQuery(): Builder
+    private function ranking(): ChallengeRanking
     {
-        $period = [$this->challenge->period_start, $this->challenge->period_end];
-
-        $completedOrders = YangoOrder::query()
-            ->selectRaw('count(*)')
-            ->whereColumn('yango_orders.driver_id', 'drivers.id')
-            ->where('status', YangoOrderStatus::Complete)
-            ->whereBetween('completed_at', $period);
-
-        $tickets = ChallengeTicket::query()
-            ->selectRaw('count(*)')
-            ->whereColumn('challenge_tickets.driver_id', 'drivers.id')
-            ->where('challenge_id', $this->challenge->id);
-
-        return Driver::query()
-            ->select(['drivers.id', 'drivers.first_name', 'drivers.last_name', 'drivers.yango_id'])
-            ->selectSub($completedOrders, 'period_orders')
-            ->selectSub($tickets, 'period_tickets')
-            ->when(
-                $this->challenge->type === ChallengeType::Raffle,
-                fn (Builder $query) => $query->whereHas('challengeTickets', fn (Builder $ticket) => $ticket
-                    ->where('challenge_id', $this->challenge->id)),
-                fn (Builder $query) => $query->whereHas('yangoOrders', fn (Builder $order) => $order
-                    ->where('status', YangoOrderStatus::Complete)
-                    ->whereBetween('completed_at', $period)),
-            );
-    }
-
-    /**
-     * Le classement numéroté. `place` est calculé par fenêtre sur l'ensemble
-     * des participants, **avant** tout filtre d'affichage : chercher un
-     * conducteur montre son vrai rang, pas sa position parmi les résultats.
-     *
-     * `rank` est un mot réservé de MySQL, d'où `place`.
-     */
-    private function rankedQuery(): QueryBuilder
-    {
-        $column = $this->challenge->type === ChallengeType::Raffle ? 'period_tickets' : 'period_orders';
-
-        return DB::query()
-            ->fromSub($this->rankingQuery(), 'ranking')
-            ->select('ranking.*')
-            ->selectRaw("row_number() over (order by {$column} desc, id) as place")
-            ->orderBy('place');
+        return $this->ranking ??= new ChallengeRanking($this->challenge);
     }
 
     /**
@@ -571,7 +512,7 @@ class Show extends Component
         $stats = [
             [
                 'label' => __('backoffice.challenges.participants'),
-                'value' => number_format((int) $this->challenge->participants_count, 0, ',', ' '),
+                'value' => number_format($this->challenge->participantsCount(), 0, ',', ' '),
                 'tone' => 'text-ink',
             ],
             [
@@ -609,7 +550,7 @@ class Show extends Component
      */
     public function eligibleCount(): int
     {
-        return $this->eligibleCount ??= $this->rankingQuery()->count();
+        return $this->eligibleCount ??= $this->ranking()->participants()->count();
     }
 
     /**
@@ -708,7 +649,7 @@ class Show extends Component
             ->when($places > 0, fn (QueryBuilder $query) => $query->orWhere('place', '<=', $places));
 
         $rows = DB::query()
-            ->fromSub($this->rankedQuery(), 'ranked')
+            ->fromSub($this->ranking()->ranked(), 'ranked')
             ->when($this->listSearch !== '', function (QueryBuilder $query): void {
                 $term = "%{$this->listSearch}%";
                 $query->where(fn (QueryBuilder $query) => $query

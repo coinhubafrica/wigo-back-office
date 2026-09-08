@@ -92,3 +92,18 @@ Schedule::command('yango:sync-transactions')
     ->hourly()
     ->withoutOverlapping()
     ->name('yango:sync-transactions');
+
+// Cycle de vie des challenges : démarrage à l'ouverture de la période,
+// clôture à son échéance.
+//
+// À la demi-heure, et non à l'heure ronde : `yango:sync-orders` ne fait que
+// *mettre en file* à :00, et un job peut se rejouer 60, 300 puis 600 secondes
+// plus tard. Clôturer dans la même minute que le dispatch gèlerait le vivier
+// avant que les courses de la dernière heure ne soient écrites. Le décalage
+// s'ajoute au délai de grâce de deux heures que tient
+// `ChallengeLifecycleService` — le décalage garde la mécanique lisible, la
+// grâce fait le vrai travail.
+Schedule::command('challenges:advance')
+    ->hourlyAt(30)
+    ->withoutOverlapping()
+    ->name('challenges:advance');

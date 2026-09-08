@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\ResolvesDriver;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DriverChallengePayload;
 use App\Models\Challenge;
+use App\Services\Challenges\ChallengeSyncRequester;
 use App\Services\Challenges\DriverProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,10 @@ class ChallengeController extends Controller
 {
     use ResolvesDriver;
 
-    public function __construct(private DriverProgressService $progress) {}
+    public function __construct(
+        private DriverProgressService $progress,
+        private ChallengeSyncRequester $sync,
+    ) {}
 
     /**
      * Challenges en cours du conducteur
@@ -97,6 +101,15 @@ class ChallengeController extends Controller
     public function index(Request $request): JsonResponse
     {
         $driver = $this->driver($request);
+
+        /*
+        | Le planificateur ne repasse qu'à l'heure ronde : une course terminée
+        | il y a dix minutes n'est pas encore en base. La lecture demande donc
+        | sa propre passe, au plus une par heure et par conducteur — la
+        | réponse, elle, part avec ce qui est déjà écrit : une passe Yango
+        | prend trop longtemps pour qu'un écran l'attende.
+        */
+        $this->sync->requestFor($driver);
 
         $challenges = Challenge::query()
             ->with([

@@ -3,6 +3,7 @@
 use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
 use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
+use App\Jobs\SyncYangoDriverOrdersJob;
 use App\Jobs\SyncYangoOrdersJob;
 use App\Jobs\SyncYangoTransactionsJob;
 use App\Models\Driver;
@@ -119,4 +120,37 @@ it('prints what a period of transactions reconciled', function (): void {
     $this->artisan('yango:sync-transactions --from=2026-09-03 --to=2026-09-03 --now')
         ->expectsOutputToContain('transactions : 1 sync')
         ->assertSuccessful();
+});
+
+it('narrows the pass to one driver when named', function (): void {
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+
+    MockClient::global([
+        GetOrdersRequest::class => yangoOrdersResponse([yangoOrderRow(endedAt: '2026-09-04T18:30:00+00:00')]),
+    ]);
+
+    $this->artisan('yango:sync-orders', ['--driver' => 'YAN-001', '--now' => true])
+        ->expectsOutputToContain('courses : 1 sync pour')
+        ->assertSuccessful();
+
+    MockClient::global()->assertSent(fn ($request): bool => $request->body()->all()['query']['park']['driver_profile']['id'] === 'YAN-001');
+});
+
+it('queues a single driver pass instead of a day per job', function (): void {
+    Queue::fake();
+
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+
+    $this->artisan('yango:sync-orders', ['--driver' => 'YAN-001'])
+        ->expectsOutputToContain('mises en file')
+        ->assertSuccessful();
+
+    Queue::assertPushed(SyncYangoDriverOrdersJob::class, 1);
+    Queue::assertNotPushed(SyncYangoOrdersJob::class);
+});
+
+it('refuses a Yango identifier that names nobody', function (): void {
+    $this->artisan('yango:sync-orders', ['--driver' => 'YAN-INCONNU'])
+        ->expectsOutputToContain('Aucun conducteur')
+        ->assertFailed();
 });

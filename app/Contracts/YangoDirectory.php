@@ -56,11 +56,14 @@ interface YangoDirectory
      * Yango impose une fenêtre à cet appel : on filtre sur la fin de course,
      * c'est elle qui décide du jour d'activité d'un conducteur.
      *
+     * `$driverYangoId` restreint la passe à un conducteur — une chaîne, pas un
+     * tableau : l'endpoint n'en prend qu'un.
+     *
      * @return iterable<int, array<string, mixed>>
      *
      * @throws YangoFleetException
      */
-    public function orders(CarbonInterface $from, CarbonInterface $to, int $pageSize = 250): iterable;
+    public function orders(CarbonInterface $from, CarbonInterface $to, int $pageSize = 250, ?string $driverYangoId = null): iterable;
 
     /**
      * Mouvements du grand livre du parc dans la fenêtre, bornes comprises.

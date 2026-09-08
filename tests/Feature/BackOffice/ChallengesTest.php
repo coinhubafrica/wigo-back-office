@@ -3,6 +3,8 @@
 use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\ChallengeStatus;
+use App\Jobs\SyncYangoOrdersJob;
+use App\Livewire\Challenges\Index;
 use App\Livewire\Challenges\Prizes;
 use App\Livewire\Challenges\Show;
 use App\Models\Challenge;
@@ -14,6 +16,8 @@ use App\Models\User;
 use App\Models\YangoOrder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -429,4 +433,70 @@ it('answers 403 rather than 404 for an unknown or ruleless challenge', function 
     $this->actingAs(challengesUser('bonus'))
         ->get(route('bo.challenges.rules-document', ['challenge' => (string) Str::ulid()]))
         ->assertForbidden();
+});
+
+it('queues one park pass per day of the period when resyncing', function (): void {
+    Queue::fake();
+    Carbon::setTestNow('2026-09-10 12:00:00');
+
+    $challenge = Challenge::factory()->raffle(tripsPerTicket: 3)->active()->create([
+        'period_start' => '2026-09-08 00:00:00',
+        'period_end' => '2026-09-14 23:59:59',
+    ]);
+
+    Livewire::actingAs(challengesUser('bonus'))
+        ->test(Show::class, ['challenge' => $challenge])
+        ->call('resyncOrders')
+        ->assertDispatched('toast');
+
+    /*
+    | Une passe parc par journée, et non une par participant : tout le parc
+    | participe, et le filtre conducteur de Yango ne prend qu'un identifiant à
+    | la fois. Trois journées ici — du 8 au 10 —, la période n'étant pas encore
+    | écoulée : on ne redemande pas l'avenir.
+    */
+    Queue::assertPushed(SyncYangoOrdersJob::class, 3);
+
+    foreach (['2026-09-08', '2026-09-09', '2026-09-10'] as $day) {
+        Queue::assertPushed(SyncYangoOrdersJob::class, fn (SyncYangoOrdersJob $job): bool => $job->day === $day);
+    }
+});
+
+it('hides the resync button from an agent who lacks the right', function (): void {
+    $challenge = Challenge::factory()->raffle(tripsPerTicket: 3)->active()->create([
+        'period_start' => '2026-09-08 00:00:00',
+        'period_end' => '2026-09-14 23:59:59',
+    ]);
+
+    $user = User::factory()->create(['is_active' => true]);
+    $user->givePermissionTo(BackOfficeModule::Challenges->permission());
+
+    Livewire::actingAs($user)
+        ->test(Show::class, ['challenge' => $challenge])
+        ->assertDontSee(__('backoffice.challenges.resync_orders'));
+});
+
+it('shows the real participant count on the list and the detail screen', function (): void {
+    $challenge = Challenge::factory()->active()->create([
+        'period_start' => '2026-09-07 00:00:00',
+        'period_end' => '2026-09-13 23:59:59',
+    ]);
+
+    // Deux conducteurs, trois courses : deux participants.
+    $first = challengesDriverWithOrders('Diallo', 2, new DateTimeImmutable('2026-09-08 09:00'));
+    challengesDriverWithOrders('Traoré', 1, new DateTimeImmutable('2026-09-09 09:00'));
+
+    /*
+    | `participants_count` a été retiré : la colonne n'était écrite que par le
+    | seeder, donc la production affichait « 0 participant » sur un challenge
+    | que tout le parc courait.
+    */
+    Livewire::actingAs(challengesUser('bonus'))
+        ->test(Index::class)
+        ->assertSee('2');
+
+    Livewire::actingAs(challengesUser('bonus'))
+        ->test(Show::class, ['challenge' => $challenge])
+        ->assertSee(__('backoffice.challenges.participants'))
+        ->assertSee('2');
 });

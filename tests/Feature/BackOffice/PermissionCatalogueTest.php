@@ -109,6 +109,7 @@ it('resolves each sensitive gate from a permission, not a role name', function (
     'manageUsers' => ['manageUsers', Permission::UsersManage],
     'manageRoles' => ['manageRoles', Permission::RolesManage],
     'exportAuditLog' => ['exportAuditLog', Permission::AuditExport],
+    'resyncChallengeOrders' => ['resyncChallengeOrders', Permission::ChallengesResyncOrders],
 ]);
 
 it('keeps the abilities each seeded role used to hold by its name', function (string $role, string $ability): void {
@@ -123,6 +124,7 @@ it('keeps the abilities each seeded role used to hold by its name', function (st
     'bonus réconcilie les recharges' => ['bonus', 'reconcileRecharges'],
     'direction réconcilie les recharges' => ['direction', 'reconcileRecharges'],
     'stock gère le catalogue' => ['stock', 'manageCatalogue'],
+    'bonus resynchronise les courses' => ['bonus', 'resyncChallengeOrders'],
     'direction gère le catalogue' => ['direction', 'manageCatalogue'],
 ]);
 

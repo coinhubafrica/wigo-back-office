@@ -253,6 +253,10 @@ class AppServiceProvider extends ServiceProvider
             // Le règlement est ce sur quoi le conducteur se fonde pour
             // contester : le joindre ou le remplacer est un geste à part.
             'manageChallengeRules' => Permission::ChallengesManageRules,
+            // Rejeu de données, sans conséquence sur l'argent : le droit
+            // existe parce que la passe coûte du quota Yango, pas parce
+            // qu'elle serait risquée.
+            'resyncChallengeOrders' => Permission::ChallengesResyncOrders,
 
             // Annonces — publier expose la bannière à tous les conducteurs.
             'manageAnnouncements' => Permission::AnnouncementsManage,

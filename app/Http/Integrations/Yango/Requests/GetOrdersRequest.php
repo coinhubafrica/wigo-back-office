@@ -21,6 +21,13 @@ use Saloon\Traits\Body\HasJsonBody;
  * refusée — la clé est donc omise tant qu'on n'en a pas reçu un.
  *
  * `limit` plafonne à 500 sur cet endpoint, pas à 1000 comme sur le parc.
+ *
+ * `driver_profile.id` restreint la passe à un conducteur, et c'est une
+ * **chaîne** — un seul identifiant, pas un tableau. La liste des profils du
+ * parc en accepte un tableau, cet endpoint non : une passe pour dix
+ * conducteurs, c'est dix boucles de curseur. D'où le rattrapage d'un
+ * challenge, qui vise tout le parc, réparti par journée plutôt que par
+ * conducteur.
  */
 class GetOrdersRequest extends Request implements HasBody
 {
@@ -47,6 +54,7 @@ class GetOrdersRequest extends Request implements HasBody
         protected CarbonInterface $to,
         protected int $limit = self::DEFAULT_LIMIT,
         protected ?string $cursor = null,
+        protected ?string $driverYangoId = null,
     ) {}
 
     public function resolveEndpoint(): string
@@ -73,6 +81,10 @@ class GetOrdersRequest extends Request implements HasBody
             ],
             'limit' => min($this->limit, self::MAX_LIMIT),
         ];
+
+        if ($this->driverYangoId !== null && $this->driverYangoId !== '') {
+            $body['query']['park']['driver_profile'] = ['id' => $this->driverYangoId];
+        }
 
         if ($this->cursor !== null && $this->cursor !== '') {
             $body['cursor'] = $this->cursor;

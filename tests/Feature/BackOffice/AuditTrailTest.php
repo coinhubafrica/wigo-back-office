@@ -17,11 +17,13 @@
 
 use App\Enums\AuditAction;
 use App\Enums\CampaignRecipientStatus;
+use App\Enums\ChallengeStatus;
 use App\Enums\ShopOrderStatus;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Campaigns\Index as CampaignsIndex;
 use App\Livewire\Campaigns\Show;
 use App\Livewire\Challenges\Prizes as ChallengesPrizes;
+use App\Livewire\Challenges\Show as ChallengesShow;
 use App\Livewire\Settings\Index as SettingsIndex;
 use App\Livewire\Shop\Catalogue as ShopCatalogue;
 use App\Livewire\Shop\Orders as ShopOrders;
@@ -29,6 +31,7 @@ use App\Livewire\SupportRequests\Templates as SupportTemplates;
 use App\Models\Announcement;
 use App\Models\AuditLog;
 use App\Models\Campaign;
+use App\Models\Challenge;
 use App\Models\Driver;
 use App\Models\MessageTemplate;
 use App\Models\Prize;
@@ -39,6 +42,8 @@ use App\Services\Support\CampaignDispatcher;
 use App\Settings\RechargeSettings;
 use App\Settings\YangoSettings;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
 beforeEach(function (): void {
@@ -147,6 +152,52 @@ it('journalises a change to the yango access without its key', function (): void
     expect($line->context['base_url'])->toBe('https://nouveau.example')
         ->and($line->context['fields'])->toBe(['api_key'])
         ->and(json_encode($line->context))->not->toContain('cle-yango-secrete');
+});
+
+it('does not journalise a challenge orders resync', function (): void {
+    Queue::fake();
+
+    // Rejeu de données Yango : aucun argent déplacé, rien d'irréversible, et
+    // la passe se relance sans conséquence. Ce qu'elle produit se lit dans le
+    // vivier. La journaliser enterrerait les lignes qui comptent.
+    $challenge = Challenge::factory()->raffle(tripsPerTicket: 3)->active()->create([
+        'period_start' => '2026-09-08 00:00:00',
+        'period_end' => '2026-09-14 23:59:59',
+    ]);
+
+    Livewire::actingAs(trailUser('direction'))
+        ->test(ChallengesShow::class, ['challenge' => $challenge])
+        ->call('resyncOrders');
+
+    expect(AuditLog::query()->count())->toBe(0);
+});
+
+it('journalises an automatic activation and closure as the system', function (): void {
+    Carbon::setTestNow('2026-09-20 10:00:00');
+
+    $opening = Challenge::factory()->raffle(tripsPerTicket: 3)->create([
+        'status' => ChallengeStatus::Scheduled,
+        'period_start' => '2026-09-19 00:00:00',
+        'period_end' => '2026-09-25 23:59:59',
+    ]);
+
+    $expired = Challenge::factory()->raffle(tripsPerTicket: 3)->active()->create([
+        'period_start' => '2026-09-10 00:00:00',
+        'period_end' => '2026-09-19 23:59:59',
+    ]);
+
+    $this->artisan('challenges:advance')->assertSuccessful();
+
+    $activation = AuditLog::query()->where('action', AuditAction::ChallengeActivated->value)->sole();
+    $closure = AuditLog::query()->where('action', AuditAction::ChallengePeriodClosed->value)->sole();
+
+    // Aucun agent derrière ces deux lignes : l'écran d'audit les rend
+    // « Système », et c'est bien ce qu'il faut lire.
+    expect($activation->user_id)->toBeNull()
+        ->and($activation->subject_id)->toBe($opening->id)
+        ->and($closure->user_id)->toBeNull()
+        ->and($closure->subject_id)->toBe($expired->id)
+        ->and($closure->context['automatic'])->toBeTrue();
 });
 
 it('does not journalise a fleet connection test', function (): void {

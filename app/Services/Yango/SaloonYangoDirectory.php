@@ -82,9 +82,10 @@ class SaloonYangoDirectory implements YangoDirectory
         CarbonInterface $from,
         CarbonInterface $to,
         int $pageSize = GetOrdersRequest::DEFAULT_LIMIT,
+        ?string $driverYangoId = null,
     ): Generator {
         yield from $this->paginateByCursor(
-            fn (string $parkId, ?string $cursor): Request => new GetOrdersRequest($parkId, $from, $to, $pageSize, $cursor),
+            fn (string $parkId, ?string $cursor): Request => new GetOrdersRequest($parkId, $from, $to, $pageSize, $cursor, $driverYangoId),
             'orders',
         );
     }

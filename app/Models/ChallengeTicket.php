@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $id
  * @property string $challenge_id
  * @property string $driver_id
+ * @property int|null $sequence rang du ticket chez son porteur, unique par (challenge, conducteur)
  * @property CarbonImmutable $date
  * @property int|null $range_number
  * @property-read Challenge $challenge
@@ -37,6 +38,7 @@ class ChallengeTicket extends Model
     {
         return [
             'date' => 'date',
+            'sequence' => 'integer',
             'range_number' => 'integer',
         ];
     }

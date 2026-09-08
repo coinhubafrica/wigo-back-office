@@ -44,7 +44,6 @@ class ChallengeFactory extends Factory
             'reward_amount' => 5_000,
             'award_mode' => AwardMode::Collective,
             'winners_count' => 100,
-            'participants_count' => 1_284,
             'eligibles_count' => 737,
             'created_by' => User::factory(),
         ];

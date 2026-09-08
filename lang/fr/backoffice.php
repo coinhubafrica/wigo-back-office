@@ -812,6 +812,8 @@ return [
         'for_winners' => '{1} pour :count gagnant|[2,*] pour :count gagnants',
         'approve_challenge' => 'Valider le challenge',
         'close_period_now' => 'Clôturer la période maintenant',
+        'resync_orders' => 'Resynchroniser les courses',
+        'resync_queued' => '{0} Aucune journée à resynchroniser.|{1} :count journée mise en file : les tickets se recomptent à la volée.|[2,*] :count journées mises en file : les tickets se recomptent à la volée.',
         'confirm_close_period' => 'Clôturer la période maintenant ? Le pool des éligibles sera figé.',
         'deposit_all_on_yango' => 'Déposer tous les bonus sur Yango',
         'confirm_credit_all' => 'Marquer tous les bonus restants comme déposés sur Yango ?',

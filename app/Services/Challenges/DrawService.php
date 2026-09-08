@@ -38,6 +38,24 @@ class DrawService
         }
 
         DB::transaction(function () use ($challenge): void {
+            /*
+            | Verrou exclusif sur la ligne du challenge, et re-vérification du
+            | statut sous ce verrou.
+            |
+            | `ChallengeTicketMinter` prend un verrou *partagé* sur la même
+            | ligne : le gel attend donc les mints en vol, et ceux qui
+            | arriveraient ensuite liront `DrawPending` et s'arrêteront. Sans
+            | cela, un ticket écrit entre la numérotation et le calcul de
+            | l'empreinte resterait sans `range_number`, et `drawRaffle()` —
+            | qui compte tous les tickets puis cherche celui qui porte le
+            | numéro tiré — échouerait sur un vivier qu'il croit numéroté.
+            */
+            $locked = Challenge::query()->whereKey($challenge->id)->lockForUpdate()->first();
+
+            if ($locked === null || $locked->status !== ChallengeStatus::Active) {
+                throw new RuntimeException('Le pool ne peut être gelé que pour un challenge en cours.');
+            }
+
             if ($challenge->isTicketBasedRaffle()) {
                 $this->applyEligibilityGates($challenge);
             } else {

@@ -13,6 +13,7 @@ use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 /**
  * Rapatrie les courses d'une journée et recalcule l'activité qui en découle.
@@ -71,6 +72,79 @@ class YangoOrderSyncService
         }
 
         $result->driversTouched = count($touched);
+
+        return $result;
+    }
+
+    /**
+     * Rapatrie les courses d'un seul conducteur sur une période entière.
+     *
+     * Chemin distinct de `syncDay()`, et pour une raison de coût : le filtre
+     * `driver_profile.id` de Yango ne prend qu'un identifiant, si bien qu'un
+     * rattrapage par conducteur coûte une boucle de curseur par conducteur.
+     * Il est donc réservé à ce qui vise *une* personne — un conducteur qui
+     * ouvre son écran de challenges —, là où le rattrapage d'un challenge
+     * (tout le parc y participe) passe par une passe parc et par journée.
+     *
+     * Le grand livre est recalculé pour chaque journée effectivement touchée,
+     * et non pour toute la période : une période d'un mois ne doit pas
+     * réécrire trente lignes dont vingt-neuf sont inchangées.
+     *
+     * @throws InvalidArgumentException si le conducteur n'a pas d'identifiant Yango
+     */
+    public function syncDriver(
+        Driver $driver,
+        CarbonInterface $from,
+        CarbonInterface $to,
+        int $pageSize = GetOrdersRequest::DEFAULT_LIMIT,
+    ): YangoOrderSyncResult {
+        $yangoId = $driver->yango_id;
+
+        if (! is_string($yangoId) || $yangoId === '') {
+            throw new InvalidArgumentException('Un conducteur sans identifiant Yango n\'a pas de courses à rapatrier.');
+        }
+
+        $result = new YangoOrderSyncResult;
+
+        /** @var array<string, CarbonInterface> $days */
+        $days = [];
+
+        foreach ($this->directory->orders($from, $to, $pageSize, $yangoId) as $order) {
+            /*
+            | Garde : Yango a-t-il honoré le filtre ?
+            |
+            | Un filtre ignoré ne se voit pas — la passe rendrait simplement
+            | tout le parc sur toute la période, en silence et à grands frais.
+            | Une ligne qui nomme un autre conducteur arrête donc la passe
+            | plutôt que de l'écrire.
+            */
+            $rowYangoId = Arr::get($order, 'driver_profile.id');
+
+            if (is_string($rowYangoId) && $rowYangoId !== $yangoId) {
+                Log::warning('Yango : filtre par conducteur ignoré, passe interrompue', [
+                    'requested' => $yangoId,
+                    'received' => $rowYangoId,
+                ]);
+
+                break;
+            }
+
+            if ($this->syncOrder($order, $result) === null) {
+                continue;
+            }
+
+            $endedAt = $this->parseDate(Arr::get($order, 'ended_at'));
+
+            if ($endedAt !== null) {
+                $days[$endedAt->toDateString()] = $endedAt->copy()->startOfDay();
+            }
+        }
+
+        foreach ($days as $day) {
+            $this->activities->recordDay($driver, $day);
+        }
+
+        $result->driversTouched = $result->ordersSynced > 0 ? 1 : 0;
 
         return $result;
     }

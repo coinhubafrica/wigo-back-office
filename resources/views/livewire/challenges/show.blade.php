@@ -53,6 +53,13 @@
                     @endcan
                 @elseif ($challenge->status === ChallengeStatus::Active && $canManage)
                     <x-button variant="secondary" wire:click="confirmAction('close_period')" target="confirmAction">{{ __('backoffice.challenges.close_period_now') }}</x-button>
+                    @can('resyncChallengeOrders')
+                        <x-button variant="secondary" wire:click="resyncOrders" target="resyncOrders">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+                            {{ __('backoffice.challenges.resync_orders') }}
+                            <x-slot:loading>{{ __('backoffice.common.working') }}</x-slot:loading>
+                        </x-button>
+                    @endcan
                 @elseif ($challenge->status === ChallengeStatus::PayoutPending && $canManage && $creditedCount < $totalWinners)
                     <x-button wire:click="confirmAction('credit_all')" target="confirmAction">{{ __('backoffice.challenges.deposit_all_on_yango') }}</x-button>
                 @endif

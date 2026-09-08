@@ -2,6 +2,7 @@
 
 use App\Enums\ChallengeStatus;
 use App\Enums\DriverStatus;
+use App\Jobs\SyncYangoDriverOrdersJob;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
@@ -10,6 +11,7 @@ use App\Models\DriverDailyActivity;
 use App\Models\Prize;
 use App\Models\YangoOrder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -430,3 +432,78 @@ function completeOrders(Driver $driver, Challenge $challenge, int $count): void
         'driver_id' => $driver->id,
     ]);
 }
+
+it('asks for a fresh pass of the driver own orders on read', function (): void {
+    Queue::fake();
+
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $challenge = raffle();
+
+    $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    // La fenêtre part du début de la tombola ouverte la plus ancienne : c'est
+    // toute la période qui compte les tickets, pas la seule journée.
+    Queue::assertPushed(SyncYangoDriverOrdersJob::class, fn (SyncYangoDriverOrdersJob $job): bool => $job->driverId === $driver->id
+        && Carbon::parse($job->from)->equalTo($challenge->period_start));
+
+    expect($driver->fresh()->orders_sync_requested_at)->not->toBeNull();
+});
+
+it('asks only once an hour, however often the screen is opened', function (): void {
+    Queue::fake();
+
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+    Sanctum::actingAs($driver, ['mobile:*']);
+    raffle();
+
+    $this->getJson(route('api.v1.challenges'))->assertOk();
+    $this->getJson(route('api.v1.challenges'))->assertOk();
+    $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    Queue::assertPushed(SyncYangoDriverOrdersJob::class, 1);
+});
+
+it('asks again once the hour has run out', function (): void {
+    Queue::fake();
+
+    $driver = Driver::factory()->create([
+        'yango_id' => 'YAN-001',
+        'orders_sync_requested_at' => now()->subMinutes(61),
+    ]);
+    Sanctum::actingAs($driver, ['mobile:*']);
+    raffle();
+
+    $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    Queue::assertPushed(SyncYangoDriverOrdersJob::class, 1);
+});
+
+it('asks for nothing when no ticket raffle is open', function (): void {
+    Queue::fake();
+
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    // Un classement n'émet pas de ticket : la passe ne servirait qu'à
+    // consommer du quota Yango.
+    leaderboard(places: 3);
+
+    $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    Queue::assertNothingPushed();
+    expect($driver->fresh()->orders_sync_requested_at)->toBeNull();
+});
+
+it('asks for nothing for a driver Yango does not name', function (): void {
+    Queue::fake();
+
+    $driver = Driver::factory()->create(['yango_id' => null]);
+    Sanctum::actingAs($driver, ['mobile:*']);
+    raffle();
+
+    $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    Queue::assertNothingPushed();
+});

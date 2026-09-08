@@ -44,6 +44,7 @@ enum AuditAction: string
     // Challenges — le cycle de vie d'une gratification, geste par geste.
     case ChallengeCreated = 'challenge.created';
     case ChallengeApproved = 'challenge.approved';
+    case ChallengeActivated = 'challenge.activated';
     case ChallengeRejected = 'challenge.rejected';
     case ChallengePeriodClosed = 'challenge.period_closed';
     case ChallengeDrawn = 'challenge.drawn';
@@ -118,6 +119,7 @@ enum AuditAction: string
 
             self::ChallengeCreated => 'Challenge créé',
             self::ChallengeApproved => 'Challenge approuvé',
+            self::ChallengeActivated => 'Challenge démarré',
             self::ChallengeRejected => 'Challenge rejeté',
             self::ChallengePeriodClosed => 'Période close',
             self::ChallengeDrawn => 'Tirage exécuté',
@@ -178,6 +180,7 @@ enum AuditAction: string
 
             self::ChallengeCreated,
             self::ChallengeApproved,
+            self::ChallengeActivated,
             self::ChallengeRejected,
             self::ChallengePeriodClosed,
             self::ChallengeDrawn,
@@ -272,6 +275,7 @@ enum AuditAction: string
             self::SupportReassigned,
             self::ChallengeCreated,
             self::ChallengeApproved,
+            self::ChallengeActivated,
             self::ChallengePeriodClosed,
             self::ChallengeDrawn,
             self::ChallengeRulesAttached,

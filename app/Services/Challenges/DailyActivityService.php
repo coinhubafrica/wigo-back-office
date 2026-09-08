@@ -2,25 +2,30 @@
 
 namespace App\Services\Challenges;
 
-use App\Enums\ChallengeStatus;
 use App\Enums\YangoOrderStatus;
-use App\Models\Challenge;
-use App\Models\ChallengeTicket;
 use App\Models\Driver;
 use App\Models\DriverDailyActivity;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
- * Cumul journalier d'activité d'un chauffeur et émission des tickets de
- * challenge. Les tickets sont gagnés au fil de l'eau, chaque fois que le
- * total cumulé de courses franchit un multiple de `trips_per_ticket`, et non
- * recalculés en une fois en fin de période — un challenge ouvert affiche donc
- * toujours un pool à jour.
+ * Cumul journalier d'activité d'un conducteur.
+ *
+ * Le grand livre et l'émission des tickets ont été séparés. La ligne du jour
+ * garde le compte des courses terminées et le cumul de carrière, qui
+ * alimentent l'historique par semaine ISO du mobile et le tableau de bord ;
+ * les tickets, eux, se comptent sur la période du challenge et vivent dans
+ * `ChallengeTicketMinter`.
+ *
+ * Le cumul `orders_total` n'est donc plus la base d'un calcul de ticket : il
+ * l'était, et un conducteur arrivant avec un compteur déjà élevé gagnait un
+ * ticket dès sa première course. Il reste ce qu'il a toujours dit — combien de
+ * courses ce conducteur a terminées depuis toujours.
  */
 class DailyActivityService
 {
+    public function __construct(private readonly ChallengeTicketMinter $minter) {}
+
     public function recordDay(Driver $driver, CarbonInterface $date): void
     {
         DB::transaction(function () use ($driver, $date): void {
@@ -51,56 +56,10 @@ class DailyActivityService
                 ['driver_id' => $driver->id, 'activity_date' => $date->format('Y-m-d')],
                 ['orders_completed' => $ordersCompleted, 'orders_total' => $ordersTotal],
             );
-
-            $this->mintTickets($driver, $date, $previousTotal, $ordersTotal);
         });
-    }
 
-    private function mintTickets(Driver $driver, CarbonInterface $date, int $previousTotal, int $currentTotal): void
-    {
-        $challenges = Challenge::query()
-            ->where('is_ticket_based', true)
-            ->whereIn('status', [ChallengeStatus::Active, ChallengeStatus::DrawPending])
-            ->where('period_start', '<=', $date)
-            ->where('period_end', '>=', $date)
-            ->get();
-
-        foreach ($challenges as $challenge) {
-            $tripsPerTicket = $challenge->trips_per_ticket;
-
-            if ($tripsPerTicket === null || $tripsPerTicket === 0) {
-                continue;
-            }
-
-            $previousTickets = intdiv($previousTotal, $tripsPerTicket);
-            $currentTickets = intdiv($currentTotal, $tripsPerTicket);
-            $newlyEarned = $currentTickets - $previousTickets;
-
-            if ($newlyEarned <= 0) {
-                continue;
-            }
-
-            // Idempotence : ne pas re-miner si cette journée a déjà été
-            // traitée pour ce chauffeur sur ce challenge (un retry ne doit
-            // jamais doubler les tickets).
-            $alreadyMinted = $challenge->tickets()
-                ->where('driver_id', $driver->id)
-                ->where('date', $date->toDateString())
-                ->exists();
-
-            if ($alreadyMinted) {
-                continue;
-            }
-
-            $rows = array_map(fn (): array => [
-                'id' => (string) Str::ulid(),
-                'challenge_id' => $challenge->id,
-                'driver_id' => $driver->id,
-                'date' => $date->toDateString(),
-                'created_at' => now(),
-            ], range(1, $newlyEarned));
-
-            ChallengeTicket::query()->insert($rows);
-        }
+        // Hors transaction : le minter tient la sienne, par conducteur et sous
+        // verrou, et notifie après commit.
+        $this->minter->mintForDriverOn($driver, $date);
     }
 }
