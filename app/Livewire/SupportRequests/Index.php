@@ -84,8 +84,6 @@ class Index extends Component
 
     public string $ticketCategory = 'other';
 
-    public string $ticketSubject = '';
-
     public bool $templatesOpen = false;
 
     /*
@@ -169,22 +167,32 @@ class Index extends Component
         $this->messageLimit += 30;
     }
 
+    /**
+     * Ouvre le formulaire de tri. Aucun objet n'est proposé : le ticket tire
+     * le sien du premier message non trié, côté service.
+     */
     public function openTicketForm(): void
     {
-        $conversation = $this->conversation();
-
-        if ($conversation === null) {
+        if ($this->conversation() === null) {
             return;
         }
 
         $this->ticketCategory = SupportRequestCategory::Other->value;
-        $this->ticketSubject = (string) $conversation->messages()
-            ->whereNull('support_request_id')
-            ->whereNull('triaged_at')
-            ->whereNotNull('body')
-            ->orderBy('id')
-            ->value('body');
         $this->creatingTicket = true;
+    }
+
+    /**
+     * Choix d'une catégorie dans le formulaire de tri. Portée par le composant
+     * plutôt que par `wire:model` sur un `<select>` : le choix se fait sur des
+     * cartes cliquables, qui décrivent ce que chaque famille recouvre.
+     */
+    public function selectTicketCategory(string $category): void
+    {
+        if (SupportRequestCategory::tryFrom($category) === null) {
+            return;
+        }
+
+        $this->ticketCategory = $category;
     }
 
     public function cancelTicketForm(): void
@@ -194,8 +202,10 @@ class Index extends Component
     }
 
     /**
-     * Crée le ticket et y rattache les messages non triés. La priorité et les
-     * échéances ne sont pas saisies : elles découlent de la catégorie.
+     * Crée le ticket et y rattache les messages non triés. Ni la priorité ni
+     * les échéances ne sont saisies — elles découlent de la catégorie — ni
+     * l'objet, que le service reprend du premier message non trié : le
+     * conducteur a déjà écrit son problème, le réécrire est du recopiage.
      */
     public function createTicket(SupportRequestService $requests): void
     {
@@ -203,7 +213,6 @@ class Index extends Component
 
         $this->validate([
             'ticketCategory' => ['required', 'string', 'in:'.implode(',', array_column(SupportRequestCategory::cases(), 'value'))],
-            'ticketSubject' => ['nullable', 'string', 'max:255'],
         ]);
 
         $conversation = $this->conversation();
@@ -216,7 +225,6 @@ class Index extends Component
             $conversation,
             SupportRequestCategory::from($this->ticketCategory),
             $this->actor(),
-            $this->ticketSubject === '' ? null : $this->ticketSubject,
         );
 
         $this->creatingTicket = false;

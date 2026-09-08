@@ -566,10 +566,8 @@ return [
 
         // Modales.
         'ticket_form_title' => 'Créer un ticket',
-        'ticket_form_hint' => 'La priorité et les délais découlent de la catégorie : ils ne se saisissent pas.',
-        'field_category' => 'Catégorie',
-        'field_subject' => 'Objet',
-        'subject_placeholder' => 'Résumé en une ligne',
+        'ticket_form_hint' => "La catégorie suffit : l'objet reprend le premier message du conducteur, la priorité et les délais découlent de la famille choisie.",
+        'field_category' => 'De quoi parle ce message ?',
         'resolve_title' => 'Résoudre ce ticket ?',
         'resolve_body' => 'Le ticket sort de la file. La conversation du conducteur reste ouverte : son prochain message rouvrira un tri.',
         'dismiss_title' => 'Retirer cette conversation de la file ?',

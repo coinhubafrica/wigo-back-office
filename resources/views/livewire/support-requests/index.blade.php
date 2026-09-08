@@ -582,20 +582,47 @@
     </div>
 
     @if ($creatingTicket)
-        <x-modal close="cancelTicketForm" align="start" :title="__('backoffice.support_requests.ticket_form_title')">
+        <x-modal close="cancelTicketForm" align="start" size="lg" :title="__('backoffice.support_requests.ticket_form_title')">
             <form id="support-ticket-form" wire:submit="createTicket" class="space-y-4">
-                {{-- Pas de champ « priorité » : elle découle de la catégorie
-                     via `SlaCalculator`, l'agent ne la choisit jamais. --}}
+                {{-- Ni « priorité » ni « objet » : la première découle de la
+                     catégorie via `SlaCalculator`, le second du premier message
+                     non trié. Il ne reste donc qu'un choix, et il mérite mieux
+                     qu'un menu déroulant : chaque famille dit ce qu'elle
+                     recouvre, parce que c'est elle qui fixe le barème SLA. --}}
                 <p class="text-xs text-muted">{{ __('backoffice.support_requests.ticket_form_hint') }}</p>
 
-                <x-field :label="__('backoffice.support_requests.field_category')" name="ticketCategory" type="select" wire:model="ticketCategory">
-                    @foreach (\App\Enums\SupportRequestCategory::cases() as $case)
-                        <option value="{{ $case->value }}">{{ $case->label() }}</option>
-                    @endforeach
-                </x-field>
+                <fieldset>
+                    <legend class="mb-2 text-xs font-semibold text-muted">
+                        {{ __('backoffice.support_requests.field_category') }}
+                    </legend>
 
-                <x-field :label="__('backoffice.support_requests.field_subject')" name="ticketSubject" wire:model="ticketSubject"
-                         :placeholder="__('backoffice.support_requests.subject_placeholder')" />
+                    <div class="grid gap-2 sm:grid-cols-2" role="radiogroup"
+                         aria-label="{{ __('backoffice.support_requests.field_category') }}">
+                        @foreach (\App\Enums\SupportRequestCategory::cases() as $case)
+                            @php $isSelected = $ticketCategory === $case->value; @endphp
+                            <button type="button" role="radio"
+                                    aria-checked="{{ $isSelected ? 'true' : 'false' }}"
+                                    wire:click="selectTicketCategory('{{ $case->value }}')"
+                                    @class([
+                                        'flex items-start gap-2.5 rounded border-2 p-3 text-left transition-colors',
+                                        'border-primary bg-primary-tint' => $isSelected,
+                                        'border-line bg-card hover:border-input' => ! $isSelected,
+                                    ])>
+                                <span @class([
+                                    'mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-full border-2',
+                                    'border-primary bg-primary' => $isSelected,
+                                    'border-input bg-line' => ! $isSelected,
+                                ])></span>
+                                <span class="min-w-0">
+                                    <b class="block text-sm text-ink">{{ $case->label() }}</b>
+                                    <span class="mt-0.5 block text-xs leading-relaxed text-muted">{{ $case->description() }}</span>
+                                </span>
+                            </button>
+                        @endforeach
+                    </div>
+
+                    @error('ticketCategory') <p class="mt-1.5 text-sm text-err-text">{{ $message }}</p> @enderror
+                </fieldset>
             </form>
 
             <x-slot:footer>

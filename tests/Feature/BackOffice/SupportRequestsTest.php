@@ -94,14 +94,15 @@ it('creates a ticket from triage and attaches the untriaged messages', function 
         ->call('select', $conversation->id)
         ->call('openTicketForm')
         ->assertSet('creatingTicket', true)
-        ->set('ticketCategory', SupportRequestCategory::Payment->value)
-        ->set('ticketSubject', 'Solde non crédité')
+        ->call('selectTicketCategory', SupportRequestCategory::Payment->value)
+        ->assertSet('ticketCategory', SupportRequestCategory::Payment->value)
         ->call('createTicket')
         ->assertHasNoErrors()
         ->assertSet('creatingTicket', false);
 
+    // L'objet n'est pas saisi : il reprend le premier message non trié.
     $request = SupportRequest::query()->sole();
-    expect($request->subject)->toBe('Solde non crédité')
+    expect($request->subject)->toBe('Mon solde est faux')
         ->and($request->category)->toBe(SupportRequestCategory::Payment)
         ->and($conversation->messages()->whereNull('support_request_id')->whereNull('triaged_at')->count())->toBe(0);
 });
@@ -126,6 +127,26 @@ it('exposes no priority field on the component', function (): void {
     // fixer, ni depuis l'écran ni en poussant une propriété Livewire.
     expect(property_exists(Index::class, 'ticketPriority'))->toBeFalse()
         ->and(property_exists(Index::class, 'priority'))->toBeFalse();
+});
+
+it('exposes no subject field on the component', function (): void {
+    // L'objet vient du premier message non trié : le faire ressaisir n'ajoute
+    // rien et laisse repartir un ticket avec un intitulé qui ne dit pas la
+    // même chose que le fil.
+    expect(property_exists(Index::class, 'ticketSubject'))->toBeFalse();
+});
+
+it('ignores an unknown category pushed to the picker', function (): void {
+    $driver = Driver::factory()->create();
+    app(MessageService::class)->sendFromDriver($driver, 'Mon solde est faux');
+    $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
+
+    Livewire::actingAs(supportUser('gestionnaire'))
+        ->test(Index::class)
+        ->call('select', $conversation->id)
+        ->call('openTicketForm')
+        ->call('selectTicketCategory', 'inexistante')
+        ->assertSet('ticketCategory', SupportRequestCategory::Other->value);
 });
 
 it('dismisses untriaged messages without creating a ticket', function (): void {
