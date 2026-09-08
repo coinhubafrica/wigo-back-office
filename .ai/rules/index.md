@@ -13,23 +13,24 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Services/Cnps/** | .ai/rules/cnps.md |
 | resources/views/components/**, resources/views/layouts/**, resources/views/vendor/** | .ai/rules/components.md |
 | docs/api/**, app/Support/Docs/**, app/Http/Controllers/Docs/**, resources/views/docs/** | .ai/rules/docs.md |
-| routes/web.php, routes/api.php | .ai/rules/routing-domains.md |
 | app/Livewire/Drivers/** | .ai/rules/drivers.md |
+| app/Services/History/**,app/Http/Controllers/Api/V1/HistoryController.php,app/Http/Resources/HistoryEntryPayload.php,app/Enums/HistoryKind.php,database/migrations/*driver_history_view* | .ai/rules/enums-migrations.md |
 | app/Enums/Permission.php,app/Providers/AppServiceProvider.php | .ai/rules/enums-providers.md |
 | app/Http/** | .ai/rules/http.md |
 | resources/js/app.js | .ai/rules/js.md |
-| app/Livewire/** | .ai/rules/livewire.md |
 | app/Services/Cnps/**,app/Http/Resources/CnpsStatementPayload.php,app/Livewire/Cnps/** | .ai/rules/livewire-cnps.md |
+| app/Livewire/** | .ai/rules/livewire.md |
 | app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/middleware.md |
 | database/migrations/** | .ai/rules/migrations.md |
 | app/Models/Vehicle.php, app/Models/Product.php | .ai/rules/models.md |
 | app/Providers/AppServiceProvider.php | .ai/rules/providers.md |
 | routes/channels.php | .ai/rules/routes.md |
+| routes/web.php, routes/api.php | .ai/rules/routing-domains.md |
 | database/seeders/** | .ai/rules/seeders.md |
-| resources/views/site/**, resources/views/components/site/**, resources/views/layouts/site.blade.php | .ai/rules/site.md |
 | app/Settings/** | .ai/rules/settings.md |
 | app/Http/Controllers/Api/V1/ShopController.php,app/Services/Shop/**,app/Models/ShopOrderDocument.php,app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/shop-models.md |
 | app/Livewire/Shop/** | .ai/rules/shop.md |
+| resources/views/site/**, resources/views/components/site/**, resources/views/layouts/site.blade.php | .ai/rules/site.md |
 | app/Livewire/Audit/**,app/Enums/AuditAction.php,app/Support/AuditLogFilter.php,app/Models/AuditLog.php | .ai/rules/support-models.md |
 | app/Services/Support/**, app/Services/Support/BroadcastDispatcher.php, app/Services/Support/CampaignDispatcher.php | .ai/rules/support.md |
 | tests/** | .ai/rules/tests.md |

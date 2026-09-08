@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChallengeController;
 use App\Http\Controllers\Api\V1\CnpsController;
+use App\Http\Controllers\Api\V1\HistoryController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ShopController;
 use App\Http\Controllers\Api\V1\SupportController;
@@ -121,6 +122,16 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
             Route::get('wallet/recharges', [WalletController::class, 'recharges'])->name('wallet.recharges.index');
             Route::get('wallet/recharges/{transaction}', [WalletController::class, 'showRecharge'])
                 ->name('wallet.recharges.show');
+
+            /*
+            | Fil d'activité : recharges, commandes, cotisations et tickets dans
+            | un seul ordre. Lisible par un conducteur suspendu, comme le
+            | portefeuille — son passé le regarde.
+            |
+            | La fusion des quatre sources vit dans la vue `driver_history`, pas
+            | ici : voir `.ai/rules/history.md`.
+            */
+            Route::get('history', [HistoryController::class, 'index'])->name('history.index');
 
             /*
             | Support. La lecture ET l'écriture restent ouvertes à un conducteur

@@ -1,0 +1,91 @@
+type: object
+properties:
+  id:
+    type: string
+    description: |-
+      Identifiant de la ligne source (recharge, commande, cotisation…), et non
+      du fil : c'est lui qui sert au lien profond.
+    examples:
+      - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+  kind:
+    type: string
+    enum:
+      - recharge
+      - order
+      - cnps
+      - ticket
+      - bonus
+  ref:
+    type:
+      - string
+      - 'null'
+    description: 'Référence lisible. Nulle pour une cotisation, un ticket et un bonus, qui n''en portent pas.'
+    examples:
+      - CMD-2026-0114
+  label:
+    type: string
+    examples:
+      - 'Commande pièces'
+  sublabel:
+    type:
+      - string
+      - 'null'
+    description: |-
+      Ligne grise : ce que la famille a de plus parlant, puis la date. Les
+      tickets et les cotisations n'ont qu'un jour en base, leur date est donc
+      sans heure.
+    examples:
+      - 'Amortisseur arrière · 6 août · 09:12'
+  amount:
+    type: object
+    description: |-
+      Le montant en trois parties, à ne jamais lire séparément : `value` est une
+      magnitude toujours positive, `sign` porte le sens et `unit` l'unité.
+      L'application se règle sur `sign` seul pour la couleur et le préfixe.
+    properties:
+      value:
+        type: integer
+        examples:
+          - 60000
+      sign:
+        type: integer
+        description: |-
+          -1 sortie (rouge, préfixe « − »), +1 entrée (verte, préfixe « + »),
+          0 sans mouvement dans le portefeuille que nous tenons (noir, sans
+          préfixe). Une cotisation CNPS vaut 0 : l'argent est parti du compte
+          Wave du conducteur, que nous n'avons jamais touché. Une commande
+          annulée aussi.
+        enum:
+          - -1
+          - 0
+          - 1
+      unit:
+        type: string
+        enum:
+          - XOF
+          - ticket
+    required:
+      - value
+      - sign
+      - unit
+  status:
+    type: string
+    enum:
+      - pending
+      - settled
+      - failed
+      - cancelled
+  occurred_at:
+    type: string
+    examples:
+      - '2026-08-12T14:35:00Z'
+required:
+  - id
+  - kind
+  - ref
+  - label
+  - sublabel
+  - amount
+  - status
+  - occurred_at
+title: HistoryEntryPayload

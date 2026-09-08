@@ -1,11 +1,15 @@
 <?php
 
 use App\Models\Announcement;
+use App\Models\ChallengeTicket;
+use App\Models\ChallengeWinner;
+use App\Models\CnpsDeclaration;
 use App\Models\Conversation;
 use App\Models\Driver;
 use App\Models\Message;
 use App\Models\PickupPoint;
 use App\Models\Product;
+use App\Models\ShopOrder;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
@@ -40,6 +44,45 @@ function apiContractDriver(): Driver
 
     return $driver;
 }
+
+it('the activity history matches its schema', function (): void {
+    $driver = apiContractDriver();
+
+    // Les cinq familles : le validateur compare du JSON réel au schéma, une
+    // branche non semée ne serait donc pas vérifiée du tout.
+    Transaction::factory()->credited()->forDriver($driver)->create([
+        'initiated_at' => '2026-08-12 14:35:00',
+        'settled_at' => '2026-08-12 14:35:00',
+    ]);
+
+    $order = ShopOrder::factory()->for($driver)->create(['ordered_at' => '2026-08-06 09:12:00']);
+    $order->items()->create([
+        'product_id' => Product::factory()->create(['name' => 'Amortisseur arrière'])->getKey(),
+        'product_name' => 'Amortisseur arrière',
+        'unit_price' => 22_500,
+        'quantity' => 1,
+        'line_total' => 22_500,
+    ]);
+
+    CnpsDeclaration::factory()->for($driver)->create([
+        'period' => '2026-07',
+        'declared_at' => '2026-08-07 11:05:00',
+        'payment_date' => '2026-08-07',
+    ]);
+
+    ChallengeTicket::factory()->for($driver)->create(['date' => '2026-08-11']);
+
+    ChallengeWinner::factory()->for($driver)->credited()->create([
+        'amount' => 25_000,
+        'credited_at' => '2026-08-05 10:00:00',
+    ]);
+
+    apiContract()->assertMatches(
+        $this->getJson(route('api.v1.history.index'))->assertOk(),
+        'get',
+        '/history',
+    );
+});
 
 it('the driver profile matches its schema', function (): void {
     apiContractDriver();
