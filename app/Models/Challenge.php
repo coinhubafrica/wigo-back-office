@@ -7,7 +7,7 @@ use App\Enums\ChallengeRecurrence;
 use App\Enums\ChallengeStatus;
 use App\Enums\ChallengeType;
 use App\Enums\PrizeNature;
-use App\Enums\YangoOrderStatus;
+use App\Services\Challenges\ParticipantCounter;
 use Carbon\CarbonImmutable;
 use Database\Factories\ChallengeFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -135,8 +135,7 @@ class Challenge extends Model
     }
 
     /**
-     * Ajoute le nombre de participants en colonne calculée, sans hydrater
-     * personne.
+     * Marque une liste comme devant porter son compte de participants.
      *
      * `challenges.participants_count` n'a jamais été renseigné hors du
      * seeder : la colonne restait nulle en production, et l'écran affichait
@@ -145,31 +144,34 @@ class Challenge extends Model
      * terminé une course sur la période, puisqu'il n'y a pas d'inscription à
      * un challenge (cf. `.ai/rules/challenges.md`).
      *
-     * En sous-requête et non en `withCount()` sur une relation : le lien passe
-     * par une fenêtre de dates, pas par une clé étrangère. S'appuie sur
-     * `yango_orders (status, completed_at, driver_id)`.
+     * Le compte **ne se pose plus en sous-requête** : corrélée aux bornes de
+     * `challenges`, elle rendait l'index `(status, completed_at, driver_id)`
+     * inutilisable et relisait tout l'historique par ligne affichée
+     * (cf. `ParticipantCounter`). La liste hydrate donc l'attribut après
+     * pagination, sur les seules lignes visibles.
      *
      * @param  Builder<self>  $query
      * @return Builder<self>
      */
     public function scopeWithParticipantsCount(Builder $query): Builder
     {
-        return $query->withCasts(['participants' => 'integer'])
-            ->addSelect(['participants' => YangoOrder::query()
-                ->selectRaw('count(distinct driver_id)')
-                ->where('status', YangoOrderStatus::Complete)
-                ->whereColumn('yango_orders.completed_at', '>=', 'challenges.period_start')
-                ->whereColumn('yango_orders.completed_at', '<=', 'challenges.period_end'),
-            ]);
+        return $query->afterQuery(function (Collection $challenges): Collection {
+            $counts = app(ParticipantCounter::class)->countForPeriods($challenges);
+
+            return $challenges->each(fn (self $challenge) => $challenge->setAttribute(
+                'participants',
+                $counts[$challenge->id] ?? 0,
+            ));
+        });
     }
 
     /**
      * Nombre de participants : les conducteurs ayant terminé au moins une
      * course sur la période.
      *
-     * Lit la colonne calculée par `withParticipantsCount()` si elle est là —
-     * une liste paginée l'ajoute une fois pour toutes —, et compte à la
-     * demande sinon.
+     * Lit l'attribut posé par `withParticipantsCount()` s'il est là — une
+     * liste paginée le pose une fois pour toutes —, et compte à la demande
+     * sinon.
      */
     public function participantsCount(): int
     {
@@ -177,11 +179,7 @@ class Challenge extends Model
             return (int) $this->getAttribute('participants');
         }
 
-        return YangoOrder::query()
-            ->where('status', YangoOrderStatus::Complete)
-            ->whereBetween('completed_at', [$this->period_start, $this->period_end])
-            ->distinct()
-            ->count('driver_id');
+        return app(ParticipantCounter::class)->countForPeriod($this->period_start, $this->period_end);
     }
 
     /**

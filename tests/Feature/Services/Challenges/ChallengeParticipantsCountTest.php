@@ -60,6 +60,30 @@ it('says nobody rather than nothing on an empty challenge', function (): void {
     expect(participantsChallenge()->participantsCount())->toBe(0);
 });
 
+it('honours a period that opens and closes in the middle of a day', function (): void {
+    // Les tombolas courent d'un après-midi à l'autre, pas de minuit à minuit.
+    // Un compte à la journée — celui qu'un cumul journalier donnerait —
+    // ramasserait toute la journée d'ouverture et compterait des conducteurs
+    // qui n'ont roulé qu'avant l'ouverture.
+    $challenge = Challenge::factory()->active()->create([
+        'period_start' => '2026-09-05 14:00:55',
+        'period_end' => '2026-09-11 14:00:55',
+    ]);
+
+    $inside = Driver::factory()->create();
+    YangoOrder::factory()->for($inside)->completedOn(CarbonImmutable::parse('2026-09-05 15:30'))->create();
+
+    // Le même jour que l'ouverture, mais avant l'heure : hors période.
+    YangoOrder::factory()->for(Driver::factory()->create())
+        ->completedOn(CarbonImmutable::parse('2026-09-05 09:00'))->create();
+
+    // Le même jour que la clôture, mais après l'heure : hors période aussi.
+    YangoOrder::factory()->for(Driver::factory()->create())
+        ->completedOn(CarbonImmutable::parse('2026-09-11 18:00'))->create();
+
+    expect($challenge->participantsCount())->toBe(1);
+});
+
 it('resolves the count in one query for a whole list', function (): void {
     $first = participantsChallenge();
     $second = Challenge::factory()->active()->create([
