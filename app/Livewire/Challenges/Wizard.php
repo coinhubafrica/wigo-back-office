@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Assistant de création affiché en modale au-dessus de la liste : quatre
@@ -25,7 +26,7 @@ use Livewire\Component;
  */
 class Wizard extends Component
 {
-    use InteractsWithCurrentUser;
+    use InteractsWithCurrentUser, WithFileUploads;
 
     public bool $open = false;
 
@@ -84,6 +85,15 @@ class Wizard extends Component
     public bool $isTicketBased = false;
 
     public ?int $tripsPerTicket = 50;
+
+    /**
+     * Règlement joint dès la création, facultatif : un challenge peut partir
+     * sans document et le recevoir plus tard depuis son détail. Mêmes formats
+     * et même plafond que `Show::$rulesDocument` — c'est le même document, et
+     * deux règles divergentes accepteraient à la création ce que le
+     * remplacement refuserait.
+     */
+    public mixed $rulesDocument = null;
 
     public function mount(): void
     {
@@ -275,6 +285,8 @@ class Wizard extends Component
             ],
         );
 
+        $this->attachRulesDocument($challenge);
+
         $this->open = false;
 
         $this->dispatch('challenge-created');
@@ -283,6 +295,53 @@ class Wizard extends Component
             : __('backoffice.challenges.created_pending'));
 
         $this->redirectRoute('bo.challenges.show', ['challenge' => $challenge], navigate: true);
+    }
+
+    /**
+     * Range le règlement joint à la création, s'il y en a un.
+     *
+     * Après le `create()`, jamais avant : le chemin de stockage est rangé sous
+     * l'identifiant du challenge, comme dans `Show::uploadRulesDocument()` —
+     * un fichier écrit d'abord se retrouverait orphelin si la création échoue
+     * (doublon refusé, validation), sans rien pour le rattacher.
+     *
+     * Le geste porte son propre droit : `challenges.create` ne suffit pas, car
+     * le règlement est ce sur quoi le conducteur se fonde pour savoir ce qui
+     * lui est promis. Sans le droit, le challenge se crée quand même — le
+     * document se joindra depuis le détail, par qui en a le droit.
+     */
+    private function attachRulesDocument(Challenge $challenge): void
+    {
+        if ($this->rulesDocument === null || Gate::denies('manageChallengeRules')) {
+            return;
+        }
+
+        $challenge->update([
+            'rules_document_disk' => 'local',
+            'rules_document_path' => $this->rulesDocument->store(
+                "challenge-rules/{$challenge->getKey()}",
+                'local',
+            ),
+            'rules_document_name' => $this->rulesDocument->getClientOriginalName(),
+            'rules_document_mime' => $this->rulesDocument->getMimeType() ?? 'application/octet-stream',
+            'rules_document_size' => $this->rulesDocument->getSize(),
+            'rules_document_uploaded_at' => now(),
+        ]);
+
+        // Journalisée à part de la création : le règlement se remplace et se
+        // retire ensuite par les mêmes lignes, et l'écran d'audit doit lire la
+        // même histoire quel que soit l'écran d'où vient le document.
+        AuditLog::record(
+            action: AuditAction::ChallengeRulesAttached->value,
+            summary: "{$this->actor()->fullName()} a joint le règlement du challenge {$challenge->reference}.",
+            subject: $challenge,
+            by: $this->actor(),
+            context: [
+                'reference' => $challenge->reference,
+                'file_name' => $challenge->rules_document_name,
+                'replaced' => false,
+            ],
+        );
     }
 
     /**
@@ -452,6 +511,7 @@ class Wizard extends Component
             'minRatingEnabled', 'minRating', 'minActiveDaysEnabled', 'minActiveDays',
             'prizeNature', 'rewardAmount', 'prizeId', 'awardMode',
             'winnersCount', 'populationMax', 'isTicketBased', 'tripsPerTicket',
+            'rulesDocument',
         ]);
 
         $this->resetPeriod();
@@ -524,6 +584,10 @@ class Wizard extends Component
         } elseif ($this->awardMode === AwardMode::Collective->value) {
             $rules['winnersCount'] = 'required|integer|min:1';
         }
+
+        // Facultatif ici, contrairement à l'écran de détail où l'envoi est le
+        // geste lui-même : la plupart des challenges se créent sans règlement.
+        $rules['rulesDocument'] = 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120';
 
         return $rules;
     }

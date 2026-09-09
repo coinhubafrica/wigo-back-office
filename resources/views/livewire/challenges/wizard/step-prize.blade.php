@@ -127,3 +127,16 @@
     @error('populationMax') <p class="mt-1 text-sm text-err-text">{{ $message }}</p> @enderror
 @endif
 
+
+{{-- Règlement : facultatif à la création, joignable ensuite depuis le détail.
+     Le geste porte son propre droit — un rôle qui crée sans pouvoir gérer le
+     règlement ne voit pas le champ, et `save()` ignorerait le fichier. --}}
+@can (\App\Enums\Permission::ChallengesManageRules->value)
+    <div class="mt-4 border-t border-line pt-4">
+        <x-field :label="__('backoffice.challenges.attach_rules_optional')"
+                 name="rulesDocument" id="wizard-rules-document" type="file"
+                 wire:model="rulesDocument" accept=".pdf,image/jpeg,image/png,image/webp"
+                 :hint="__('backoffice.challenges.rules_document_wizard_hint')" />
+        <p wire:loading wire:target="rulesDocument" class="mt-1 text-xs text-muted">{{ __('backoffice.challenges.rules_uploading') }}</p>
+    </div>
+@endcan

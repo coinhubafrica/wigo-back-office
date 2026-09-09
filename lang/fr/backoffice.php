@@ -838,6 +838,8 @@ return [
         'rules_document' => 'Règlement du challenge',
         'no_rules_document' => "Aucun règlement n'est joint. Les conducteurs ne voient donc aucun document dans l'application.",
         'attach_rules' => 'Joindre le règlement',
+        'attach_rules_optional' => 'Règlement du challenge (facultatif)',
+        'rules_document_wizard_hint' => 'PDF ou photo de la feuille imprimée (JPG, PNG, WEBP), 5 Mo maximum. Il pourra aussi être joint plus tard depuis le détail du challenge.',
         'replace_rules' => 'Remplacer le règlement',
         'remove_rules' => 'Retirer le règlement',
         'rules_document_hint' => 'PDF ou photo de la feuille imprimée (JPG, PNG, WEBP), 5 Mo maximum.',
