@@ -554,7 +554,7 @@
                     "Challenge"
                 ],
                 "operationId": "v1.challenges",
-                "description": "Un élément par challenge ouvert, avec la progression propre au\nconducteur : tickets détenus et courses restantes avant le prochain pour\nune tombola, rang et prime pour un classement, gain éventuel. Les blocs\n`ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils\ns'appliquent au challenge.\n\n`ticketing.tickets` détaille les tickets détenus, du plus ancien au plus\nrécent : leur date d'obtention et leur numéro de tirage, ce dernier\nn'étant attribué qu'au gel du vivier.\n\n`rules_document` porte le règlement du challenge quand il en a un, par\nURL signée valable une heure.\n\n`meta.weekly_history` porte les douze dernières semaines de courses\nterminées, de la plus ancienne à la semaine en cours.\n\nReste accessible à un conducteur radié, comme le profil : ses\ncompteurs cessent simplement de progresser.",
+                "description": "Un élément par challenge en cours — `active` seulement : un challenge\ndont la période est finie (tirage ou dépôt en attente) ne remonte plus.\nAvec la progression propre au conducteur : tickets détenus et courses restantes avant le prochain pour\nune tombola, rang et prime pour un classement, gain éventuel. Les blocs\n`ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils\ns'appliquent au challenge.\n\n`ticketing.tickets` détaille les tickets détenus, du plus ancien au plus\nrécent : leur date d'obtention et leur numéro de tirage, ce dernier\nn'étant attribué qu'au gel du vivier.\n\n`rules_document` porte le règlement du challenge quand il en a un, par\nURL signée valable une heure.\n\n`meta.weekly_history` porte les douze dernières semaines de courses\nterminées, de la plus ancienne à la semaine en cours.\n\nReste accessible à un conducteur radié, comme le profil : ses\ncompteurs cessent simplement de progresser.",
                 "summary": "Challenges en cours du conducteur",
                 "responses": {
                     "200": {
@@ -602,9 +602,7 @@
                                                     "status": {
                                                         "type": "string",
                                                         "enum": [
-                                                            "active",
-                                                            "draw_pending",
-                                                            "payout_pending"
+                                                            "active"
                                                         ]
                                                     },
                                                     "criteria_summary": {
@@ -714,7 +712,7 @@
                                                     },
                                                     "ticketing": {
                                                         "type": "object",
-                                                        "description": "Absent des challenges qui n'attribuent pas de\ntickets. L'exemple montre un challenge encore\n`active` : les `range_number` n'y sont pas encore\nattribués, le vivier n'étant gelé qu'au passage en\n`draw_pending`.",
+                                                        "description": "Absent des challenges qui n'attribuent pas de\ntickets. Les challenges listés étant tous `active`,\nles `range_number` n'y sont pas encore attribués :\nle vivier n'est gelé qu'au passage en\n`draw_pending`.",
                                                         "example": {
                                                             "trips_per_ticket": 10,
                                                             "orders_completed": 34,
