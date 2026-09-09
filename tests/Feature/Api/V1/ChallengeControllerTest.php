@@ -120,7 +120,6 @@ it('exposes the prize and its collection note for a won challenge', function ():
     $prize = Prize::factory()->create(['name' => 'Téléviseur 43 pouces']);
     $challenge = raffle();
     $challenge->forceFill([
-        'status' => ChallengeStatus::PayoutPending,
         'prize_id' => $prize->id,
         'drawn_at' => now(),
     ])->save();
@@ -372,12 +371,16 @@ it('lets a fired driver still read their bonus screen', function (): void {
     $this->getJson(route('api.v1.challenges'))->assertOk();
 });
 
-it('excludes challenges that are not live', function (): void {
+it('only lists active challenges', function (): void {
     Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
 
     Challenge::factory()->create(['status' => ChallengeStatus::Completed]);
     Challenge::factory()->rejected()->create();
     Challenge::factory()->surprise()->create(['status' => ChallengeStatus::PendingApproval]);
+    Challenge::factory()->create(['status' => ChallengeStatus::Scheduled]);
+    // Période finie : le vivier est gelé, les compteurs ne bougent plus.
+    Challenge::factory()->create(['status' => ChallengeStatus::DrawPending]);
+    Challenge::factory()->create(['status' => ChallengeStatus::PayoutPending]);
 
     $this->getJson(route('api.v1.challenges'))
         ->assertOk()

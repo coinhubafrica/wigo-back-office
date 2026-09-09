@@ -26,8 +26,8 @@ class ChallengeController extends Controller
     /**
      * Challenges en cours du conducteur
      *
-     * Un élément par challenge ouvert, avec la progression propre au
-     * conducteur : tickets détenus et courses restantes avant le prochain pour
+     * Un élément par challenge en cours (`active` seulement), avec la
+     * progression propre au conducteur : tickets détenus et courses restantes avant le prochain pour
      * une tombola, rang et prime pour un classement, gain éventuel. Les blocs
      * `ticketing`, `leaderboard` et `won` ne sont présents que lorsqu'ils
      * s'appliquent au challenge.
@@ -52,7 +52,7 @@ class ChallengeController extends Controller
      *         reference: string,
      *         name: string,
      *         type: 'leaderboard'|'raffle'|'surprise',
-     *         status: 'active'|'draw_pending'|'payout_pending',
+     *         status: 'active',
      *         criteria_summary: string,
      *         period: array{start: string, end: string, week_iso: string|null},
      *         prize: array{name: string, photo_url: string|null}|null,
@@ -118,11 +118,13 @@ class ChallengeController extends Controller
                 // charger tous les gagnants du challenge.
                 'winners' => fn ($query) => $query->where('driver_id', $driver->id)->with('prize'),
             ])
-            ->whereIn('status', [
-                ChallengeStatus::Active,
-                ChallengeStatus::DrawPending,
-                ChallengeStatus::PayoutPending,
-            ])
+            /*
+            | Seuls les challenges en cours remontent. Un challenge passé en
+            | `DrawPending` ou `PayoutPending` a fini sa période : son vivier
+            | est gelé, ses compteurs ne bougent plus, et le laisser sur
+            | l'écran laisserait croire qu'il reste des courses à faire.
+            */
+            ->where('status', ChallengeStatus::Active)
             ->orderByDesc('period_start')
             ->get();
 
