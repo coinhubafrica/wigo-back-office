@@ -3,10 +3,12 @@
 use App\Enums\AuditAction;
 use App\Enums\BackOfficeModule;
 use App\Enums\ChallengeStatus;
+use App\Enums\Permission;
 use App\Jobs\SyncYangoOrdersJob;
 use App\Livewire\Challenges\Index;
 use App\Livewire\Challenges\Prizes;
 use App\Livewire\Challenges\Show;
+use App\Livewire\Challenges\Wizard;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
@@ -399,6 +401,113 @@ it('denies attaching a rules document without the permission', function (): void
         ->assertForbidden();
 
     $this->assertNull($challenge->refresh()->rules_document_path);
+});
+
+it('attaches a rules document at creation time', function (): void {
+    Storage::fake('local');
+
+    Livewire::actingAs(challengesUser('bonus'))
+        ->test(Wizard::class)
+        ->call('openWizard')
+        ->set('name', 'Top 100 — Semaine test')
+        ->set('rulesDocument', UploadedFile::fake()->create('reglement.pdf', 120, 'application/pdf'))
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $challenge = Challenge::query()->where('name', 'Top 100 — Semaine test')->sole();
+
+    $this->assertSame('local', $challenge->rules_document_disk);
+    $this->assertSame('reglement.pdf', $challenge->rules_document_name);
+    $this->assertNotNull($challenge->rules_document_uploaded_at);
+    // Rangé sous l'identifiant du challenge, donc écrit après le `create()`.
+    $this->assertStringContainsString("challenge-rules/{$challenge->getKey()}", (string) $challenge->rules_document_path);
+    Storage::disk('local')->assertExists((string) $challenge->rules_document_path);
+
+    // Même ligne d'audit que depuis le détail : l'écran d'audit lit la même
+    // histoire quel que soit l'écran d'où vient le document.
+    $this->assertDatabaseHas('audit_logs', [
+        'action' => AuditAction::ChallengeRulesAttached->value,
+        'subject_id' => $challenge->id,
+    ]);
+});
+
+it('creates a challenge without a rules document', function (): void {
+    Storage::fake('local');
+
+    Livewire::actingAs(challengesUser('bonus'))
+        ->test(Wizard::class)
+        ->call('openWizard')
+        ->set('name', 'Sans règlement')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    // Le règlement est facultatif à la création : rien n'est joint, et aucune
+    // ligne d'audit ne prétend le contraire.
+    $challenge = Challenge::query()->where('name', 'Sans règlement')->sole();
+
+    $this->assertNull($challenge->rules_document_path);
+    $this->assertDatabaseMissing('audit_logs', [
+        'action' => AuditAction::ChallengeRulesAttached->value,
+        'subject_id' => $challenge->id,
+    ]);
+});
+
+it('refuses a wizard rules document that is neither a pdf nor an image', function (): void {
+    Storage::fake('local');
+
+    Livewire::actingAs(challengesUser('bonus'))
+        ->test(Wizard::class)
+        ->call('openWizard')
+        ->set('name', 'Mauvais format')
+        ->set('rulesDocument', UploadedFile::fake()->create('reglement.docx', 10))
+        ->call('save')
+        ->assertHasErrors(['rulesDocument' => 'mimes']);
+
+    // La création entière est refusée : un challenge à moitié créé laisserait
+    // l'agent croire que son règlement est parti.
+    $this->assertDatabaseMissing('challenges', ['name' => 'Mauvais format']);
+});
+
+it('refuses a wizard rules document over five megabytes', function (): void {
+    Storage::fake('local');
+
+    Livewire::actingAs(challengesUser('bonus'))
+        ->test(Wizard::class)
+        ->call('openWizard')
+        ->set('name', 'Trop lourd')
+        ->set('rulesDocument', UploadedFile::fake()->create('reglement.pdf', 5121, 'application/pdf'))
+        ->call('save')
+        ->assertHasErrors(['rulesDocument' => 'max']);
+
+    $this->assertDatabaseMissing('challenges', ['name' => 'Trop lourd']);
+});
+
+it('creates the challenge but ignores the rules document without the permission', function (): void {
+    Storage::fake('local');
+
+    // Créer un challenge et joindre son règlement sont deux droits distincts :
+    // sans le second, la création aboutit et le document est laissé de côté.
+    $user = User::factory()->create(['is_active' => true]);
+    $user->givePermissionTo([
+        BackOfficeModule::Challenges->permission(),
+        Permission::ChallengesCreate->value,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Wizard::class)
+        ->call('openWizard')
+        ->set('name', 'Sans le droit')
+        ->set('rulesDocument', UploadedFile::fake()->create('reglement.pdf', 10, 'application/pdf'))
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $challenge = Challenge::query()->where('name', 'Sans le droit')->sole();
+
+    $this->assertNull($challenge->rules_document_path);
+    $this->assertDatabaseMissing('audit_logs', [
+        'action' => AuditAction::ChallengeRulesAttached->value,
+        'subject_id' => $challenge->id,
+    ]);
 });
 
 it('serves the rules document to a permitted user and 403s otherwise', function (): void {

@@ -21,7 +21,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Enums/DriverStatus.php,app/Services/Yango/**,app/Http/Middleware/EnsureDriverIsActive.php | .ai/rules/http-middleware.md |
 | app/Http/** | .ai/rules/http.md |
 | resources/js/app.js | .ai/rules/js.md |
-| app/Livewire/Challenges/Show.php | .ai/rules/livewire-challenges.md |
+| app/Livewire/Challenges/Show.php, app/Livewire/Challenges/Wizard.php | .ai/rules/livewire-challenges.md |
 | app/Services/Cnps/**,app/Http/Resources/CnpsStatementPayload.php,app/Livewire/Cnps/** | .ai/rules/livewire-cnps.md |
 | app/Livewire/** | .ai/rules/livewire.md |
 | app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/middleware.md |
