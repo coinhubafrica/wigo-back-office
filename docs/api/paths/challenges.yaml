@@ -16,8 +16,17 @@
       `rules_document` porte le règlement du challenge quand il en a un, par
       URL signée valable une heure.
 
-      `meta.weekly_history` porte les douze dernières semaines de courses
-      terminées, de la plus ancienne à la semaine en cours.
+      `meta.current_week` porte les courses terminées de la semaine en cours,
+      `meta.weekly_history` les douze dernières semaines, de la plus ancienne
+      à la semaine en cours, et `meta.challenge_counts` le nombre de
+      challenges en cours par catégorie — toutes les clés présentes, même à
+      zéro.
+
+      `meta.prizes_won` porte les gains du conducteur tous challenges
+      confondus, du plus récent au plus ancien. Il ne double pas le bloc
+      `won` : celui-ci ne paraît que sur un challenge encore `active`, alors
+      qu'un gain se constate une fois la période finie — le challenge a alors
+      quitté `data`.
 
       Reste accessible à un conducteur radié, comme le profil : ses
       compteurs cessent simplement de progresser.
@@ -290,6 +299,54 @@
                 meta:
                   type: object
                   properties:
+                    current_week:
+                      type: object
+                      description: |-
+                        Courses terminées de la semaine ISO en cours. Vaut la
+                        dernière entrée de `weekly_history`, publié à part
+                        pour que le compteur de l'écran ne dépende pas de la
+                        longueur de l'historique.
+                      properties:
+                        week_iso:
+                          type: string
+                          examples:
+                            - '2026-W38'
+                        orders_completed:
+                          type: integer
+                          examples:
+                            - 124
+                      required:
+                        - week_iso
+                        - orders_completed
+                    challenge_counts:
+                      type: object
+                      description: |-
+                        Nombre de challenges en cours par catégorie, plus le
+                        total. Toutes les clés sont présentes même à zéro :
+                        ce sont les onglets de filtre de l'écran, pas une
+                        liste de ce qui existe.
+                      properties:
+                        total:
+                          type: integer
+                          examples:
+                            - 5
+                        leaderboard:
+                          type: integer
+                          examples:
+                            - 2
+                        raffle:
+                          type: integer
+                          examples:
+                            - 2
+                        surprise:
+                          type: integer
+                          examples:
+                            - 1
+                      required:
+                        - total
+                        - leaderboard
+                        - raffle
+                        - surprise
                     weekly_history:
                       type: array
                       items:
@@ -316,8 +373,104 @@
                           - label
                           - orders_completed
                           - current
+                    prizes_won:
+                      type: array
+                      description: |-
+                        Gains du conducteur, tous challenges confondus, du
+                        plus récent au plus ancien. `prize_name` et
+                        `prize_photo_url` sont `null` pour un gain en cash ;
+                        `amount` est `null` pour un lot physique.
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            examples:
+                              - 01HZY3M4N5P6Q7R8S9T0V1W2X3
+                          challenge_name:
+                            type: string
+                            examples:
+                              - 'Tombola Daba Guéhou'
+                          challenge_reference:
+                            type: string
+                            examples:
+                              - CH-2026-036
+                          type:
+                            type: string
+                            enum:
+                              - leaderboard
+                              - raffle
+                              - surprise
+                            example: raffle
+                          rank:
+                            type:
+                              - integer
+                              - 'null'
+                            description: "Rang du gagnant au classement, `null` hors classement."
+                            examples:
+                              - 28
+                          amount:
+                            type:
+                              - integer
+                              - 'null'
+                            description: 'Montant en FCFA, `null` pour un lot physique.'
+                            examples:
+                              - 5000
+                          prize_name:
+                            type:
+                              - string
+                              - 'null'
+                            examples:
+                              - 'Téléviseur 43 pouces'
+                          prize_photo_url:
+                            type:
+                              - string
+                              - 'null'
+                            examples:
+                              - 'https://cdn.wigopro.example/challenges/televiseur.jpg'
+                          drawn_at:
+                            type:
+                              - string
+                              - 'null'
+                            examples:
+                              - '2026-09-05T10:00:00Z'
+                          credited:
+                            type: boolean
+                          credited_at:
+                            type:
+                              - string
+                              - 'null'
+                            description: "Dépôt confirmé, `null` tant qu'il ne l'est pas."
+                            examples:
+                              - '2026-09-06T09:12:00Z'
+                          collection_note:
+                            type:
+                              - string
+                              - 'null'
+                            description: |-
+                              Consigne de retrait, pour un lot physique
+                              seulement : un gain en cash est crédité sur le
+                              compte Yango, il n'y a rien à venir chercher.
+                            examples:
+                              - "À retirer au siège ATCP · pièce d'identité"
+                        required:
+                          - id
+                          - challenge_name
+                          - challenge_reference
+                          - type
+                          - rank
+                          - amount
+                          - prize_name
+                          - prize_photo_url
+                          - drawn_at
+                          - credited
+                          - credited_at
+                          - collection_note
                   required:
+                    - current_week
+                    - challenge_counts
                     - weekly_history
+                    - prizes_won
               required:
                 - message
                 - data

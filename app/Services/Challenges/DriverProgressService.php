@@ -6,11 +6,13 @@ use App\Enums\ChallengeType;
 use App\Enums\YangoOrderStatus;
 use App\Models\Challenge;
 use App\Models\ChallengeTicket;
+use App\Models\ChallengeWinner;
 use App\Models\Driver;
 use App\Models\DriverDailyActivity;
 use App\Models\YangoOrder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Progression d'un conducteur sur un challenge, telle que l'application
@@ -165,6 +167,98 @@ class DriverProgressService
         }
 
         return $history;
+    }
+
+    /**
+     * Courses terminées sur la semaine ISO en cours.
+     *
+     * L'écran mobile en fait deux choses : le grand compteur du haut et la
+     * barre hachurée du graphique. Il vaut la dernière entrée de
+     * `weeklyHistory()`, mais la charge utile le publie à part plutôt que de
+     * laisser l'application le déduire d'un indice de tableau — le jour où la
+     * fenêtre de l'historique change, le compteur, lui, ne bouge pas.
+     */
+    public function currentWeekOrders(Driver $driver): int
+    {
+        return (int) DriverDailyActivity::query()
+            ->where('driver_id', $driver->id)
+            ->where('activity_date', '>=', Carbon::now()->startOfWeek()->toDateString())
+            ->sum('orders_completed');
+    }
+
+    /**
+     * Gains du conducteur, tous challenges confondus, du plus récent au plus
+     * ancien.
+     *
+     * Distinct du bloc `won` d'un challenge : celui-ci ne paraît que sur les
+     * challenges **en cours**, or un gain se constate précisément quand la
+     * période est finie — l'écran des gains serait donc toujours vide s'il ne
+     * lisait que `data`. La lecture part des gagnants, pas des challenges :
+     * c'est la table qui porte l'index `(driver_id, credited_at)`.
+     *
+     * @return list<array{
+     *     id: string,
+     *     challenge_name: string,
+     *     challenge_reference: string,
+     *     type: 'leaderboard'|'raffle'|'surprise',
+     *     rank: int|null,
+     *     amount: int|null,
+     *     prize_name: string|null,
+     *     prize_photo_url: string|null,
+     *     drawn_at: string|null,
+     *     credited: bool,
+     *     credited_at: string|null,
+     *     collection_note: string|null,
+     * }>
+     */
+    public function prizesWon(Driver $driver, int $limit = 20): array
+    {
+        return ChallengeWinner::query()
+            ->where('driver_id', $driver->id)
+            ->with(['prize', 'challenge.prize'])
+            /*
+            | Un gain non encore déposé n'a pas de `credited_at` : trier sur
+            | cette seule colonne renverrait les gains les plus frais en fin
+            | de liste. Le tirage du challenge date le gain, le dépôt ne fait
+            | que le confirmer.
+            */
+            ->join('challenges', 'challenges.id', '=', 'challenge_winners.challenge_id')
+            ->orderByDesc(DB::raw('coalesce(challenges.drawn_at, challenge_winners.credited_at)'))
+            ->orderByDesc('challenge_winners.id')
+            ->limit($limit)
+            ->select('challenge_winners.*')
+            ->get()
+            ->map(function (ChallengeWinner $winner): array {
+                $prize = $winner->prize ?? $winner->challenge->prize;
+
+                return [
+                    'id' => $winner->id,
+                    'challenge_name' => $winner->challenge->name,
+                    'challenge_reference' => $winner->challenge->reference,
+                    /**
+                     * @var 'leaderboard'|'raffle'|'surprise'
+                     */
+                    'type' => $winner->challenge->type->value,
+                    'rank' => $winner->rank,
+                    'amount' => $winner->amount,
+                    'prize_name' => $prize?->name,
+                    'prize_photo_url' => $prize?->photo_url === null
+                        ? null
+                        : Storage::url($prize->photo_url),
+                    'drawn_at' => $winner->challenge->drawn_at?->toIso8601String(),
+                    'credited' => (bool) $winner->credited,
+                    'credited_at' => $winner->credited_at?->toIso8601String(),
+                    /*
+                    | La consigne de retrait ne vaut que pour un lot physique :
+                    | un gain en cash est crédité sur le compte Yango, il n'y
+                    | a rien à venir chercher. Même règle que le bloc `won`.
+                    */
+                    'collection_note' => $prize === null
+                        ? null
+                        : __('api.prize_collection_note'),
+                ];
+            })
+            ->all();
     }
 
     /**
