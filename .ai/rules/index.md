@@ -31,6 +31,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | routes/channels.php | .ai/rules/routes.md |
 | routes/web.php, routes/api.php | .ai/rules/routing-domains.md |
 | database/seeders/** | .ai/rules/seeders.md |
+| app/Http/Controllers/Api/V1/ChallengeController.php,app/Services/Challenges/DriverProgressService.php | .ai/rules/services-challenges.md |
 | app/Settings/** | .ai/rules/settings.md |
 | app/Http/Controllers/Api/V1/ShopController.php,app/Services/Shop/**,app/Models/ShopOrderDocument.php,app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/shop-models.md |
 | app/Livewire/Shop/** | .ai/rules/shop.md |

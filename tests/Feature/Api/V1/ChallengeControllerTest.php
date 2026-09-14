@@ -28,7 +28,12 @@ it('returns the envelope with the weekly history', function (): void {
 
     $this->getJson(route('api.v1.challenges'))
         ->assertOk()
-        ->assertJsonStructure(['message', 'data', 'meta' => ['weekly_history']]);
+        ->assertJsonStructure(['message', 'data', 'meta' => [
+            'current_week',
+            'challenge_counts',
+            'weekly_history',
+            'prizes_won',
+        ]]);
 });
 
 it('reports progress towards the next ticket for a ticket based raffle', function (): void {
@@ -385,6 +390,180 @@ it('only lists active challenges', function (): void {
     $this->getJson(route('api.v1.challenges'))
         ->assertOk()
         ->assertJsonCount(0, 'data');
+});
+
+it('reports the orders completed on the current week', function (): void {
+    $driver = Driver::factory()->create();
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    DriverDailyActivity::factory()->create([
+        'driver_id' => $driver->id,
+        'activity_date' => Carbon::now()->startOfWeek()->toDateString(),
+        'orders_completed' => 80,
+    ]);
+    DriverDailyActivity::factory()->create([
+        'driver_id' => $driver->id,
+        'activity_date' => Carbon::now()->startOfWeek()->addDay()->toDateString(),
+        'orders_completed' => 44,
+    ]);
+    // Semaine précédente : elle ne doit pas entrer dans le compteur.
+    DriverDailyActivity::factory()->create([
+        'driver_id' => $driver->id,
+        'activity_date' => Carbon::now()->startOfWeek()->subWeek()->toDateString(),
+        'orders_completed' => 87,
+    ]);
+
+    $response = $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    $response->assertJsonPath('meta.current_week.orders_completed', 124);
+    $response->assertJsonPath('meta.current_week.week_iso', Carbon::now()->format('o-\WW'));
+    // Le compteur vaut la dernière entrée de l'historique.
+    $response->assertJsonPath('meta.weekly_history.11.orders_completed', 124);
+});
+
+it('counts the challenges in progress by category', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+    raffle();
+    raffle();
+    leaderboard(places: 3);
+    Challenge::factory()->surprise()->active()->create([
+        'period_start' => Carbon::now()->startOfWeek(),
+        'period_end' => Carbon::now()->endOfWeek(),
+    ]);
+
+    $response = $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    $response->assertJsonPath('meta.challenge_counts.total', 4);
+    $response->assertJsonPath('meta.challenge_counts.raffle', 2);
+    $response->assertJsonPath('meta.challenge_counts.leaderboard', 1);
+    $response->assertJsonPath('meta.challenge_counts.surprise', 1);
+});
+
+it('keeps every category key even at zero', function (): void {
+    Sanctum::actingAs(Driver::factory()->create(), ['mobile:*']);
+
+    $this->getJson(route('api.v1.challenges'))
+        ->assertOk()
+        ->assertJsonPath('meta.challenge_counts', [
+            'total' => 0,
+            'leaderboard' => 0,
+            'raffle' => 0,
+            'surprise' => 0,
+        ]);
+});
+
+it('lists a prize won on a challenge that has left the active list', function (): void {
+    $driver = Driver::factory()->create();
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $prize = Prize::factory()->create(['name' => 'Téléviseur 43 pouces']);
+    $challenge = Challenge::factory()->raffle()->create([
+        'status' => ChallengeStatus::Completed,
+        'name' => 'Tombola Daba Guéhou',
+        'prize_id' => $prize->id,
+        'drawn_at' => now()->subDays(4),
+    ]);
+
+    ChallengeWinner::factory()->create([
+        'challenge_id' => $challenge->id,
+        'driver_id' => $driver->id,
+        'prize_id' => $prize->id,
+        'amount' => null,
+    ]);
+
+    $response = $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    // Le challenge est clos : il ne figure plus dans `data`, mais le gain, lui,
+    // reste à l'écran.
+    $response->assertJsonCount(0, 'data');
+    $response->assertJsonCount(1, 'meta.prizes_won');
+    $response->assertJsonPath('meta.prizes_won.0.prize_name', 'Téléviseur 43 pouces');
+    $response->assertJsonPath('meta.prizes_won.0.challenge_name', 'Tombola Daba Guéhou');
+    $response->assertJsonPath('meta.prizes_won.0.challenge_reference', $challenge->reference);
+    $response->assertJsonPath('meta.prizes_won.0.type', 'raffle');
+    $response->assertJsonPath('meta.prizes_won.0.collection_note', __('api.prize_collection_note'));
+});
+
+it('carries no collection note for a cash prize', function (): void {
+    $driver = Driver::factory()->create();
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $challenge = Challenge::factory()->create([
+        'status' => ChallengeStatus::Completed,
+        'prize_id' => null,
+        'drawn_at' => now()->subDays(2),
+    ]);
+
+    ChallengeWinner::factory()->create([
+        'challenge_id' => $challenge->id,
+        'driver_id' => $driver->id,
+        'prize_id' => null,
+        'rank' => 28,
+        'amount' => 5000,
+        'credited' => true,
+    ]);
+
+    $response = $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    // Un gain en cash est crédité sur le compte Yango : il n'y a rien à venir
+    // chercher, donc pas de consigne de retrait.
+    $response->assertJsonPath('meta.prizes_won.0.collection_note', null);
+    $response->assertJsonPath('meta.prizes_won.0.prize_name', null);
+    $response->assertJsonPath('meta.prizes_won.0.amount', 5000);
+    $response->assertJsonPath('meta.prizes_won.0.rank', 28);
+    $response->assertJsonPath('meta.prizes_won.0.credited', true);
+});
+
+it('orders the prizes won from the most recent', function (): void {
+    $driver = Driver::factory()->create();
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $older = Challenge::factory()->create([
+        'status' => ChallengeStatus::Completed,
+        'name' => 'Ancien',
+        'drawn_at' => now()->subDays(20),
+    ]);
+    $newer = Challenge::factory()->create([
+        'status' => ChallengeStatus::Completed,
+        'name' => 'Récent',
+        'drawn_at' => now()->subDay(),
+    ]);
+
+    foreach ([$older, $newer] as $challenge) {
+        ChallengeWinner::factory()->create([
+            'challenge_id' => $challenge->id,
+            'driver_id' => $driver->id,
+            'prize_id' => null,
+        ]);
+    }
+
+    $response = $this->getJson(route('api.v1.challenges'))->assertOk();
+
+    $response->assertJsonPath('meta.prizes_won.0.challenge_name', 'Récent');
+    $response->assertJsonPath('meta.prizes_won.1.challenge_name', 'Ancien');
+});
+
+it('never lists another drivers prize', function (): void {
+    $mine = Driver::factory()->create();
+    $other = Driver::factory()->create();
+
+    $challenge = Challenge::factory()->create([
+        'status' => ChallengeStatus::Completed,
+        'drawn_at' => now()->subDay(),
+    ]);
+
+    ChallengeWinner::factory()->create([
+        'challenge_id' => $challenge->id,
+        'driver_id' => $other->id,
+        'prize_id' => null,
+    ]);
+
+    Sanctum::actingAs($mine, ['mobile:*']);
+
+    $this->getJson(route('api.v1.challenges'))
+        ->assertOk()
+        ->assertJsonCount(0, 'meta.prizes_won');
 });
 
 /**
