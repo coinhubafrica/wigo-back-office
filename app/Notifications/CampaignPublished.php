@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Campaign;
-use App\Notifications\Channels\PushChannel;
+use App\Notifications\Concerns\BuildsFcmMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -16,7 +16,7 @@ use Illuminate\Notifications\Notification;
  */
 class CampaignPublished extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use BuildsFcmMessage, Queueable;
 
     public function __construct(private Campaign $campaign) {}
 
@@ -25,7 +25,7 @@ class CampaignPublished extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', PushChannel::class];
+        return $this->pushedChannels();
     }
 
     /**

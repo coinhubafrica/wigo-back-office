@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Message;
-use App\Notifications\Channels\PushChannel;
+use App\Notifications\Concerns\BuildsFcmMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
  */
 class SupportMessageReceived extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use BuildsFcmMessage, Queueable;
 
     public function __construct(private Message $message) {}
 
@@ -30,7 +30,7 @@ class SupportMessageReceived extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', PushChannel::class];
+        return $this->pushedChannels();
     }
 
     /**

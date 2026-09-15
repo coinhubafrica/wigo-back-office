@@ -216,8 +216,12 @@ class CampaignDispatcher
         /*
         | Hors du `try`, et après avoir constaté la remise : un push raté n'est
         | pas un échec de remise. Le message est dans le fil du conducteur,
-        | c'est lui le produit ; le push n'est qu'un réveil, et `PushSender`
-        | rend `false` sans jamais lever.
+        | c'est lui le produit ; le push n'est qu'un réveil.
+        |
+        | `CampaignPublished` est `ShouldQueue` : l'envoi FCM part sur la file
+        | et son échec ne remonte jamais dans ce job de lot. En file `sync`
+        | (donc en test), il n'y a pas de jeton à pousser, donc pas d'appel
+        | réseau — cf. `routeNotificationForFcm()`.
         */
         $driver->notify(new CampaignPublished($campaign));
     }

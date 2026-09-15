@@ -7,15 +7,16 @@
 use App\Models\Challenge;
 use App\Models\Driver;
 use App\Notifications\ChallengeTicketEarned;
-use App\Notifications\Channels\PushChannel;
+use NotificationChannels\Fcm\FcmChannel;
 
 it('writes to the database and wakes the phone', function (): void {
+    fakeFcm();
     $driver = Driver::factory()->create();
     $challenge = Challenge::factory()->raffle()->active()->create();
 
     $notification = new ChallengeTicketEarned($challenge, 1, 4);
 
-    expect($notification->via($driver))->toBe(['database', PushChannel::class])
+    expect($notification->via($driver))->toBe(['database', FcmChannel::class])
         // La transaction qui écrit les tickets doit être close avant l'envoi :
         // sinon un échec au commit annonce un ticket qui n'existe pas.
         ->and($notification->afterCommit)->toBeTrue();

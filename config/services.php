@@ -36,17 +36,10 @@ return [
     ],
 
     /*
-    | Firebase Cloud Messaging — réveil de l'application mobile.
-    |
-    | Les messages sont « data-only » : la ligne écrite dans `notifications`
-    | fait foi, le push ne sert qu'à réveiller une application en arrière-plan.
+    | Firebase Cloud Messaging n'a pas d'entrée ici : `kreait/laravel-firebase`
+    | lit `FIREBASE_CREDENTIALS` et tire l'identifiant de projet du fichier de
+    | compte de service. Une seule source de vérité, pas deux.
     */
-
-    'fcm' => [
-        'driver' => env('FCM_DRIVER', 'log'),
-        'project_id' => env('FCM_PROJECT_ID'),
-        'access_token' => env('FCM_ACCESS_TOKEN'),
-    ],
 
     'sms' => [
         'driver' => env('SMS_DRIVER', 'log'),

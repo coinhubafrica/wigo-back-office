@@ -69,6 +69,12 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
                 Route::get('/', [AuthController::class, 'me'])->name('me');
                 Route::put('push-token', [AuthController::class, 'updatePushToken'])->name('push-token');
 
+                // Déconnexion : l'appareil oublie son jeton avant de rendre
+                // le jeton d'accès, sinon il reçoit les push d'un conducteur
+                // déconnecté.
+                Route::delete('push-token', [AuthController::class, 'forgetPushToken'])
+                    ->name('push-token.forget');
+
                 // Photo : lecture par URL signée, dépôt ouvert même radié.
                 Route::post('photo', [AuthController::class, 'updatePhoto'])->name('photo.update');
                 Route::get('photo/{driver}', [AuthController::class, 'photo'])

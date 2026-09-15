@@ -2,13 +2,10 @@
 
 namespace App\Providers;
 
-use App\Contracts\PushSender;
 use App\Contracts\SmsSender;
 use App\Contracts\WaveClient;
 use App\Contracts\YangoClient;
 use App\Contracts\YangoDirectory;
-use App\Services\Fcm\HttpPushSender;
-use App\Services\Fcm\LogPushSender;
 use App\Services\Sms\HttpSmsSender;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Wave\FakeWaveClient;
@@ -31,14 +28,6 @@ class IntegrationServiceProvider extends ServiceProvider
             }
 
             return new HttpSmsSender;
-        });
-
-        $this->app->singleton(PushSender::class, function (): PushSender {
-            if ($this->app->environment('testing') || config('services.fcm.driver') === 'log') {
-                return new LogPushSender;
-            }
-
-            return new HttpPushSender;
         });
 
         $this->app->singleton(WaveClient::class, function (): WaveClient {
