@@ -191,8 +191,15 @@ it('a fleet failure leaves the transaction to review', function (): void {
     // Wave a encaissé, Yango a refusé : l'argent est parti sans arriver.
     $this->assertSame(TransactionStatus::ToReview, $recharge->status);
     $this->assertSame('Crédit du solde Yango refusé', $recharge->failure_reason);
-    $this->assertSame(0, $driver->notifications()->count());
     $this->assertDatabaseHas('audit_logs', ['action' => 'recharge.yango_failed']);
+
+    // Le conducteur a payé sans être crédité : l'audit et les logs parlent aux
+    // agents, cette ligne est la seule qui lui parle à lui.
+    $this->assertSame(1, $driver->notifications()->count());
+    $this->assertSame(
+        'recharge_needs_review',
+        $driver->notifications()->sole()->data['type'],
+    );
 });
 
 it('a webhook for an unknown reference is ignored', function (): void {

@@ -9,6 +9,7 @@ use App\Models\PickupPoint;
 use App\Models\Product;
 use App\Models\ShopOrder;
 use App\Models\User;
+use App\Notifications\ShopOrderStatusChanged;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -172,6 +173,18 @@ class ShopOrderService
         }
 
         $order->update([...$attributes, 'status' => $target]);
+
+        /*
+        | Toute transition passe par ici : une seule notification couvre le
+        | cycle de vie, plutôt qu'un rappel à poser dans chaque méthode — et
+        | qu'on oublierait à la prochaine.
+        |
+        | `Ordered` et `Collected` ne réveillent personne : le conducteur
+        | vient de commander, ou il est au comptoir.
+        */
+        if (ShopOrderStatusChanged::notifies($target)) {
+            $order->driver->notify(new ShopOrderStatusChanged($order->refresh()));
+        }
 
         return $order;
     }

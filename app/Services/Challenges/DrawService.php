@@ -10,6 +10,7 @@ use App\Models\ChallengeTicket;
 use App\Models\ChallengeWinner;
 use App\Models\Driver;
 use App\Models\YangoOrder;
+use App\Notifications\ChallengeWon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -99,6 +100,18 @@ class DrawService
             'drawn_at' => now(),
             'status' => ChallengeStatus::PayoutPending,
         ]);
+
+        /*
+        | Après la mise à jour, et depuis `draw()` plutôt que des deux
+        | fabriques de gagnants : c'est ici que les deux types se rejoignent.
+        |
+        | Un challenge tiré sort de sa période, donc de `GET /challenges` qui
+        | ne liste que les `active` : sans cette ligne le gagnant ne peut
+        | constater son gain qu'en déroulant la liste des gains passés.
+        */
+        foreach ($winners as $winner) {
+            $winner->driver->notify(new ChallengeWon($winner));
+        }
 
         return $winners;
     }

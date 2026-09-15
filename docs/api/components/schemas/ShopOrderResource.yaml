@@ -87,6 +87,42 @@ properties:
     type: string
     examples:
       - '2026-08-29T09:42:11Z'
+  ready_at:
+    type:
+      - string
+      - 'null'
+    description: Mise à disposition. `null` tant que la commande n'est pas prête.
+    examples:
+      - '2026-08-30T11:02:00Z'
+  dispatched_at:
+    type:
+      - string
+      - 'null'
+    description: Remise au livreur. `null` hors livraison, ou avant le départ.
+    examples:
+      - '2026-08-30T14:20:00Z'
+  completed_at:
+    type:
+      - string
+      - 'null'
+    description: Retrait au comptoir ou livraison effective.
+    examples:
+      - '2026-08-31T09:15:00Z'
+  cancelled_at:
+    type:
+      - string
+      - 'null'
+    examples:
+      - '2026-08-30T16:45:00Z'
+  cancellation_reason:
+    type:
+      - string
+      - 'null'
+    description: |-
+      Motif d'annulation, tel que saisi au back-office. `null` tant que la
+      commande n'est pas annulée.
+    examples:
+      - Pièce indisponible chez le fournisseur
 required:
   - id
   - ref
@@ -96,4 +132,9 @@ required:
   - pickup_code
   - total
   - placed_at
+  - ready_at
+  - dispatched_at
+  - completed_at
+  - cancelled_at
+  - cancellation_reason
 title: ShopOrderResource

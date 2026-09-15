@@ -65,6 +65,18 @@ class ShopOrderResource extends JsonResource
                 ->map(fn (ShopOrderDocument $document): array => (new ShopOrderDocumentResource($document))
                     ->toArray($request))->all()),
             'placed_at' => $this->ordered_at->toIso8601String(),
+            'ready_at' => $this->ready_at?->toIso8601String(),
+            'dispatched_at' => $this->dispatched_at?->toIso8601String(),
+            'completed_at' => $this->completed_at?->toIso8601String(),
+            'cancelled_at' => $this->cancelled_at?->toIso8601String(),
+            /**
+             * Motif d'annulation, tel que saisi au back-office. `null` tant
+             * que la commande n'est pas annulée — sans lui, le conducteur
+             * lisait « annulée » sans savoir pourquoi.
+             *
+             * @example "Pièce indisponible chez le fournisseur"
+             */
+            'cancellation_reason' => $this->cancellation_reason,
         ];
     }
 }
