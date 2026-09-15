@@ -13,6 +13,8 @@ use App\Models\Driver;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\RechargeCredited;
+use App\Notifications\RechargeFailed;
+use App\Notifications\RechargeNeedsReview;
 use App\Settings\RechargeSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -72,6 +74,14 @@ class RechargeService
                 'status' => TransactionStatus::Failed,
                 'failure_reason' => 'Session de paiement refusée par Wave',
             ]);
+
+            /*
+            | Le conducteur voit déjà l'erreur à l'écran — il est dans
+            | l'application, c'est lui qui vient d'appuyer. La ligne sert à
+            | l'historique : elle dit qu'aucun montant n'a été prélevé, ce que
+            | l'écran de recharge ne redira pas demain.
+            */
+            $driver->notify(new RechargeFailed($transaction));
 
             throw ValidationException::withMessages([
                 'amount' => __('api.recharge.provider_unavailable'),
@@ -311,6 +321,14 @@ class RechargeService
                 'driver' => $driver->getKey(),
                 'amount' => $transaction->amount,
             ]);
+
+            /*
+            | Le conducteur a payé et son solde n'a pas bougé : c'est le seul
+            | échec de ce service qui lui coûte de l'argent, et il ne peut rien
+            | y faire seul. Hors des logs et de l'audit, qui ne parlent qu'aux
+            | agents.
+            */
+            $driver->notify(new RechargeNeedsReview($transaction->refresh()));
 
             return;
         }

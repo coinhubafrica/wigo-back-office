@@ -10,8 +10,6 @@ Le filtre de statut suit désormais le `work_status` de Yango — « En activit�
 
 The fiche 360° (`Show.php`/`show.blade.php`) intentionally omits: courses/semaine, solde Yango, CNPS status — these render as "—" placeholders (grid of 3 stat cards) — and the "Requêtes du conducteur" panel is dropped entirely. All three depend on data that doesn't exist yet (Fleet trip sync, CNPS declarations, support tickets). Add them back only once those modules/tables exist; don't fake the data or the panel in the meantime.
 
-Photo moderation is real: `drivers.photo_status` (nullable, `DriverPhotoStatus` enum: pending/approved/rejected) drives a banner shown only when `hasPhotoPendingModeration()` is true. `approvePhoto()`/`rejectPhoto()` just flip the enum — no notification dispatch to mobile yet (that's a mobile-API concern, not in scope here).
-
 **Suspend/reactivate n'existe plus** : couper un conducteur se décide sur la plateforme Yango et nous revient par `fired`. La fiche n'offre aucun geste sur le statut ; elle signale seulement une radiation par un bandeau `err`, sans action attachée. `suspension_reason`, `Permission::DriversSuspend` et les actions d'audit associées sont supprimés — le module Chauffeurs n'a plus aucun geste journalisé. Ne pas les réintroduire sans demande explicite.
 
 ## The fiche CNPS panel is real now; trips and Yango balance are still placeholders
