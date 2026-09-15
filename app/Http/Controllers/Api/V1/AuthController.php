@@ -153,6 +153,25 @@ class AuthController extends Controller
     }
 
     /**
+     * Oublier le jeton FCM de l'appareil
+     *
+     * À appeler à la déconnexion, avant de rendre le jeton d'accès : sans
+     * cela, l'appareil continue de recevoir les push d'un conducteur qui
+     * s'est déconnecté — et le prochain à s'y connecter hériterait des
+     * notifications du précédent.
+     *
+     * Idempotent : oublier un jeton déjà absent répond 200.
+     *
+     * @response array{message: string, data: array<string, never>}
+     */
+    public function forgetPushToken(Request $request): JsonResponse
+    {
+        $this->driver($request)->forceFill(['fcm_token' => null])->save();
+
+        return $this->okApiResponse([], __('auth.push_token_forgotten'));
+    }
+
+    /**
      * Changer ma photo de profil
      *
      * Remplace la photo du conducteur : le profil est mis à jour aussitôt, il

@@ -360,6 +360,47 @@
                         "$ref": "#/components/responses/ValidationException"
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "Auth"
+                ],
+                "operationId": "v1.push-token.forget",
+                "description": "À appeler à la déconnexion, avant de rendre le jeton d'accès : sans\ncela, l'appareil continue de recevoir les push d'un conducteur qui\ns'est déconnecté — et le prochain à s'y connecter hériterait des\nnotifications du précédent.\n\nIdempotent : oublier un jeton déjà absent répond 200.",
+                "summary": "Oublier le jeton FCM de l'appareil",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "examples": [
+                                                "Jeton de notification oublié."
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
             }
         },
         "/me/photo": {

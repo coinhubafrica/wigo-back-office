@@ -202,6 +202,37 @@
         $ref: ../components/responses/AuthenticationException.yaml
       422:
         $ref: ../components/responses/ValidationException.yaml
+  delete:
+    operationId: v1.push-token.forget
+    description: |-
+      À appeler à la déconnexion, avant de rendre le jeton d'accès : sans
+      cela, l'appareil continue de recevoir les push d'un conducteur qui
+      s'est déconnecté — et le prochain à s'y connecter hériterait des
+      notifications du précédent.
+
+      Idempotent : oublier un jeton déjà absent répond 200.
+    summary: "Oublier le jeton FCM de l'appareil"
+    responses:
+      200:
+        description: ''
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  examples:
+                    - 'Jeton de notification oublié.'
+                data:
+                  type: object
+                  additionalProperties:
+                    type: object
+              required:
+                - message
+                - data
+      401:
+        $ref: ../components/responses/AuthenticationException.yaml
 /me/photo:
   post:
     operationId: v1.photo.update

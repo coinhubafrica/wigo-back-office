@@ -6,4 +6,5 @@ return [
     'throttle' => 'Trop de tentatives de connexion. Réessayez dans :seconds secondes.',
     'logged_out' => 'Vous avez été déconnecté.',
     'push_token_saved' => 'Jeton de notification enregistré.',
+    'push_token_forgotten' => 'Jeton de notification oublié.',
 ];

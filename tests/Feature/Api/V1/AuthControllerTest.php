@@ -304,6 +304,31 @@ it('requires a value for the push token', function (): void {
         ->assertJsonValidationErrors('fcm_token');
 });
 
+it('forgets the push token', function (): void {
+    $driver = Driver::factory()->create(['fcm_token' => 'token-abc']);
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $this->deleteJson(route('api.v1.push-token.forget'))->assertOk();
+
+    // Sans cela, l'appareil recevrait les push d'un conducteur déconnecté.
+    expect($driver->refresh()->fcm_token)->toBeNull();
+});
+
+it('forgets a push token that is already absent', function (): void {
+    // Idempotent : l'application appelle à chaque déconnexion, sans savoir
+    // si un jeton avait été enregistré.
+    $driver = Driver::factory()->create(['fcm_token' => null]);
+    Sanctum::actingAs($driver, ['mobile:*']);
+
+    $this->deleteJson(route('api.v1.push-token.forget'))->assertOk();
+
+    expect($driver->refresh()->fcm_token)->toBeNull();
+});
+
+it('refuses to forget a push token without authentication', function (): void {
+    $this->deleteJson(route('api.v1.push-token.forget'))->assertStatus(401);
+});
+
 it('revokes only the current token on logout', function (): void {
     $driver = Driver::factory()->create();
     $kept = $driver->createToken('Autre appareil', ['mobile:*']);
