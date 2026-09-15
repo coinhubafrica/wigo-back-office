@@ -3,19 +3,24 @@
 namespace App\Notifications;
 
 use App\Models\Transaction;
+use App\Notifications\Concerns\BuildsFcmMessage;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
 /**
  * « Votre recharge a été créditée. »
  *
  * Écrite en base d'abord : l'écran « Notifications » du mobile lit cette
- * table, le push FCM ne sera qu'un réveil. Ajouter ce canal se fera dans
- * `via()`, sans toucher au schéma ni aux appelants.
+ * table, le push FCM n'est qu'un réveil.
+ *
+ * `ShouldQueue` comme les autres notifications poussées : le canal FCM sort
+ * sur le réseau, et `CreditRechargeJob` ne doit pas porter cette latence — ni
+ * l'échec qui va avec.
  */
-class RechargeCredited extends Notification
+class RechargeCredited extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use BuildsFcmMessage, Queueable;
 
     public function __construct(private Transaction $transaction) {}
 
@@ -24,7 +29,7 @@ class RechargeCredited extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return $this->pushedChannels();
     }
 
     /**

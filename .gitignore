@@ -23,3 +23,7 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Compte de service Firebase : jamais dans le dépôt.
+firebase*.json
+storage/app/firebase*.json

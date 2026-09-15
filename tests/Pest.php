@@ -7,7 +7,9 @@ use App\Support\Docs\OpenApiSpec;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
+use Kreait\Firebase\Contract\Messaging;
 use Saloon\Http\Faking\MockResponse;
+use Tests\Support\FakeFirebaseMessaging;
 use Tests\TestCase;
 
 /*
@@ -415,4 +417,31 @@ function yangoConfigure(int $pageDelayMs = 0): void
     $yango->api_key = 'secret-key';
     $yango->page_delay_ms = $pageDelayMs;
     $yango->save();
+}
+
+/*
+|--------------------------------------------------------------------------
+| Helpers partagés — push FCM
+|--------------------------------------------------------------------------
+|
+| Le canal FCM résout `Messaging` dans le conteneur : y substituer la doublure
+| suffit à intercepter les envois, sans jamais sortir du process.
+|
+*/
+
+/**
+ * Substitue Firebase par une doublure et la rend, prête à être interrogée.
+ */
+function fakeFcm(): FakeFirebaseMessaging
+{
+    $messaging = new FakeFirebaseMessaging;
+
+    // Les notifications n'ouvrent le canal FCM que si Firebase est configuré
+    // — sinon le service lève à la résolution. La doublure remplace le
+    // service, encore faut-il que le canal soit retenu.
+    config()->set('firebase.projects.app.credentials', 'tests/firebase.json');
+
+    app()->instance(Messaging::class, $messaging);
+
+    return $messaging;
 }

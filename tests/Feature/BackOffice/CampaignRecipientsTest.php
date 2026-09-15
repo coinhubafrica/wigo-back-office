@@ -23,6 +23,7 @@ use App\Services\Support\CampaignDispatcher;
 use App\Services\Support\ConversationResolver;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Facades\Notification;
+use Kreait\Firebase\Exception\Messaging\ServerUnavailable;
 use Livewire\Livewire;
 
 beforeEach(function (): void {
@@ -143,9 +144,22 @@ it('marks the campaign failed only when nothing at all was delivered', function 
         ->and($campaign->deliveredCount())->toBe(0);
 });
 
+it('treats a campaign as delivered when Firebase is down', function (): void {
+    // Le cas réel : le conducteur a bien un jeton, c'est Firebase qui tombe.
+    // La remise ne doit pas en dépendre — le message est dans le fil.
+    Driver::factory()->create(['fcm_token' => 'jeton-valide']);
+    fakeFcm()->failWith(new ServerUnavailable('Firebase indisponible'));
+    $campaign = Campaign::factory()->create();
+
+    app(CampaignDispatcher::class)->dispatch($campaign);
+
+    expect($campaign->deliveredCount())->toBe(1)
+        ->and($campaign->failedCount())->toBe(0);
+});
+
 it('treats a message with a failed push as delivered', function (): void {
     // Le message déposé est le produit ; le push n'est qu'un réveil, et
-    // `PushSender` rend `false` sans jamais lever.
+    // sans jeton, le canal FCM s'arrête avant tout appel réseau.
     Driver::factory()->create(['fcm_token' => null]);
     $campaign = Campaign::factory()->create();
 

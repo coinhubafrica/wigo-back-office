@@ -227,4 +227,20 @@ class Driver extends Authenticatable
             ? Str::substr($initials, 0, 1).Str::substr($initials, -1)
             : $initials;
     }
+
+    /**
+     * Destination du canal FCM.
+     *
+     * Rendre `null` suffit à taire le push : le canal s'arrête avant tout
+     * appel réseau. La ligne en base, elle, est écrite quand même — c'est
+     * elle le produit, le push n'est qu'un réveil.
+     *
+     * Un seul jeton par conducteur : une réinstallation ou un second appareil
+     * perd le précédent. Le canal accepte déjà une liste, le jour où une table
+     * de jetons remplacera la colonne.
+     */
+    public function routeNotificationForFcm(): ?string
+    {
+        return $this->fcm_token;
+    }
 }

@@ -5,14 +5,12 @@
  * garde-fous qui vont avec.
  */
 
-use App\Contracts\PushSender;
 use App\Enums\DriverStatus;
 use App\Enums\SupportRequestCategory;
 use App\Models\Conversation;
 use App\Models\Driver;
 use App\Models\MessageAttachment;
 use App\Models\User;
-use App\Services\Fcm\LogPushSender;
 use App\Services\Support\MessageService;
 use App\Services\Support\SupportRequestService;
 use Illuminate\Http\UploadedFile;
@@ -210,6 +208,7 @@ it('refuses an attachment already sent', function (): void {
 });
 
 it('notifies the driver when an agent replies', function (): void {
+    $fcm = fakeFcm();
     $driver = Driver::factory()->create(['fcm_token' => 'jeton-de-test']);
     app(MessageService::class)->sendFromDriver($driver, 'Une question');
     $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
@@ -227,11 +226,14 @@ it('notifies the driver when an agent replies', function (): void {
     expect($notification->data['type'])->toBe('support_message')
         ->and($notification->data['deeplink'])->toBe('wigo://support');
 
-    /** @var LogPushSender $push */
-    $push = app(PushSender::class);
-    expect($push->sent())->toHaveCount(1)
+    expect($fcm->sent())->toHaveCount(1);
+
+    $payload = $fcm->sent()[0]['message']->toArray();
+    expect($fcm->sent()[0]['tokens'])->toBe(['jeton-de-test'])
         // FCM n'accepte que des chaînes dans un message data-only.
-        ->and($push->sent()[0]['data']['title'])->toBeString();
+        ->and($payload['data']['title'])->toBeString()
+        // Data-only : l'affichage reste à Flutter, le serveur ne compose rien.
+        ->and($payload)->not->toHaveKey('notification');
 });
 
 it('does not notify the driver about their own message', function (): void {
@@ -245,6 +247,7 @@ it('does not notify the driver about their own message', function (): void {
 });
 
 it('skips the push when the driver has no token', function (): void {
+    $fcm = fakeFcm();
     $driver = Driver::factory()->create(['fcm_token' => null]);
     app(MessageService::class)->sendFromDriver($driver, 'Une question');
     $conversation = Conversation::query()->where('driver_id', $driver->id)->sole();
@@ -257,9 +260,7 @@ it('skips the push when the driver has no token', function (): void {
 
     app(MessageService::class)->sendFromStaff($request->fresh(), $agent, 'Nous regardons');
 
-    /** @var LogPushSender $push */
-    $push = app(PushSender::class);
-    expect($push->sent())->toBeEmpty()
+    expect($fcm->sent())->toBeEmpty()
         // La ligne en base est écrite quand même : le push n'est qu'un réveil.
         ->and($driver->fresh()->notifications()->count())->toBe(1);
 });
