@@ -1,9 +1,12 @@
 <?php
 
 use App\Enums\DriverStatus;
+use App\Enums\Permission;
 use App\Enums\ShopOrderStatus;
 use App\Enums\SupportRequestStatus;
 use App\Enums\TransactionType;
+use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
+use App\Jobs\SyncYangoDriverOrdersJob;
 use App\Livewire\Drivers\Show;
 use App\Models\Conversation;
 use App\Models\Driver;
@@ -12,8 +15,11 @@ use App\Models\SupportRequest;
 use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Saloon\Http\Faking\MockClient;
+use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function (): void {
     $this->seed(RolePermissionSeeder::class);
@@ -305,3 +311,116 @@ function driverFicheUser(string $role): User
 
     return $user;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Rafraîchissement depuis Yango
+|--------------------------------------------------------------------------
+|
+| La passe parc n'atteint pas la fin d'un grand parc avant que le quota la
+| coupe : un agent au téléphone doit pouvoir redemander cette fiche-ci sans
+| attendre son tour.
+*/
+
+it('refreshes the driver from Yango and queues their recent orders', function (): void {
+    yangoConfigure();
+
+    Queue::fake();
+
+    $driver = Driver::factory()->create([
+        'yango_id' => 'YAN-001',
+        'first_name' => 'Ancien',
+        'last_name' => 'NOM',
+        'phone' => '+2250700000009',
+    ]);
+
+    MockClient::global([
+        GetDriverProfileRequest::class => yangoContractorProfileResponse(
+            yangoContractorProfile(phone: '+2250700000009', firstName: 'Awa', lastName: 'TRAORE'),
+        ),
+    ]);
+
+    Livewire::actingAs(driverFicheUser('gestionnaire'))
+        ->test(Show::class, ['driver' => $driver])
+        ->call('refreshFromYango')
+        ->assertDispatched('toast');
+
+    expect($driver->fresh()->first_name)->toBe('Awa');
+
+    // Le profil est relu sur place, les courses sont mises en file : une
+    // boucle de curseur n'a rien à faire dans le temps d'une requête web.
+    Queue::assertPushed(SyncYangoDriverOrdersJob::class, 1);
+
+    MockClient::destroyGlobal();
+});
+
+it('says so and changes nothing when Yango no longer knows the driver', function (): void {
+    yangoConfigure();
+
+    Queue::fake();
+
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-DISPARU', 'first_name' => 'Awa']);
+
+    MockClient::global([
+        GetDriverProfileRequest::class => yangoRefusal(Response::HTTP_NOT_FOUND),
+    ]);
+
+    Livewire::actingAs(driverFicheUser('gestionnaire'))
+        ->test(Show::class, ['driver' => $driver])
+        ->call('refreshFromYango')
+        ->assertDispatched('toast');
+
+    expect($driver->fresh()->first_name)->toBe('Awa');
+
+    Queue::assertNothingPushed();
+
+    MockClient::destroyGlobal();
+});
+
+it('says so and changes nothing when Yango refuses the key', function (): void {
+    // Un refus n'est pas une absence : le confondre ferait passer une clé
+    // expirée pour une radiation.
+    yangoConfigure();
+
+    Queue::fake();
+
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001', 'first_name' => 'Awa']);
+
+    MockClient::global([
+        GetDriverProfileRequest::class => yangoRefusal(Response::HTTP_UNAUTHORIZED),
+    ]);
+
+    Livewire::actingAs(driverFicheUser('gestionnaire'))
+        ->test(Show::class, ['driver' => $driver])
+        ->call('refreshFromYango')
+        ->assertDispatched('toast');
+
+    expect($driver->fresh()->first_name)->toBe('Awa');
+
+    Queue::assertNothingPushed();
+
+    MockClient::destroyGlobal();
+});
+
+it('refuses the refresh to an agent who only has the module', function (): void {
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+
+    $user = User::factory()->create(['is_active' => true]);
+    $user->givePermissionTo(Permission::ModuleDrivers->value);
+
+    Livewire::actingAs($user->fresh())
+        ->test(Show::class, ['driver' => $driver])
+        ->call('refreshFromYango')
+        ->assertForbidden();
+});
+
+it('hides the refresh button from an agent who only has the module', function (): void {
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001']);
+
+    $user = User::factory()->create(['is_active' => true]);
+    $user->givePermissionTo(Permission::ModuleDrivers->value);
+
+    Livewire::actingAs($user->fresh())
+        ->test(Show::class, ['driver' => $driver])
+        ->assertDontSee(__('backoffice.yango_sync.refresh'));
+});

@@ -16,12 +16,13 @@ beforeEach(function (): void {
 it('shows each role the expected number of modules', function (string $role, int $expected): void {
     $this->assertCount($expected, moduleAccessUser($role)->visibleModules());
 })->with([
-    'gestionnaire' => ['gestionnaire', 8],
-    'bonus' => ['bonus', 11],
+    // + « Synchronisation Yango », rangé sous Parc avec Chauffeurs et Véhicules.
+    'gestionnaire' => ['gestionnaire', 9],
+    'bonus' => ['bonus', 12],
     'stock' => ['stock', 3],
     // + « Utilisateurs et rôles », qui a quitté les Paramètres.
     'admin' => ['admin', 4],
-    'direction' => ['direction', 14],
+    'direction' => ['direction', 15],
 ]);
 
 it('lets the bonus role reach the challenges module', function (): void {

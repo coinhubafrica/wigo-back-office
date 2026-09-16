@@ -4,6 +4,8 @@
  * Fiche véhicule : identité, affectation, synchronisation — et rien d'autre.
  */
 
+use App\Enums\Permission;
+use App\Http\Integrations\Yango\Requests\GetVehicleRequest;
 use App\Livewire\Vehicles\Show;
 use App\Models\Driver;
 use App\Models\User;
@@ -13,6 +15,8 @@ use App\Models\VehicleModel;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
+use Saloon\Http\Faking\MockClient;
+use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function (): void {
     $this->seed(RolePermissionSeeder::class);
@@ -109,12 +113,15 @@ it('marks a vehicle taken out of the fleet', function (): void {
         ->assertSee(__('backoffice.vehicles.status_inactive'));
 });
 
-it('offers no action: the fleet belongs to Yango', function (): void {
+it('never creates, deletes or reassigns: the fleet belongs to Yango', function (): void {
     $driver = Driver::factory()->create();
     $vehicle = Vehicle::factory()->for($driver)->create();
 
-    // Ni réaffectation, ni mise hors parc, ni suppression : l'affectation
-    // appartient à Yango (cf. .ai/rules/models.md).
+    /*
+     * Ni réaffectation, ni mise hors parc, ni suppression : l'affectation
+     * appartient à Yango (cf. .ai/rules/models.md). Le rafraîchissement, lui,
+     * est permis — il n'écrit rien qui nous appartienne, il redemande.
+     */
     Livewire::actingAs(vehicleFicheUser('direction'))
         ->test(Show::class, ['vehicle' => $vehicle])
         ->assertDontSee('wire:click="assign', false)
@@ -132,3 +139,71 @@ function vehicleFicheUser(string $role, array $attributes = []): User
 
     return $user;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Rafraîchissement depuis Yango
+|--------------------------------------------------------------------------
+|
+| Exception assumée à la règle « aucune action » : redemander la fiche
+| n'écrit rien qui nous appartienne. Créer, supprimer ou réaffecter reste
+| hors de question — le test ci-dessus le verrouille.
+*/
+
+it('refreshes the vehicle from Yango without touching its assignment', function (): void {
+    yangoConfigure();
+
+    $driver = Driver::factory()->create();
+    $vehicle = Vehicle::factory()->for($driver)->create([
+        'yango_id' => 'CAR-001',
+        'plate_number' => '0000-AA-00',
+    ]);
+
+    MockClient::global([
+        GetVehicleRequest::class => yangoCarDetailResponse(yangoCarDetail(plate: '9876-ZZ-01')),
+    ]);
+
+    Livewire::actingAs(vehicleFicheUser('gestionnaire'))
+        ->test(Show::class, ['vehicle' => $vehicle])
+        ->call('refreshFromYango')
+        ->assertDispatched('toast');
+
+    expect($vehicle->fresh()->plate_number)->toBe('9876-ZZ-01')
+        ->and($vehicle->fresh()->driver_id)->toBe($driver->getKey());
+
+    MockClient::destroyGlobal();
+});
+
+it('says so and changes nothing when Yango no longer knows the vehicle', function (): void {
+    yangoConfigure();
+
+    $vehicle = Vehicle::factory()->create([
+        'yango_id' => 'CAR-DISPARU',
+        'plate_number' => '0000-AA-00',
+    ]);
+
+    MockClient::global([
+        GetVehicleRequest::class => yangoRefusal(Response::HTTP_NOT_FOUND),
+    ]);
+
+    Livewire::actingAs(vehicleFicheUser('gestionnaire'))
+        ->test(Show::class, ['vehicle' => $vehicle])
+        ->call('refreshFromYango')
+        ->assertDispatched('toast');
+
+    expect($vehicle->fresh()->plate_number)->toBe('0000-AA-00');
+
+    MockClient::destroyGlobal();
+});
+
+it('refuses the refresh to an agent who only has the module', function (): void {
+    $vehicle = Vehicle::factory()->create(['yango_id' => 'CAR-001']);
+
+    $user = User::factory()->create(['is_active' => true]);
+    $user->givePermissionTo(Permission::ModuleVehicles->value);
+
+    Livewire::actingAs($user->fresh())
+        ->test(Show::class, ['vehicle' => $vehicle])
+        ->call('refreshFromYango')
+        ->assertForbidden();
+});

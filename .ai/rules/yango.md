@@ -126,3 +126,10 @@ D'où deux chemins, et pas un :
 - `syncDay()` vise le parc, une journée. C'est lui que le rattrapage d'un challenge met en file, **une fois par journée de la période** : tout le parc participe à un challenge (cf. `.ai/rules/challenges.md`), et un job par participant se ferait refuser bien avant la fin.
 
 `syncDriver()` porte une **garde** : une course qui nomme un autre conducteur interrompt la passe (`Log::warning`). Un filtre ignoré par Yango ne se verrait pas autrement — la passe rendrait tout le parc sur toute la période, en silence et à grands frais. `yango:sync-orders --driver=<yango_id> --now` est l'outil qui le vérifie contre l'API vivante.
+
+## Rafraîchir une fiche : YangoEntityRefresher, pas YangoDriverResolver
+`YangoDriverResolver::resolve()` rend la ligne locale **sans appeler Yango** dès qu'elle existe : c'est un « trouver ou importer », pour les conducteurs qu'un tour de parc n'a pas encore atteints. Il ne peut donc pas servir un geste dont tout l'objet est de redemander une fiche qu'on a déjà — l'appeler pour rafraîchir ne ferait rien du tout, en silence.
+
+D'où `YangoEntityRefresher` (`refreshDriver()` / `refreshVehicle()`) : appel direct à `YangoDirectory::driverProfile()` / `::vehicle()`, puis écriture par `YangoSyncService::adoptDriver()` / `adoptVehicle()` — le chemin de la passe parc, jamais un second. `driverProfile()` joint déjà la fiche de la voiture, donc rafraîchir un conducteur rafraîchit son véhicule dans la même écriture.
+
+Contrat d'erreur repris de l'annuaire : `null` si la fiche n'a pas de `yango_id` ou si Yango répond 404, `YangoFleetException` levée pour tout le reste. Ne pas l'avaler : traduire un 401 en « inconnu » ferait passer une clé expirée pour une radiation de tout le parc.

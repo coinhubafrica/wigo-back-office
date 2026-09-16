@@ -14,3 +14,8 @@ Le module Véhicules (`bo.vehicles`, `bo.vehicles.show`) double la liste des con
 - **Groupe « Parc »** : Chauffeurs et Véhicules y sont réunis, et Chauffeurs a quitté Support (qui ne garde que Requêtes). L'ordre de la barre latérale suit l'ordre des cas de `BackOfficeModule` — pour déplacer une entrée, déplacer le `case`.
 
 **Piège, à retenir pour tout nouveau module** : `RolePermissionSeeder` ne synchronise les permissions qu'à la création d'un rôle (`wasRecentlyCreated`), pour ne pas écraser un rôle affiné à la main. Une installation existante n'hérite donc jamais d'un module ajouté ensuite — la page rend un 403 à tout le monde, y compris « direction », alors que les tests passent (base neuve). Il faut une migration qui accorde la nouvelle permission aux rôles concernés : voir `2026_09_04_141037_grant_vehicles_module_to_existing_roles.php`.
+
+## La fiche véhicule a exactement un geste : rafraîchir depuis Yango
+« Aucune action, jamais » garde tout son sens, à une exception près, décidée explicitement : `refreshFromYango` redemande la fiche à Yango (`YangoEntityRefresher::refreshVehicle()`, droit `yango.refresh-record`). La règle existait pour empêcher d'éditer le parc à la main ; relire Yango plus tôt que la passe horaire en est l'inverse, et rien de ce qui s'écrit ne nous appartient.
+
+Restent interdits : création, suppression, réaffectation. `driver_id` n'est pas touché — l'affectation appartient à la passe « conducteurs ». Le test qui le verrouille s'appelle désormais « never creates, deletes or reassigns » (et non plus « offers no action ») ; ses `assertDontSee` visent `wire:click="assign`, `wire:click="delete` et `wire:submit`, jamais le rafraîchissement.

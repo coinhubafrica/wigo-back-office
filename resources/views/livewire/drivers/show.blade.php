@@ -41,6 +41,14 @@
                     @endif
                 </p>
             </div>
+            @can('refreshYangoRecord')
+                {{-- La passe parc tourne à l'heure et n'atteint pas la fin d'un grand parc d'un coup : un agent au téléphone doit pouvoir redemander cette fiche-ci sans attendre son tour. --}}
+                <x-button variant="secondary" wire:click="refreshFromYango" target="refreshFromYango">
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+                    {{ __('backoffice.yango_sync.refresh') }}
+                    <x-slot:loading>{{ __('backoffice.common.working') }}</x-slot:loading>
+                </x-button>
+            @endcan
         </div>
     </x-panel>
 

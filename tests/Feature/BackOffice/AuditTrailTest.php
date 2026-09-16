@@ -19,15 +19,18 @@ use App\Enums\AuditAction;
 use App\Enums\CampaignRecipientStatus;
 use App\Enums\ChallengeStatus;
 use App\Enums\ShopOrderStatus;
+use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Livewire\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Campaigns\Index as CampaignsIndex;
 use App\Livewire\Campaigns\Show;
 use App\Livewire\Challenges\Prizes as ChallengesPrizes;
 use App\Livewire\Challenges\Show as ChallengesShow;
+use App\Livewire\Drivers\Show as DriversShow;
 use App\Livewire\Settings\Index as SettingsIndex;
 use App\Livewire\Shop\Catalogue as ShopCatalogue;
 use App\Livewire\Shop\Orders as ShopOrders;
 use App\Livewire\SupportRequests\Templates as SupportTemplates;
+use App\Livewire\YangoSync\Index as YangoSyncIndex;
 use App\Models\Announcement;
 use App\Models\AuditLog;
 use App\Models\Campaign;
@@ -45,6 +48,7 @@ use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Saloon\Http\Faking\MockClient;
 
 beforeEach(function (): void {
     $this->seed(RolePermissionSeeder::class);
@@ -168,6 +172,41 @@ it('does not journalise a challenge orders resync', function (): void {
     Livewire::actingAs(trailUser('direction'))
         ->test(ChallengesShow::class, ['challenge' => $challenge])
         ->call('resyncOrders');
+
+    expect(AuditLog::query()->count())->toBe(0);
+});
+
+it('does not journalise a Yango record refresh', function (): void {
+    // Même raison que le rejeu d'un challenge : on redemande à Yango ce qu'il
+    // dit déjà, sans déplacer d'argent ni rien rendre irréversible.
+    yangoConfigure();
+    Queue::fake();
+
+    $driver = Driver::factory()->create(['yango_id' => 'YAN-001', 'phone' => '+2250700000009']);
+
+    MockClient::global([
+        GetDriverProfileRequest::class => yangoContractorProfileResponse(
+            yangoContractorProfile(phone: '+2250700000009'),
+        ),
+    ]);
+
+    Livewire::actingAs(trailUser('direction'))
+        ->test(DriversShow::class, ['driver' => $driver])
+        ->call('refreshFromYango');
+
+    expect(AuditLog::query()->count())->toBe(0);
+
+    MockClient::destroyGlobal();
+});
+
+it('does not journalise a Yango period resync', function (): void {
+    Queue::fake();
+
+    Livewire::actingAs(trailUser('direction'))
+        ->test(YangoSyncIndex::class)
+        ->set('from', '2026-09-10')
+        ->set('to', '2026-09-11')
+        ->call('queue');
 
     expect(AuditLog::query()->count())->toBe(0);
 });

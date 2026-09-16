@@ -62,6 +62,7 @@ class RolePermissionSeeder extends Seeder
             BackOfficePermission::ModuleDashboard,
             BackOfficePermission::ModuleDrivers,
             BackOfficePermission::ModuleVehicles,
+            BackOfficePermission::ModuleYangoSync,
             BackOfficePermission::ModuleSupportRequests,
             BackOfficePermission::ModuleCnps,
             BackOfficePermission::ModuleShop,
@@ -77,6 +78,12 @@ class RolePermissionSeeder extends Seeder
             BackOfficePermission::SupportManageTemplates,
             BackOfficePermission::ShopFulfilOrders,
             BackOfficePermission::CampaignsManage,
+
+            // Rattraper une fiche ou une journée mal synchronisée est le
+            // quotidien de l'agent : c'est lui qui a le conducteur au
+            // téléphone, et la passe horaire ne l'attend pas.
+            BackOfficePermission::YangoRefreshRecord,
+            BackOfficePermission::YangoResyncPeriod,
         ];
 
         return [

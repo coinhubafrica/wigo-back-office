@@ -46,4 +46,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/views/** | .ai/rules/views.md |
 | app/Services/Wave/** | .ai/rules/wave.md |
 | .claude/worktrees/** | .ai/rules/worktrees.md |
+| app/Livewire/YangoSync/** | .ai/rules/yango-sync.md |
 | app/Services/Yango/** | .ai/rules/yango.md |
