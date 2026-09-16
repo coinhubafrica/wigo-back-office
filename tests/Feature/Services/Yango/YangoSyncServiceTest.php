@@ -6,6 +6,7 @@ use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
 use App\Models\Driver;
 use App\Models\Vehicle;
 use App\Services\Yango\YangoSyncService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Saloon\Http\Faking\MockClient;
 
@@ -119,6 +120,48 @@ it('skips and logs a profile with no usable phone number', function (): void {
 
     $this->assertSame(0, Driver::query()->count());
     $this->assertSame(1, $result->driversSkipped);
+});
+
+it('writes a profile without a phone when another driver already holds it', function (): void {
+    // Yango laisse deux profils déclarer le même numéro. L'adoption ne regarde
+    // que les lignes sans identifiant, donc celle-ci ne voyait rien et la
+    // création qui suivait butait sur `drivers.phone` unique. La
+    // `PDOException` tuait la passe entière — et, pour une passe de courses,
+    // laissait les courses écrites sans leur cumul journalier.
+    //
+    // Le profil entre donc en base sans numéro : ses courses se rattachent à
+    // une vraie ligne, et le parc reste complet.
+    Driver::factory()->withYangoId('YAN-001')->create([
+        'phone' => '+2250700000001',
+    ]);
+
+    yangoSyncReturns(drivers: [yangoSyncProfile(id: 'YAN-002')]);
+
+    $result = yangoSyncService()->sync();
+
+    $adopted = Driver::query()->where('yango_id', 'YAN-002')->firstOrFail();
+
+    $this->assertSame(2, Driver::query()->count());
+    $this->assertSame(1, $result->driversPhoneless);
+    $this->assertNull($adopted->phone);
+    // Le numéro reste au conducteur qui le portait déjà.
+    $this->assertSame('+2250700000001', Driver::query()->where('yango_id', 'YAN-001')->value('phone'));
+});
+
+it('still refuses two drivers carrying the same number', function (): void {
+    // L'unicité reste : MySQL admet plusieurs NULL dans un index unique, mais
+    // un numéro réel continue de n'appartenir qu'à une ligne.
+    Driver::factory()->create(['phone' => '+2250700000001']);
+
+    expect(fn () => Driver::factory()->create(['phone' => '+2250700000001']))
+        ->toThrow(QueryException::class);
+});
+
+it('lets several drivers sit without a number at once', function (): void {
+    Driver::factory()->create(['phone' => null, 'yango_id' => 'YAN-002']);
+    Driver::factory()->create(['phone' => null, 'yango_id' => 'YAN-003']);
+
+    expect(Driver::query()->whereNull('phone')->count())->toBe(2);
 });
 
 it('rewrites the status of an existing driver from the Yango work_status', function (): void {

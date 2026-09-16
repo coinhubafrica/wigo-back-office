@@ -212,6 +212,34 @@ class YangoSyncService
             return null;
         }
 
+        if ($driver === null && Driver::query()->where('phone', $phone)->exists()) {
+            // Le téléphone est déjà porté par une ligne rapprochée d'un *autre*
+            // `yango_id` : l'adoption ci-dessus ne l'a pas vue (elle ne regarde
+            // que les lignes sans identifiant), et la création qui suivrait
+            // buterait sur `drivers.phone` unique.
+            //
+            // Ce n'est pas un cas théorique : Yango laisse deux profils déclarer
+            // le même numéro, et la `PDOException` qui en sortait tuait la passe
+            // entière. Les courses déjà écrites restaient, le grand livre
+            // journalier — recalculé après la boucle — ne l'était jamais. Le
+            // tableau de bord affichait alors une fraction de la réalité.
+            //
+            // Le profil est donc écrit *sans* téléphone plutôt qu'écarté : ses
+            // courses se rattachent à une vraie ligne et le parc reste complet.
+            // Il ne pourra pas se connecter au mobile tant qu'un humain n'aura
+            // pas tranché lequel des deux profils porte le numéro — c'est le
+            // prix assumé, et il vaut mieux qu'une course perdue.
+            $result->driversPhoneless++;
+
+            Log::warning('Yango : téléphone déjà rattaché à un autre conducteur, profil créé sans numéro', [
+                'yango_id' => $yangoId,
+                'phone' => $phone,
+                'held_by' => Driver::query()->where('phone', $phone)->value('yango_id'),
+            ]);
+
+            $phone = null;
+        }
+
         if ($driver === null) {
             $driver = new Driver([
                 'yango_id' => $yangoId,

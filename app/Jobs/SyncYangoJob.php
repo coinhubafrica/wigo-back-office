@@ -88,6 +88,7 @@ class SyncYangoJob implements ShouldBeUnique, ShouldQueue
             'drivers_synced' => $result->driversSynced,
             'drivers_adopted' => $result->driversAdopted,
             'drivers_skipped' => $result->driversSkipped,
+            'drivers_phoneless' => $result->driversPhoneless,
             'drivers_balanced' => $result->driversBalanced,
             'vehicles_synced' => $result->vehiclesSynced,
             'stale_drivers' => $result->staleDrivers,

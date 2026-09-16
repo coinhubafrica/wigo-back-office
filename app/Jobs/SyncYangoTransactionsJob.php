@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
+use App\Jobs\Concerns\TracksYangoSyncRun;
 use App\Services\Yango\YangoTransactionSyncService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,7 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SyncYangoTransactionsJob implements ShouldBeUnique, ShouldQueue
 {
-    use Queueable;
+    use Queueable, TracksYangoSyncRun;
 
     public int $tries = 3;
 
@@ -47,6 +48,8 @@ class SyncYangoTransactionsJob implements ShouldBeUnique, ShouldQueue
     {
         $day = Carbon::parse($this->day);
 
+        $this->markRunning();
+
         try {
             $result = $transactions->syncDay($day, $this->pageSize);
         } catch (YangoFleetException $exception) {
@@ -58,10 +61,18 @@ class SyncYangoTransactionsJob implements ShouldBeUnique, ShouldQueue
                 return;
             }
 
+            $this->markFailedIfLastAttempt($exception);
+
             $this->release($this->backoff[$this->attempts() - 1] ?? 600);
 
             return;
         }
+
+        $this->markFinished([
+            'transactions_synced' => $result->transactionsSynced,
+            'transactions_unattached' => $result->transactionsUnattached,
+            'transactions_skipped' => $result->transactionsSkipped,
+        ]);
 
         Log::info('Yango : transactions synchronisées', [
             'day' => $day->toDateString(),

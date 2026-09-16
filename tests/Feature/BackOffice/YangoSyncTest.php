@@ -7,9 +7,13 @@
 
 use App\Enums\BackOfficeModule;
 use App\Enums\Permission;
+use App\Enums\YangoOrderStatus;
+use App\Jobs\RebuildDailyActivityJob;
 use App\Jobs\SyncYangoOrdersJob;
 use App\Jobs\SyncYangoTransactionsJob;
 use App\Livewire\YangoSync\Index;
+use App\Models\Driver;
+use App\Models\DriverDailyActivity;
 use App\Models\User;
 use App\Models\YangoOrder;
 use App\Models\YangoTransaction;
@@ -71,6 +75,7 @@ it('refuses a period with nothing ticked', function (): void {
         ->test(Index::class)
         ->set('syncOrders', false)
         ->set('syncTransactions', false)
+        ->set('rebuildActivity', false)
         ->call('queue')
         ->assertHasErrors('syncOrders');
 
@@ -143,8 +148,141 @@ it('counts what the database already carries, day by day', function (): void {
         ->viewData('coverage');
 
     expect($coverage)->toHaveCount(2)
-        ->and($coverage[0])->toMatchArray(['day' => '2026-09-10', 'orders' => 2, 'transactions' => 0])
-        ->and($coverage[1])->toMatchArray(['day' => '2026-09-11', 'orders' => 0, 'transactions' => 1]);
+        ->and($coverage[0])->toMatchArray(['day' => '2026-09-10', 'completed' => 2, 'transactions' => 0])
+        ->and($coverage[1])->toMatchArray(['day' => '2026-09-11', 'completed' => 0, 'transactions' => 1]);
+});
+
+it('tells cancelled orders apart from completed ones', function (): void {
+    /*
+    | Le décompte comptait toutes les courses en bloc, tandis que le tableau de
+    | bord ne compte que les terminées. Un agent lisait 17 536 ici et 1 740
+    | là-bas et concluait au trou, alors que 8 281 courses étaient simplement
+    | annulées.
+    */
+    YangoOrder::factory()->count(2)->completedOn(Carbon::parse('2026-09-10 08:00'))->create();
+    YangoOrder::factory()->count(5)->create([
+        'status' => YangoOrderStatus::Cancelled,
+        'completed_at' => Carbon::parse('2026-09-10 09:00'),
+    ]);
+
+    $coverage = Livewire::actingAs(yangoSyncUser('gestionnaire'))
+        ->test(Index::class)
+        ->set('from', '2026-09-10')
+        ->set('to', '2026-09-10')
+        ->viewData('coverage');
+
+    expect($coverage[0])->toMatchArray([
+        'day' => '2026-09-10',
+        'completed' => 2,
+        'cancelled' => 5,
+    ]);
+});
+
+it('flags a day whose dashboard tally drifted from its completed orders', function (): void {
+    // C'est exactement l'état qu'une passe interrompue laissait derrière elle,
+    // et que l'écran ne savait pas montrer.
+    $driver = Driver::factory()->create();
+
+    YangoOrder::factory()->count(9)->completedOn(Carbon::parse('2026-09-12 08:00'))->create([
+        'driver_id' => $driver->id,
+    ]);
+
+    DriverDailyActivity::factory()->create([
+        'driver_id' => $driver->id,
+        'activity_date' => '2026-09-12',
+        'orders_completed' => 2,
+        'orders_total' => 2,
+    ]);
+
+    $coverage = Livewire::actingAs(yangoSyncUser('gestionnaire'))
+        ->test(Index::class)
+        ->set('from', '2026-09-12')
+        ->set('to', '2026-09-12')
+        ->viewData('coverage');
+
+    expect($coverage[0])->toMatchArray([
+        'completed' => 9,
+        'activity' => 2,
+        'drifted' => true,
+    ]);
+});
+
+it('leaves a day unflagged when the tally matches', function (): void {
+    $driver = Driver::factory()->create();
+
+    YangoOrder::factory()->count(3)->completedOn(Carbon::parse('2026-09-12 08:00'))->create([
+        'driver_id' => $driver->id,
+    ]);
+
+    DriverDailyActivity::factory()->create([
+        'driver_id' => $driver->id,
+        'activity_date' => '2026-09-12',
+        'orders_completed' => 3,
+        'orders_total' => 3,
+    ]);
+
+    $coverage = Livewire::actingAs(yangoSyncUser('gestionnaire'))
+        ->test(Index::class)
+        ->set('from', '2026-09-12')
+        ->set('to', '2026-09-12')
+        ->viewData('coverage');
+
+    expect($coverage[0]['drifted'])->toBeFalse();
+});
+
+it('queues a recompute without asking Yango for anything', function (): void {
+    // Le geste utile quand les courses sont là et le cumul manque : redemander
+    // la journée à Yango coûterait une boucle de curseur pour rien.
+    Livewire::actingAs(yangoSyncUser('gestionnaire'))
+        ->test(Index::class)
+        ->set('from', '2026-09-12')
+        ->set('to', '2026-09-14')
+        ->set('syncOrders', false)
+        ->set('syncTransactions', false)
+        ->set('rebuildActivity', true)
+        ->call('queue')
+        ->assertHasNoErrors();
+
+    Queue::assertNotPushed(SyncYangoOrdersJob::class);
+    Queue::assertNotPushed(SyncYangoTransactionsJob::class);
+    Queue::assertPushed(RebuildDailyActivityJob::class, 3);
+});
+
+it('rechains the career total from the oldest day only', function (): void {
+    /*
+    | `orders_total` est une somme courante qui court jusqu'à aujourd'hui :
+    | la rechaîner depuis chacune des journées referait le même parcours autant
+    | de fois qu'il y a de journées.
+    */
+    Livewire::actingAs(yangoSyncUser('gestionnaire'))
+        ->test(Index::class)
+        ->set('from', '2026-09-12')
+        ->set('to', '2026-09-14')
+        ->set('syncOrders', false)
+        ->set('syncTransactions', false)
+        ->set('rebuildActivity', true)
+        ->call('queue');
+
+    Queue::assertPushed(
+        RebuildDailyActivityJob::class,
+        fn (RebuildDailyActivityJob $job): bool => $job->day === '2026-09-12' && $job->repairTotals,
+    );
+
+    Queue::assertPushed(
+        RebuildDailyActivityJob::class,
+        fn (RebuildDailyActivityJob $job): bool => $job->day === '2026-09-13' && ! $job->repairTotals,
+    );
+});
+
+it('refuses to queue a recompute for an agent who only has the module', function (): void {
+    Livewire::actingAs(yangoSyncPermissionUser([Permission::ModuleYangoSync->value]))
+        ->test(Index::class)
+        ->set('syncOrders', false)
+        ->set('rebuildActivity', true)
+        ->call('queue')
+        ->assertForbidden();
+
+    Queue::assertNothingPushed();
 });
 
 function yangoSyncUser(string $role): User
