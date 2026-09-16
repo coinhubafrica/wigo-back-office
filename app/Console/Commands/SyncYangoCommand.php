@@ -57,10 +57,11 @@ class SyncYangoCommand extends Command
         }
 
         $this->components->info(sprintf(
-            'conducteurs : %d sync, %d adoptés, %d ignorés, %d soldes lus',
+            'conducteurs : %d sync, %d adoptés, %d ignorés, %d sans numéro, %d soldes lus',
             $result->driversSynced,
             $result->driversAdopted,
             $result->driversSkipped,
+            $result->driversPhoneless,
             $result->driversBalanced,
         ));
 

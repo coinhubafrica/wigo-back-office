@@ -23,7 +23,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property CarbonImmutable|null $balance_read_at
  * @property string $first_name
  * @property string $last_name
- * @property string $phone
+ * @property ?string $phone
  * @property string|null $license_number
  * @property string|null $photo_url
  * @property DriverStatus $status

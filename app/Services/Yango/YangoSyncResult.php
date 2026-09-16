@@ -8,6 +8,11 @@ namespace App\Services\Yango;
  * `staleDrivers`/`staleVehicles` comptent les lignes que Yango n'a pas
  * remontées : elles ne sont ni modifiées ni désactivées, seulement signalées
  * (cf. `.ai/rules/models.md`).
+ *
+ * `driversPhoneless` compte les profils écrits sans téléphone parce qu'un
+ * autre conducteur porte déjà le numéro. Ils sont en base et leurs courses s'y
+ * rattachent, mais ils ne peuvent pas se connecter au mobile : c'est la file
+ * d'attente d'un arbitrage humain, et elle mérite d'être suivie.
  */
 class YangoSyncResult
 {
@@ -15,6 +20,7 @@ class YangoSyncResult
         public int $driversSynced = 0,
         public int $driversAdopted = 0,
         public int $driversSkipped = 0,
+        public int $driversPhoneless = 0,
         public int $driversBalanced = 0,
         public int $vehiclesSynced = 0,
         public int $staleDrivers = 0,

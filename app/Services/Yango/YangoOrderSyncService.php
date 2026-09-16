@@ -14,6 +14,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Throwable;
 
 /**
  * Rapatrie les courses d'une journée et recalcule l'activité qui en découle.
@@ -67,13 +68,46 @@ class YangoOrderSyncService
         // Le grand livre journalier se recalcule après coup, une fois toutes
         // les courses du jour écrites : le recalculer course par course
         // rejouerait le même comptage autant de fois qu'un conducteur a roulé.
-        foreach ($touched as $driver) {
-            $this->activities->recordDay($driver, $day);
-        }
-
-        $result->driversTouched = count($touched);
+        $result->driversTouched = $this->recordDays($touched, $day, $result);
 
         return $result;
+    }
+
+    /**
+     * Recalcule le grand livre journalier des conducteurs touchés.
+     *
+     * Chaque conducteur est isolé. La boucle vient **après** que les courses
+     * sont écrites, si bien qu'une exception au milieu laissait la journée à
+     * moitié comptée : les courses en base, le cumul non. Mesuré en
+     * préproduction sur dix-sept journées — 2026-09-12 portait 9 255 courses
+     * terminées pour 1 740 au tableau de bord.
+     *
+     * Un conducteur qui échoue est donc journalisé et compté, et les suivants
+     * sont quand même recalculés. Le rattrapage de l'écran « Parc » rejoue la
+     * journée sans rien redemander à Yango.
+     *
+     * @param  array<string, Driver>  $touched
+     */
+    private function recordDays(array $touched, CarbonInterface $day, YangoOrderSyncResult $result): int
+    {
+        $recorded = 0;
+
+        foreach ($touched as $driver) {
+            try {
+                $this->activities->recordDay($driver, $day);
+                $recorded++;
+            } catch (Throwable $exception) {
+                $result->activitiesFailed++;
+
+                Log::error('Yango : grand livre journalier non recalculé', [
+                    'driver_id' => $driver->getKey(),
+                    'day' => $day->toDateString(),
+                    'exception' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $recorded;
     }
 
     /**
@@ -141,7 +175,7 @@ class YangoOrderSyncService
         }
 
         foreach ($days as $day) {
-            $this->activities->recordDay($driver, $day);
+            $this->recordDays([$driver->getKey() => $driver], $day, $result);
         }
 
         $result->driversTouched = $result->ordersSynced > 0 ? 1 : 0;

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Http\Integrations\Yango\Exceptions\YangoFleetException;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
+use App\Jobs\Concerns\TracksYangoSyncRun;
 use App\Services\Yango\YangoOrderSyncService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,7 +32,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SyncYangoOrdersJob implements ShouldBeUnique, ShouldQueue
 {
-    use Queueable;
+    use Queueable, TracksYangoSyncRun;
 
     public int $tries = 3;
 
@@ -59,6 +60,8 @@ class SyncYangoOrdersJob implements ShouldBeUnique, ShouldQueue
     {
         $day = Carbon::parse($this->day);
 
+        $this->markRunning();
+
         try {
             $result = $orders->syncDay($day, $this->pageSize);
         } catch (YangoFleetException $exception) {
@@ -70,10 +73,21 @@ class SyncYangoOrdersJob implements ShouldBeUnique, ShouldQueue
                 return;
             }
 
+            // Un 429 repart tout seul : la trace ne bascule en échec qu'une
+            // fois les tentatives épuisées.
+            $this->markFailedIfLastAttempt($exception);
+
             $this->release($this->backoff[$this->attempts() - 1] ?? 600);
 
             return;
         }
+
+        $this->markFinished([
+            'orders_synced' => $result->ordersSynced,
+            'orders_orphaned' => $result->ordersOrphaned,
+            'drivers_touched' => $result->driversTouched,
+            'activities_failed' => $result->activitiesFailed,
+        ]);
 
         Log::info('Yango : courses synchronisées', [
             'day' => $day->toDateString(),
@@ -81,6 +95,7 @@ class SyncYangoOrdersJob implements ShouldBeUnique, ShouldQueue
             'orders_orphaned' => $result->ordersOrphaned,
             'orders_skipped' => $result->ordersSkipped,
             'drivers_touched' => $result->driversTouched,
+            'activities_failed' => $result->activitiesFailed,
         ]);
     }
 }

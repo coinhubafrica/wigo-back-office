@@ -24,6 +24,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Notifications/**,app/Listeners/ClearDeadFcmToken.php | .ai/rules/listeners.md |
 | app/Livewire/Challenges/Show.php, app/Livewire/Challenges/Wizard.php | .ai/rules/livewire-challenges.md |
 | app/Services/Cnps/**,app/Http/Resources/CnpsStatementPayload.php,app/Livewire/Cnps/** | .ai/rules/livewire-cnps.md |
+| app/Services/Yango/**,app/Services/Challenges/DailyActivityRebuilder.php,app/Livewire/YangoSync/** | .ai/rules/livewire-yango-sync.md |
 | app/Livewire/** | .ai/rules/livewire.md |
 | app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/middleware.md |
 | database/migrations/** | .ai/rules/migrations.md |
