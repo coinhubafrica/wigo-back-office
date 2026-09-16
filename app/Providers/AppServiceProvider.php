@@ -280,6 +280,15 @@ class AppServiceProvider extends ServiceProvider
             'reconcileRecharges' => Permission::RechargesReconcile,
 
             /*
+            | Parc Yango. Rejeu de données, comme `resyncChallengeOrders` :
+            | rien ne s'écrit que Yango ne dise, et une passe se relance sans
+            | conséquence. Le droit existe parce que chaque passe coûte du
+            | quota Yango — la passe horaire, elle, est déjà à la peine.
+            */
+            'refreshYangoRecord' => Permission::YangoRefreshRecord,
+            'resyncYangoPeriod' => Permission::YangoResyncPeriod,
+
+            /*
             | Réglages. Écraser une clé d'encaissement est au moins aussi grave
             | que la lire : `settings.reveal-secrets` ne gardait que la lecture,
             | et n'importe quel accès au module pouvait remplacer la clé Wave.

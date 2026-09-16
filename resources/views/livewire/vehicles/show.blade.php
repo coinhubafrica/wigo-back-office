@@ -5,6 +5,10 @@
     vers un véhicule. Mieux vaut une fiche courte et vraie qu'une grille de
     tirets (voir ce qu'a coûté « courses de la semaine » sur la fiche
     conducteur).
+
+    Un seul bouton, et c'est une exception assumée : redemander la fiche à
+    Yango. Ni création, ni suppression, ni réaffectation — le parc reste à
+    Yango.
 --}}
 <div class="flex flex-col gap-4">
     <x-slot:back>
@@ -37,6 +41,14 @@
                     @endif
                 </p>
             </div>
+            @can('refreshYangoRecord')
+                {{-- Seul geste de la fiche, et il n'écrit rien qui nous appartienne : il redemande à Yango ce que la passe horaire relira plus tard. --}}
+                <x-button variant="secondary" wire:click="refreshFromYango" target="refreshFromYango">
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+                    {{ __('backoffice.yango_sync.refresh') }}
+                    <x-slot:loading>{{ __('backoffice.common.working') }}</x-slot:loading>
+                </x-button>
+            @endcan
         </div>
     </x-panel>
 

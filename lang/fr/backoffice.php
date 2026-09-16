@@ -146,6 +146,33 @@ return [
         'not_reported' => 'Plus remonté par Yango',
     ],
 
+    'yango_sync' => [
+        'refresh' => 'Rafraîchir depuis Yango',
+        'refresh_done' => 'Fiche rafraîchie depuis Yango.',
+        'refresh_unknown' => 'Yango ne connaît plus cette fiche : rien n\'a été modifié.',
+        'refresh_failed' => 'Yango a refusé la demande. Rien n\'a été modifié — réessayez dans un instant.',
+        'refresh_throttled' => 'Fiche déjà rafraîchie à l\'instant. Patientez quelques secondes.',
+
+        'period_title' => 'Rattraper une période',
+        'period_hint' => 'Les passes horaires ne regardent que la veille et le jour. Au-delà, ou en cas de trou, c\'est ici que la période se redemande.',
+        'from' => 'Du',
+        'to' => 'Au',
+        'what' => 'Ce qu\'il faut redemander',
+        'orders' => 'Courses',
+        'transactions' => 'Transactions',
+        'queue' => 'Relancer la synchronisation',
+        'pick_one' => 'Cochez au moins une nature à synchroniser.',
+        'period_too_long' => 'Une période ne peut pas dépasser :max journées. Procédez en plusieurs fois.',
+        'day_count' => '{0} Aucune journée dans cette période.|{1} :count journée dans la période.|[2,*] :count journées dans la période.',
+        'queued' => '{0} Aucune journée mise en file.|{1} :count journée mise en file : la passe tourne en arrière-plan.|[2,*] :count journées mises en file : les passes tournent en arrière-plan.',
+
+        'coverage_title' => 'Ce que la base porte déjà',
+        'coverage_hint' => 'Journée par journée, sur la période choisie. Une journée à zéro entre deux journées pleines est le signe d\'un trou.',
+        'column_day' => 'Journée',
+        'empty_title' => 'Aucune journée à afficher',
+        'empty_body' => 'Choisissez une période pour voir ce que la base porte déjà.',
+    ],
+
     'drivers' => [
         'fleet_size' => 'Parc référencé',
         'working' => 'En activité',

@@ -29,6 +29,7 @@ enum Permission: string
     case ModuleDashboard = 'module.dashboard';
     case ModuleDrivers = 'module.drivers';
     case ModuleVehicles = 'module.vehicles';
+    case ModuleYangoSync = 'module.yango-sync';
     case ModuleSupportRequests = 'module.support-requests';
     case ModuleChallenges = 'module.challenges';
     case ModuleAnnouncements = 'module.announcements';
@@ -83,6 +84,14 @@ enum Permission: string
 
     // Finance.
     case RechargesReconcile = 'recharges.reconcile';
+
+    /*
+    | Parc Yango — rejeu de données, jamais d'écriture qui nous appartienne.
+    | Les deux droits existent parce que chaque passe coûte du quota Yango,
+    | pas parce qu'elles seraient risquées : rien ne se perd, tout se rejoue.
+    */
+    case YangoRefreshRecord = 'yango.refresh-record';
+    case YangoResyncPeriod = 'yango.resync-period';
 
     /*
     | Système.
@@ -152,6 +161,11 @@ enum Permission: string
 
             self::RechargesReconcile => BackOfficeModule::Recharges,
 
+            // Le rafraîchissement d'une fiche s'exerce depuis Chauffeurs et
+            // Véhicules : il se coche sous le module d'où part le geste.
+            self::YangoRefreshRecord => BackOfficeModule::Drivers,
+            self::YangoResyncPeriod => BackOfficeModule::YangoSync,
+
             self::SettingsManage,
             self::SettingsRevealSecrets => BackOfficeModule::Settings,
 
@@ -197,6 +211,9 @@ enum Permission: string
 
             self::RechargesReconcile => 'Réconcilier et rejouer un crédit',
 
+            self::YangoRefreshRecord => 'Rafraîchir une fiche depuis Yango',
+            self::YangoResyncPeriod => 'Rattraper une période de courses et de transactions',
+
             self::SettingsManage => 'Enregistrer les réglages et les clés',
             self::SettingsRevealSecrets => 'Relever une clé en clair',
             self::UsersManage => 'Gérer les utilisateurs',
@@ -240,6 +257,9 @@ enum Permission: string
             self::ShopCancelOrder => 'Une annulation peut déclencher un remboursement.',
 
             self::RechargesReconcile => "Touche à l'argent d'un conducteur. L'accès au module n'ouvre que la lecture du journal.",
+
+            self::YangoRefreshRecord => "Redemande à Yango un conducteur ou un véhicule nommément, sans attendre la passe horaire. Rien n'est écrit que Yango ne dise.",
+            self::YangoResyncPeriod => 'Remet en file les courses et le grand livre, une journée par job. Une journée déjà en cours de passe ne se dédouble pas.',
 
             self::SettingsManage => 'Barèmes, plafonds, et les clés Wave et Yango — les écraser coupe l\'encaissement.',
             self::SettingsRevealSecrets => 'Affiche en clair les clés Wave et Yango. Chaque relevé est journalisé.',

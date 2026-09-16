@@ -32,6 +32,7 @@ use App\Livewire\Users\Index as UsersIndex;
 use App\Livewire\Users\Roles as UsersRoles;
 use App\Livewire\Vehicles\Index as VehiclesIndex;
 use App\Livewire\Vehicles\Show as VehiclesShow;
+use App\Livewire\YangoSync\Index as YangoSyncIndex;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -156,6 +157,16 @@ Route::domain(config('wigo.domains.back_office'))->group(function (): void {
         Route::livewire('vehicles/{vehicle}', VehiclesShow::class)
             ->middleware('permission:'.BackOfficeModule::Vehicles->permission())
             ->name('bo.vehicles.show');
+
+        /*
+        | Rattrapage manuel des journaux datés du parc. Rangé sous « Parc »
+        | avec Chauffeurs et Véhicules, et non sous « Paramètres » : le geste
+        | est celui de l'exploitation, pas de l'administration — `module.settings`
+        | n'est tenu que par l'administrateur.
+        */
+        Route::livewire('yango-sync', YangoSyncIndex::class)
+            ->middleware('permission:'.BackOfficeModule::YangoSync->permission())
+            ->name(BackOfficeModule::YangoSync->route());
 
         Route::livewire('announcements', AnnouncementsIndex::class)
             ->middleware('permission:'.BackOfficeModule::Announcements->permission())

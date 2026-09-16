@@ -34,3 +34,8 @@ Deux exceptions volontaires demeurent, à ne pas « corriger » :
 
 - `roles.id` et `permissions.id` restent des entiers auto-incrémentés — spatie/laravel-permission les gère lui-même et seule sa clé de morph a bougé (`config/permission.php` : `model_morph_key => 'model_uuid'`, colonnes `model_has_roles.model_uuid` / `model_has_permissions.model_uuid` en `ulid`).
 - Les tables pivot de spatie portent une clé primaire composite incluant cette colonne : la retyper impose de reconstruire la clé et l'index.
+
+## givePermissionTo en boucle lève sous preventLazyLoading
+Dans une migration qui accorde **plusieurs** permissions à un rôle, passer le tableau en un seul appel : `$role->givePermissionTo($valeurs)`. Appeler `givePermissionTo()` une fois par droit relit la relation `permissions` après la première écriture, et `Model::preventLazyLoading()` — actif hors production — lève `LazyLoadingViolationException`. Charger les rôles avec `->with('permissions')` par la même occasion.
+
+Piège invisible aux tests : la suite tourne sur une base neuve où le seeder crée les rôles (`wasRecentlyCreated`), et `preventLazyLoading` ne lève pas sur un modèle qui vient d'être créé. La migration ne casse donc que sur une installation en place — c'est-à-dire en production. Vérifier toute migration de ce type par un `php artisan migrate` réel, plus un `migrate:rollback`.

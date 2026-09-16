@@ -75,9 +75,10 @@ it('guards every mutating Livewire method with a gate', function (): void {
     $writers = [
         'Announcements/Index', 'Campaigns/Index', 'Campaigns/Show',
         'Challenges/Prizes', 'Challenges/Show', 'Challenges/Wizard',
-        'Recharges/Index', 'Settings/Index',
+        'Drivers/Show', 'Recharges/Index', 'Settings/Index',
         'Shop/Catalogue', 'Shop/Orders', 'SupportRequests/Index',
         'SupportRequests/Templates', 'Users/Index', 'Users/Roles',
+        'Vehicles/Show', 'YangoSync/Index',
     ];
 
     $unguarded = [];
@@ -110,6 +111,8 @@ it('resolves each sensitive gate from a permission, not a role name', function (
     'manageRoles' => ['manageRoles', Permission::RolesManage],
     'exportAuditLog' => ['exportAuditLog', Permission::AuditExport],
     'resyncChallengeOrders' => ['resyncChallengeOrders', Permission::ChallengesResyncOrders],
+    'refreshYangoRecord' => ['refreshYangoRecord', Permission::YangoRefreshRecord],
+    'resyncYangoPeriod' => ['resyncYangoPeriod', Permission::YangoResyncPeriod],
 ]);
 
 it('keeps the abilities each seeded role used to hold by its name', function (string $role, string $ability): void {
@@ -126,6 +129,8 @@ it('keeps the abilities each seeded role used to hold by its name', function (st
     'stock gère le catalogue' => ['stock', 'manageCatalogue'],
     'bonus resynchronise les courses' => ['bonus', 'resyncChallengeOrders'],
     'direction gère le catalogue' => ['direction', 'manageCatalogue'],
+    'gestionnaire rafraîchit une fiche Yango' => ['gestionnaire', 'refreshYangoRecord'],
+    'gestionnaire rattrape une période Yango' => ['gestionnaire', 'resyncYangoPeriod'],
 ]);
 
 it('does not let a module access imply its actions', function (): void {
