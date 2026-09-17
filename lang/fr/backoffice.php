@@ -180,6 +180,7 @@ return [
         'column_action' => 'Action',
         'recount' => 'Recompter',
         'recount_queued' => 'Recompte du :day mis en file : il tourne en arrière-plan.',
+        'recount_blocked' => 'La passe de courses de cette journée n\'est pas terminée : le recompte porterait sur des courses à moitié écrites. Attendez qu\'elle finisse, ou relancez-la.',
         'drift_hint' => 'Le cumul journalier ne correspond pas aux courses terminées. Cliquez « Recompter » sur cette ligne.',
         'empty_title' => 'Aucune journée à afficher',
         'empty_body' => 'Aucune journée comptée ni relancée sur cette période.',

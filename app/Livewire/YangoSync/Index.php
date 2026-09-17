@@ -290,6 +290,24 @@ class Index extends Component
             return;
         }
 
+        /*
+        | Recompter une journée dont la passe de courses n'est pas terminée
+        | compterait des données à moitié écrites : la passe écrit les courses
+        | au fil du curseur, et le cumul qu'on en tirerait serait périmé avant
+        | même d'être affiché. Une passe échouée est pire encore — elle s'est
+        | arrêtée quelque part, et personne ne sait où.
+        |
+        | L'absence de passe, en revanche, n'empêche rien : les courses d'une
+        | journée peuvent être en base sans qu'une trace ait été ouverte
+        | (passe planifiée, commande console, journée antérieure à l'écran).
+        | Seul un état *en cours* ou *échoué* est un refus.
+        */
+        if (! $this->mayRecount($date->toDateString())) {
+            $this->dispatch('toast', message: (string) __('backoffice.yango_sync.recount_blocked'));
+
+            return;
+        }
+
         $run = YangoSyncRun::queueFor(
             YangoSyncRunKind::Activity,
             $date->toDateString(),
@@ -428,7 +446,42 @@ class Index extends Component
             'drifted' => $completed !== null && $tally !== null && $completed !== $tally,
             'run' => $this->prominentRun($dayRuns),
             'activityRun' => $dayRuns?->firstWhere('kind', YangoSyncRunKind::Activity),
+            /*
+            | Le bouton se grise quand la journée ne se recompte pas : passe de
+            | courses en cours ou échouée (le cumul porterait sur des courses à
+            | moitié écrites), ou recompte déjà en vol. Décidé ici et non dans
+            | la vue — une comparaison d'énumération en Blade se paie d'un nom
+            | de classe interpolé, ce que `.ai/rules/views.md` proscrit.
+            */
+            'recountBlocked' => ($dayRuns?->firstWhere('kind', YangoSyncRunKind::Activity)?->status->isPending() ?? false)
+                || ! $this->ordersRunAllowsRecount($dayRuns?->firstWhere('kind', YangoSyncRunKind::Orders)),
         ];
+    }
+
+    /**
+     * Une journée se recompte quand sa passe de courses est terminée, ou
+     * quand il n'y en a jamais eu.
+     *
+     * Le portail vit ici et pas seulement dans la vue : un bouton grisé
+     * n'empêche rien: `recount` est appelable directement.
+     */
+    private function mayRecount(string $day): bool
+    {
+        return $this->ordersRunAllowsRecount(
+            YangoSyncRun::query()
+                ->where('day', $day)
+                ->where('kind', YangoSyncRunKind::Orders)
+                ->first()
+        );
+    }
+
+    /**
+     * Une passe de courses absente ne bloque rien ; seule une passe inachevée
+     * ou échouée le fait.
+     */
+    private function ordersRunAllowsRecount(?YangoSyncRun $orders): bool
+    {
+        return $orders === null || $orders->status === YangoSyncRunStatus::Finished;
     }
 
     /**

@@ -16,6 +16,7 @@ use App\Jobs\RebuildDailyActivityJob;
 use App\Jobs\SyncYangoOrdersJob;
 use App\Livewire\YangoSync\Index;
 use App\Models\User;
+use App\Models\YangoDailyStat;
 use App\Models\YangoSyncRun;
 use App\Services\Challenges\DailyActivityRebuilder;
 use Database\Seeders\RolePermissionSeeder;
@@ -274,4 +275,99 @@ it('refuses to open a trace for an agent who only has the module', function (): 
         ->assertForbidden();
 
     expect(YangoSyncRun::query()->count())->toBe(0);
+});
+
+it('refuses to recount a day whose orders pass is still running', function (): void {
+    // Le cumul porterait sur des courses à moitié écrites : la passe les écrit
+    // au fil du curseur.
+    Queue::fake();
+
+    YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-09-12', null)->markRunning();
+
+    Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->call('recount', '2026-09-12');
+
+    Queue::assertNothingPushed();
+
+    expect(YangoSyncRun::query()->where('kind', YangoSyncRunKind::Activity)->count())->toBe(0);
+});
+
+it('refuses to recount a day whose orders pass is merely queued', function (): void {
+    Queue::fake();
+
+    YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-09-12', null);
+
+    Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->call('recount', '2026-09-12');
+
+    Queue::assertNothingPushed();
+});
+
+it('refuses to recount a day whose orders pass failed', function (): void {
+    // Une passe échouée s'est arrêtée quelque part, et personne ne sait où.
+    Queue::fake();
+
+    YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-09-12', null)->markFailed('429');
+
+    Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->call('recount', '2026-09-12');
+
+    Queue::assertNothingPushed();
+});
+
+it('recounts a day whose orders pass finished', function (): void {
+    Queue::fake();
+
+    YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-09-12', null)->markFinished([]);
+
+    Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->call('recount', '2026-09-12');
+
+    Queue::assertPushed(RebuildDailyActivityJob::class, 1);
+});
+
+it('recounts a day that never had an orders pass at all', function (): void {
+    /*
+    | L'absence de trace n'est pas l'absence de courses : le planificateur et
+    | la commande console n'en ouvrent aucune, et les journées antérieures à
+    | l'écran n'en ont jamais eu. Les refuser rendrait le bouton mort sur tout
+    | l'historique.
+    */
+    Queue::fake();
+
+    Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->call('recount', '2026-09-12');
+
+    Queue::assertPushed(RebuildDailyActivityJob::class, 1);
+});
+
+it('greys the button out on a day whose orders pass is unfinished', function (): void {
+    YangoDailyStat::factory()->create(['day' => '2026-09-12', 'orders_completed' => 9]);
+    YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-09-12', null)->markRunning();
+
+    $rows = Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->set('historyFrom', '2026-09-12')
+        ->set('historyTo', '2026-09-12')
+        ->viewData('rows');
+
+    expect($rows->items()[0]['recountBlocked'])->toBeTrue();
+});
+
+it('leaves the button live on a day whose orders pass finished', function (): void {
+    YangoDailyStat::factory()->create(['day' => '2026-09-12', 'orders_completed' => 9]);
+    YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-09-12', null)->markFinished([]);
+
+    $rows = Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->set('historyFrom', '2026-09-12')
+        ->set('historyTo', '2026-09-12')
+        ->viewData('rows');
+
+    expect($rows->items()[0]['recountBlocked'])->toBeFalse();
 });

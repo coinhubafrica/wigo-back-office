@@ -104,14 +104,23 @@
 
                     <x-td align="right" nowrap>
                         @if ($canQueue)
-                            {{-- Sorti de la directive : `@disabled` ne sait pas analyser une chaîne `?->` et la découperait en attributs. --}}
-                            @php($recountRunning = $row['activityRun']?->status->isPending() ?? false)
+                            {{--
+                                Sorti de la directive : `@disabled` ne sait pas analyser une
+                                chaîne `?->` et la découperait en attributs.
+
+                                Une journée dont la passe de courses tourne encore, ou a
+                                échoué, ne se recompte pas : le cumul porterait sur des
+                                courses à moitié écrites. Une journée sans passe du tout
+                                reste recomptable — les courses peuvent être en base sans
+                                trace (planificateur, console, journée ancienne).
+                            --}}
                             <x-button
                                 variant="secondary"
                                 size="sm"
                                 wire:click="recount('{{ $row['day'] }}')"
                                 target="recount"
-                                :disabled="$recountRunning"
+                                :disabled="$row['recountBlocked']"
+                                :title="$row['recountBlocked'] ? __('backoffice.yango_sync.recount_blocked') : null"
                             >
                                 {{ __('backoffice.yango_sync.recount') }}
                             </x-button>
