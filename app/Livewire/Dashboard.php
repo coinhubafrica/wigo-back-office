@@ -9,10 +9,10 @@ use App\Livewire\Concerns\InteractsWithCurrentUser;
 use App\Models\Challenge;
 use App\Models\CnpsDeclaration;
 use App\Models\Driver;
-use App\Models\DriverDailyActivity;
 use App\Models\SupportRequest;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\YangoDailyStat;
 use App\Support\DashboardAlerts;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -68,6 +68,14 @@ class Dashboard extends Component
      * Profondeur de l'histogramme journalier.
      */
     private const DAILY_DAYS = 7;
+
+    /**
+     * Cumul par journée, mémorisé le temps d'un rendu : trois appelants le
+     * demandent sur des fenêtres qui se recouvrent.
+     *
+     * @var ?array<string, int>
+     */
+    private ?array $parkDailyTotals = null;
 
     public function render(): View
     {
@@ -263,11 +271,53 @@ class Dashboard extends Component
      */
     private function dailyTotals(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        return DriverDailyActivity::query()
-            ->whereBetween('activity_date', [$from->format('Y-m-d'), $to->format('Y-m-d')])
-            ->groupBy('activity_date')
-            ->selectRaw('activity_date, sum(orders_completed) as aggregate')
-            ->pluck('aggregate', 'activity_date')
+        $totals = $this->parkDailyTotals();
+
+        return array_filter(
+            $totals,
+            fn (string $day): bool => $day >= $from->format('Y-m-d') && $day <= $to->format('Y-m-d'),
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /**
+     * Les courses terminées du parc par journée, sur la plus large fenêtre dont
+     * l'écran ait besoin — lues une seule fois par rendu.
+     *
+     * Deux corrections tiennent dans cette méthode.
+     *
+     * La **source** d'abord : le cumul par conducteur (`driver_daily_activities`)
+     * répondait ici, mais l'écran ne demande que des totaux de parc. Il fallait
+     * donc sommer 80 615 lignes pour en tirer 77 nombres — 206 ms mesurées sur
+     * la base réelle. `yango_daily_stats` porte une ligne par journée : la même
+     * réponse en une lecture d'intervalle.
+     *
+     * Le **nombre d'appels** ensuite : l'histogramme, la courbe et la carte de
+     * la semaine demandaient chacun leur fenêtre, soit trois allers-retours par
+     * rendu sur des plages qui se recouvrent. Une seule lecture couvre les
+     * trois, et chacune y découpe sa part.
+     *
+     * @return array<string, int> « 2026-09-07 » => courses
+     */
+    private function parkDailyTotals(): array
+    {
+        if ($this->parkDailyTotals !== null) {
+            return $this->parkDailyTotals;
+        }
+
+        // La fenêtre la plus ancienne dont l'écran ait besoin est celle de la
+        // courbe ; la plus récente, la fin de la semaine observée — qui peut
+        // dépasser aujourd'hui quand l'agent regarde la semaine en cours.
+        $oldest = CarbonImmutable::now()->startOfWeek()->subWeeks(self::TREND_WEEKS - 1);
+        $newest = $this->selectedWeekStart()->endOfWeek();
+
+        if ($newest->lessThan(CarbonImmutable::now())) {
+            $newest = CarbonImmutable::now();
+        }
+
+        return $this->parkDailyTotals = YangoDailyStat::query()
+            ->whereBetween('day', [$oldest->format('Y-m-d'), $newest->format('Y-m-d')])
+            ->pluck('orders_completed', 'day')
             ->mapWithKeys(fn (mixed $orders, mixed $day): array => [
                 // `pluck` sur une colonne castée rend une date ; la clé doit
                 // être la chaîne « Y-m-d » que les appelants recomposent.

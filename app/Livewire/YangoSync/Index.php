@@ -3,19 +3,16 @@
 namespace App\Livewire\YangoSync;
 
 use App\Enums\BackOfficeModule;
-use App\Enums\YangoOrderStatus;
 use App\Enums\YangoSyncRunKind;
 use App\Enums\YangoSyncRunStatus;
 use App\Jobs\RebuildDailyActivityJob;
 use App\Jobs\SyncYangoOrdersJob;
-use App\Jobs\SyncYangoTransactionsJob;
 use App\Livewire\Concerns\InteractsWithCurrentUser;
-use App\Models\YangoOrder;
+use App\Models\YangoDailyStat;
 use App\Models\YangoSyncRun;
-use App\Models\YangoTransaction;
 use Carbon\Exceptions\InvalidFormatException;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -23,12 +20,12 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
- * Rattrapage manuel des journaux datés du parc : les courses et le grand
- * livre.
+ * Rattrapage manuel des courses du parc, et lecture de ce qu'elles ont donné.
  *
- * Les deux passes tournent à l'heure sur une fenêtre glissante veille→jour.
+ * La passe tourne à l'heure sur une fenêtre glissante veille→jour.
  * Elles suffisent au quotidien, mais une journée peut rester creuse — une
  * panne Yango, un 429 au mauvais moment, un mouvement réglé bien après la
  * journée qu'il concerne. Sans cet écran, seul un développeur avec un accès
@@ -45,7 +42,7 @@ use Livewire\Component;
 #[Layout('layouts.app', ['module' => BackOfficeModule::YangoSync])]
 class Index extends Component
 {
-    use InteractsWithCurrentUser;
+    use InteractsWithCurrentUser, WithPagination;
 
     /**
      * Longueur maximale d'une période, bornes comprises.
@@ -58,6 +55,16 @@ class Index extends Component
      */
     public const MAX_DAYS = 31;
 
+    /**
+     * Journées par page du tableau d'historique.
+     *
+     * Aucun plafond ici, contrairement à `MAX_DAYS` : une ligne d'historique
+     * est une recherche dans un index, là où une journée mise en file est une
+     * boucle de curseur bornée par le quota de Yango. Les deux nombres ne
+     * gouvernent pas la même dépense.
+     */
+    public const PER_PAGE = 20;
+
     #[Url]
     public string $from = '';
 
@@ -65,8 +72,6 @@ class Index extends Component
     public string $to = '';
 
     public bool $syncOrders = true;
-
-    public bool $syncTransactions = true;
 
     /**
      * Recompter le cumul journalier sans rien redemander à Yango.
@@ -78,6 +83,21 @@ class Index extends Component
      * pour rien.
      */
     public bool $rebuildActivity = false;
+
+    /**
+     * Bornes du tableau d'historique — distinctes de `$from`/`$to`, qui ne
+     * pilotent que la mise en file.
+     *
+     * Deux plages sur un même écran prêtent à confusion, d'où trois garde-fous :
+     * des panneaux séparés, des libellés distincts (« Du » contre
+     * « Historique du »), et des clés d'URL distinctes pour qu'un lien partagé
+     * restitue les deux sans ambiguïté.
+     */
+    #[Url(as: 'hfrom')]
+    public string $historyFrom = '';
+
+    #[Url(as: 'hto')]
+    public string $historyTo = '';
 
     /**
      * La fenêtre s'ouvre sur celle du planificateur — veille→jour — parce que
@@ -92,6 +112,33 @@ class Index extends Component
         if ($this->to === '') {
             $this->to = Carbon::today()->toDateString();
         }
+
+        // L'historique s'ouvre plus large que la relance : on relance la
+        // veille, on regarde le mois.
+        if ($this->historyFrom === '') {
+            $this->historyFrom = Carbon::today()->subDays(30)->toDateString();
+        }
+
+        if ($this->historyTo === '') {
+            $this->historyTo = Carbon::today()->toDateString();
+        }
+    }
+
+    public function updatedHistoryFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedHistoryTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function resetHistoryFilter(): void
+    {
+        $this->historyFrom = Carbon::today()->subDays(30)->toDateString();
+        $this->historyTo = Carbon::today()->toDateString();
+        $this->resetPage();
     }
 
     /**
@@ -128,7 +175,7 @@ class Index extends Component
 
         $this->validate();
 
-        if (! $this->syncOrders && ! $this->syncTransactions && ! $this->rebuildActivity) {
+        if (! $this->syncOrders && ! $this->rebuildActivity) {
             $this->addError('syncOrders', (string) __('backoffice.yango_sync.pick_one'));
 
             return;
@@ -164,12 +211,6 @@ class Index extends Component
                 $run = YangoSyncRun::queueFor(YangoSyncRunKind::Orders, $date, $actorId);
 
                 SyncYangoOrdersJob::dispatch($date)->withRun($run->getKey());
-            }
-
-            if ($this->syncTransactions) {
-                $run = YangoSyncRun::queueFor(YangoSyncRunKind::Transactions, $date, $actorId);
-
-                SyncYangoTransactionsJob::dispatch($date)->withRun($run->getKey());
             }
 
             if ($this->rebuildActivity) {
@@ -224,117 +265,212 @@ class Index extends Component
     }
 
     /**
-     * Ce que la base porte déjà pour chaque journée de la période : c'est en
-     * comparant ces nombres d'un jour à l'autre qu'un creux se voit.
+     * Recompte le tableau de bord d'UNE journée, sans rien redemander à Yango.
      *
-     * Trois requêtes groupées pour toute la période, jamais une par journée.
+     * Pas de confirmation, contrairement aux gestes de `Recharges\Index` :
+     * celui-ci ne déplace aucun argent et se rejoue sans conséquence. Même
+     * parti pris que `Challenges\Show::resyncOrders()`, l'analogue le plus
+     * proche — les confirmations sont réservées à l'irréversible (clôture de
+     * période, tirage, crédit de lot). Le garde-fou contre le reclic vit dans
+     * le job, `ShouldBeUnique` par journée, pas ici.
      *
-     * Les courses sont ventilées par statut, et non comptées en bloc : une
-     * journée porte volontiers autant d'annulées que de terminées, si bien
-     * qu'un total brut ne se compare à rien. Le tableau de bord, lui, ne compte
-     * que les terminées — un agent qui lisait 17 536 ici et 1 740 là-bas
-     * concluait au trou alors que 8 281 courses étaient simplement annulées.
-     *
-     * D'où la colonne « Tableau de bord » : elle donne le cumul journalier tel
-     * qu'il est stocké, en face des courses dont il découle. Les deux nombres
-     * doivent être égaux ; leur écart est précisément ce que le recompte
-     * répare.
-     *
-     * @return list<array{day: string, completed: int, cancelled: int, transactions: int, activity: int, drifted: bool}>
+     * La trace est ouverte avant la mise en file : la file est Redis, et sans
+     * elle le bouton paraîtrait mort — l'agent recliquerait dans un verrou
+     * silencieux, la panne même que `yango_sync_runs` corrige.
      */
-    public function coverage(): array
+    public function recount(string $day): void
     {
-        $days = $this->days();
+        Gate::authorize('resyncYangoPeriod');
 
-        if ($days === []) {
-            return [];
+        // `$day` vient du client : `parse()` est la garde, et elle rend `null`
+        // plutôt que de lever — `rows()` tourne à chaque rendu.
+        $date = $this->parse($day);
+
+        if ($date === null) {
+            return;
         }
 
-        $from = $days[0]->copy()->startOfDay();
-        $to = $days[count($days) - 1]->copy()->endOfDay();
+        $run = YangoSyncRun::queueFor(
+            YangoSyncRunKind::Activity,
+            $date->toDateString(),
+            $this->actor()->getKey(),
+        );
 
-        $orders = YangoOrder::query()
-            ->whereBetween('completed_at', [$from, $to])
-            ->selectRaw('date(completed_at) as day, status, count(*) as total')
-            ->groupBy('day', 'status')
-            ->get();
+        /*
+        | `repairTotals: true`, là où le formulaire de période ne le passe qu'à
+        | la plus ancienne journée : un bouton qui vise une seule journée n'a
+        | pas de « plus ancienne ». `orders_total` est un cumul de carrière —
+        | sans rechaînage, réparer le 12 laisserait le 13 et tous les suivants
+        | faux.
+        */
+        RebuildDailyActivityJob::dispatch($date->toDateString(), repairTotals: true)
+            ->withRun($run->getKey());
 
-        $completed = $orders
-            ->where('status', YangoOrderStatus::Complete)
-            ->pluck('total', 'day');
+        $this->dispatch('toast', message: (string) __('backoffice.yango_sync.recount_queued', [
+            'day' => $date->toDateString(),
+        ]));
+    }
 
-        $cancelled = $orders
-            ->where('status', YangoOrderStatus::Cancelled)
-            ->pluck('total', 'day');
+    /**
+     * Les journées à afficher, paginées, avec de quoi juger chacune.
+     *
+     * Une ligne par journée : ce que le parc a fait (`yango_daily_stats`), ce
+     * que le tableau de bord en a retenu (`driver_daily_activities`), et où en
+     * est la dernière passe (`yango_sync_runs`).
+     *
+     * **`yango_orders` n'est plus jamais lue ici.** C'était tout le problème :
+     * 10 651 ms pour une fenêtre de 31 jours, parce qu'aucun index ne commence
+     * par `completed_at` et que `date(completed_at)` dans un `GROUP BY` écarte
+     * de toute façon la recherche par intervalle. Quatre requêtes sur des
+     * tables de cumul remplacent le parcours de 2,3 M de lignes.
+     *
+     * Le compte de requêtes ne dépend pas de la taille de page : la liste des
+     * journées est paginée d'abord, puis trois lectures groupées hydratent les
+     * seules journées visibles.
+     *
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public function rows(): LengthAwarePaginator
+    {
+        [$from, $to] = $this->historyBounds();
 
-        $transactions = YangoTransaction::query()
-            ->whereBetween('event_at', [$from, $to])
-            ->selectRaw('date(event_at) as day, count(*) as total')
-            ->groupBy('day')
-            ->pluck('total', 'day');
+        /*
+        | `UNION` et non `UNION ALL` : une journée qui porte à la fois un cumul
+        | et une passe ne doit rendre qu'une ligne, sans quoi deux `wire:key`
+        | identiques se disputeraient la même place et la pagination compterait
+        | double.
+        */
+        $days = DB::table('yango_daily_stats')
+            ->select('day')
+            ->when($from !== null, fn ($query) => $query->where('day', '>=', $from))
+            ->when($to !== null, fn ($query) => $query->where('day', '<=', $to))
+            ->union(
+                DB::table('yango_sync_runs')
+                    ->select('day')
+                    ->when($from !== null, fn ($query) => $query->where('day', '>=', $from))
+                    ->when($to !== null, fn ($query) => $query->where('day', '<=', $to))
+            )
+            ->orderByDesc('day')
+            ->paginate(self::PER_PAGE);
+
+        $keys = collect($days->items())
+            ->map(fn (object $row): string => $this->normaliseDay($row->day))
+            ->all();
+
+        if ($keys === []) {
+            return $days;
+        }
+
+        $stats = YangoDailyStat::query()
+            ->whereIn('day', $keys)
+            ->get()
+            ->keyBy(fn (YangoDailyStat $stat): string => $stat->day->format('Y-m-d'));
 
         // `DB::table` et non le modèle : le cast `date:Y-m-d` de
-        // `DriverDailyActivity` s'appliquerait à la colonne de groupement et
-        // rendrait une clé datée là où il faut une chaîne « Y-m-d » comparable
-        // aux autres. Le tableau de bord contourne la même difficulté en
-        // reformatant chaque clé.
-        $activity = DB::table('driver_daily_activities')
-            ->whereBetween('activity_date', [$from->toDateString(), $to->toDateString()])
+        // `DriverDailyActivity` rendrait une date là où il faut une chaîne
+        // comparable aux autres clés.
+        $tallies = DB::table('driver_daily_activities')
+            ->whereIn('activity_date', $keys)
             ->selectRaw('activity_date as day, sum(orders_completed) as total')
             ->groupBy('day')
             ->pluck('total', 'day');
 
-        return array_map(function (Carbon $day) use ($completed, $cancelled, $transactions, $activity): array {
-            $key = $day->toDateString();
-            $done = (int) ($completed[$key] ?? 0);
-            $counted = (int) ($activity[$key] ?? 0);
+        // `with('user')` : sans lui, le nom de l'agent coûterait une requête
+        // par ligne affichée.
+        $runs = YangoSyncRun::query()
+            ->with('user:id,name')
+            ->whereIn('day', $keys)
+            ->get()
+            ->groupBy(fn (YangoSyncRun $run): string => $run->day->format('Y-m-d'));
 
-            return [
-                'day' => $key,
-                'completed' => $done,
-                'cancelled' => (int) ($cancelled[$key] ?? 0),
-                'transactions' => (int) ($transactions[$key] ?? 0),
-                'activity' => $counted,
-                // Le cumul journalier découle des courses terminées : tout écart
-                // est un recompte qui n'a pas eu lieu.
-                'drifted' => $counted !== $done,
-            ];
-        }, $days);
+        return $days->through(fn (object $row): array => $this->composeRow(
+            $this->normaliseDay($row->day),
+            $stats,
+            $tallies,
+            $runs,
+        ));
     }
 
     /**
-     * Les passes lancées depuis l'écran sur la période affichée, du plus
-     * récent au plus ancien.
+     * Rassemble ce que les trois tables disent d'une journée.
      *
-     * Les traces vivent hors de la période courante : un agent qui rétrécit sa
-     * fenêtre ne doit pas croire que sa passe a disparu, d'où la lecture par
-     * date **et** la liste des passes encore en vol, quelle que soit leur
-     * journée.
-     *
-     * @return Collection<int, YangoSyncRun>
+     * @param  Collection<string, YangoDailyStat>  $stats
+     * @param  Collection<string, mixed>  $tallies
+     * @param  Collection<string, Collection<int, YangoSyncRun>>  $runs
+     * @return array<string, mixed>
      */
-    public function runs(): Collection
+    private function composeRow(string $day, Collection $stats, Collection $tallies, Collection $runs): array
     {
-        $days = $this->days();
+        $stat = $stats->get($day);
+        $dayRuns = $runs->get($day);
 
-        if ($days === []) {
-            return collect();
+        $completed = $stat?->orders_completed;
+        $tally = $tallies->has($day) ? (int) $tallies->get($day) : null;
+
+        return [
+            'day' => $day,
+            'completed' => $completed,
+            'cancelled' => $stat?->orders_cancelled,
+            'dashboard' => $tally,
+            'countedAt' => $stat?->counted_at,
+            /*
+            | L'écart ne se signale que si les deux côtés ont quelque chose à
+            | dire. Une journée jamais comptée n'est pas une journée fausse, et
+            | l'annoncer comme telle ferait fuir l'attention de celles qui le
+            | sont vraiment.
+            |
+            | Les deux nombres viennent de deux cumuls entretenus séparément —
+            | l'un compte le parc par statut, l'autre somme les conducteurs.
+            | Les faire descendre d'une même lecture rendrait la comparaison
+            | toujours vraie, donc muette : c'est exactement ce qu'il ne faut
+            | pas faire (cf. `.ai/rules/livewire-yango-sync.md`).
+            */
+            'drifted' => $completed !== null && $tally !== null && $completed !== $tally,
+            'run' => $this->prominentRun($dayRuns),
+            'activityRun' => $dayRuns?->firstWhere('kind', YangoSyncRunKind::Activity),
+        ];
+    }
+
+    /**
+     * La passe qui mérite la pastille : celle qui tourne encore s'il y en a
+     * une, sinon la dernière commencée.
+     *
+     * @param  ?Collection<int, YangoSyncRun>  $runs
+     */
+    private function prominentRun(?Collection $runs): ?YangoSyncRun
+    {
+        if ($runs === null || $runs->isEmpty()) {
+            return null;
         }
 
-        $from = $days[0]->toDateString();
-        $to = $days[count($days) - 1]->toDateString();
+        return $runs->first(fn (YangoSyncRun $run): bool => $run->status->isPending())
+            ?? $runs->sortByDesc('updated_at')->first();
+    }
 
-        return YangoSyncRun::query()
-            ->with('user:id,name')
-            ->where(fn (Builder $query) => $query
-                ->whereBetween('day', [$from, $to])
-                // Une passe encore en vol reste visible même hors fenêtre :
-                // c'est précisément celle qu'on cherche du regard.
-                ->orWhereIn('status', [YangoSyncRunStatus::Queued, YangoSyncRunStatus::Running]))
-            ->orderByDesc('day')
-            ->orderBy('kind')
-            ->limit(self::MAX_DAYS * 3)
-            ->get();
+    /**
+     * Bornes du tableau, ou `null` quand la borne est vide ou illisible.
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function historyBounds(): array
+    {
+        return [
+            $this->parse($this->historyFrom)?->toDateString(),
+            $this->parse($this->historyTo)?->toDateString(),
+        ];
+    }
+
+    /**
+     * Ramène une date à « Y-m-d ».
+     *
+     * Les lignes brutes d'un `UNION` échappent aux casts du modèle, et les
+     * pilotes ne s'accordent pas : MySQL rend « 2026-09-12 » là où SQLite rend
+     * « 2026-09-12 00:00:00 ». Sans cette normalisation, les clés ne se
+     * rapprocheraient pas de celles des trois autres lectures.
+     */
+    private function normaliseDay(mixed $day): string
+    {
+        return Carbon::parse((string) $day)->toDateString();
     }
 
     /**
@@ -354,10 +490,9 @@ class Index extends Component
         $view = 'livewire.yango-sync.index';
 
         return view($view, [
-            'coverage' => $this->coverage(),
+            'rows' => $this->rows(),
             'dayCount' => count($this->days()),
             'canQueue' => Gate::allows('resyncYangoPeriod'),
-            'runs' => $this->runs(),
             'hasPendingRuns' => $this->hasPendingRuns(),
         ]);
     }

@@ -112,22 +112,6 @@ it('omits the cursor on the first call and echoes it back on the next', function
         ->and($sent[1]->getPendingRequest()->body()->all()['cursor'])->toBe('page-2');
 });
 
-it('walks the cursor for transactions too', function (): void {
-    yangoConfigure();
-
-    MockClient::global([
-        yangoTransactionsResponse([yangoTransactionRow('TRX-1')], cursor: 'page-2'),
-        yangoTransactionsResponse([yangoTransactionRow('TRX-2')]),
-    ]);
-
-    $transactions = iterator_to_array(
-        (new SaloonYangoDirectory)->transactions(Carbon::parse('2026-09-03'), Carbon::parse('2026-09-03')),
-        false,
-    );
-
-    expect($transactions)->toHaveCount(2);
-});
-
 it('reads a driver Yango does not know as an answer, not a failure', function (): void {
     // Contrat volontairement distinct de la pagination, qui lève : demander un
     // conducteur qui n'est pas de ce parc est une question légitime dont

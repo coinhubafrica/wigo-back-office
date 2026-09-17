@@ -1,14 +1,10 @@
 <?php
 
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
-use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
 use App\Jobs\SyncYangoOrdersJob;
-use App\Jobs\SyncYangoTransactionsJob;
 use App\Models\Driver;
 use App\Models\YangoOrder;
-use App\Models\YangoTransaction;
 use App\Services\Yango\YangoOrderSyncService;
-use App\Services\Yango\YangoTransactionSyncService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 use Saloon\Http\Faking\MockClient;
@@ -31,26 +27,11 @@ it('runs a day of orders', function (): void {
     expect(YangoOrder::query()->count())->toBe(1);
 });
 
-it('runs a day of transactions', function (): void {
-    // Conducteur déjà en base : sans lui, la passe le demanderait nommément à
-    // Yango, ce que ce test-ci n'a pas à exercer.
-    Driver::factory()->create(['yango_id' => 'YAN-001']);
-
-    MockClient::global([
-        GetTransactionsRequest::class => yangoTransactionsResponse([yangoTransactionRow()]),
-    ]);
-
-    (new SyncYangoTransactionsJob('2026-09-03'))->handle(app(YangoTransactionSyncService::class));
-
-    expect(YangoTransaction::query()->count())->toBe(1);
-});
-
 it('locks a day against a second pass of the same kind', function (): void {
     // Deux passes du même jour se disputeraient les mêmes lignes et
     // recalculeraient deux fois le même grand livre journalier.
     expect((new SyncYangoOrdersJob('2026-09-03'))->uniqueId())->toBe('yango-orders:2026-09-03')
-        ->and((new SyncYangoOrdersJob('2026-09-04'))->uniqueId())->toBe('yango-orders:2026-09-04')
-        ->and((new SyncYangoTransactionsJob('2026-09-03'))->uniqueId())->toBe('yango-transactions:2026-09-03');
+        ->and((new SyncYangoOrdersJob('2026-09-04'))->uniqueId())->toBe('yango-orders:2026-09-04');
 });
 
 it('fails an orders pass permanently when the api key is refused', function (int $status): void {
@@ -75,16 +56,6 @@ it('releases an orders pass when Yango is merely unwell', function (int $status)
 
     $job->handle(app(YangoOrderSyncService::class));
 })->with([500, 429]);
-
-it('fails a transactions pass permanently when the api key is refused', function (): void {
-    MockClient::global([GetTransactionsRequest::class => yangoRefusal(401)]);
-
-    $job = Mockery::mock(SyncYangoTransactionsJob::class, ['2026-09-03'])->makePartial();
-    $job->shouldReceive('fail')->once();
-    $job->shouldNotReceive('release');
-
-    $job->handle(app(YangoTransactionSyncService::class));
-});
 
 it('logs the counters, the scheduled pass having no console to speak to', function (): void {
     Log::spy();

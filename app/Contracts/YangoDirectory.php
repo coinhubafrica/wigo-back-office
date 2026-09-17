@@ -7,7 +7,7 @@ use App\Services\Yango\YangoSyncCursor;
 use Carbon\CarbonInterface;
 
 /**
- * Annuaire du parc Yango : conducteurs, véhicules, courses et transactions.
+ * Annuaire du parc Yango : conducteurs, véhicules et courses.
  *
  * Contrat d'erreur inverse de `YangoClient`, et c'est voulu. `YangoClient` sert
  * une requête mobile et ne lève jamais — un fournisseur muet rend `null`, le
@@ -21,9 +21,9 @@ use Carbon\CarbonInterface;
  *
  * Deux modèles de pagination cohabitent, parce que Yango en expose deux. Le
  * parc (conducteurs, véhicules) se lit par décalage et rend un `total`, donc
- * une taille de page jusqu'à 1000. Les courses et les transactions se lisent
- * par curseur, sans total, et sur une fenêtre de dates obligatoire. Ne pas
- * chercher à les unifier : la seconde forme ne sait pas où elle en est.
+ * une taille de page jusqu'à 1000. Les courses se lisent par curseur, sans
+ * total, et sur une fenêtre de dates obligatoire. Ne pas chercher à les
+ * unifier : la seconde forme ne sait pas où elle en est.
  */
 interface YangoDirectory
 {
@@ -66,19 +66,10 @@ interface YangoDirectory
     public function orders(CarbonInterface $from, CarbonInterface $to, int $pageSize = 250, ?string $driverYangoId = null): iterable;
 
     /**
-     * Mouvements du grand livre du parc dans la fenêtre, bornes comprises.
-     *
-     * @return iterable<int, array<string, mixed>>
-     *
-     * @throws YangoFleetException
-     */
-    public function transactions(CarbonInterface $from, CarbonInterface $to, int $pageSize = 1000): iterable;
-
-    /**
      * Un profil conducteur nommément, ramené à la forme d'une ligne de liste.
      *
      * La passe parc ne fait pas le tour d'un grand parc avant que Yango la
-     * coupe : une course ou une transaction peut donc nommer un conducteur que
+     * coupe : une course peut donc nommer un conducteur que
      * la liste n'a pas encore atteint. Cet appel le rapatrie à la demande.
      *
      * Rend `null` quand Yango ne connaît pas ce profil (404) : c'est une

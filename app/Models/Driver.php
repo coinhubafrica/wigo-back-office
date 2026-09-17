@@ -116,14 +116,6 @@ class Driver extends Authenticatable
     }
 
     /**
-     * @return HasMany<YangoTransaction, $this>
-     */
-    public function yangoTransactions(): HasMany
-    {
-        return $this->hasMany(YangoTransaction::class);
-    }
-
-    /**
      * @return HasMany<ShopOrder, $this>
      */
     public function shopOrders(): HasMany

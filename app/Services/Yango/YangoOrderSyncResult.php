@@ -10,6 +10,10 @@ namespace App\Services\Yango;
  * `driversSkipped` de la passe parc — un conducteur sans téléphone
  * exploitable n'entre jamais en base, ses courses non plus.
  *
+ * `statsFailed` dit que le cumul par journée (`yango_daily_stats`) n'a pas pu
+ * être écrit. Les courses, elles, le sont : l'écran lira donc un décompte
+ * périmé jusqu'au prochain recompte.
+ *
  * `activitiesFailed` compte les conducteurs dont le grand livre journalier n'a
  * pas pu être recalculé. Il vaut d'être suivi à part : les courses, elles, sont
  * écrites, si bien qu'une valeur non nulle décrit exactement l'écart entre
@@ -23,5 +27,6 @@ class YangoOrderSyncResult
         public int $ordersSkipped = 0,
         public int $driversTouched = 0,
         public int $activitiesFailed = 0,
+        public bool $statsFailed = false,
     ) {}
 }

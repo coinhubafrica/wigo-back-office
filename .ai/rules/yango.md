@@ -55,23 +55,21 @@ Cette règle vaut pour le parc, **pas** pour les courses et les transactions : c
 Yango en expose deux, et elles ne se ramènent pas l'une à l'autre.
 
 - **Parc** (`/v1/parks/driver-profiles/list`, `/v1/parks/cars/list`) : décalage, `limit` **1000 au plus**, et la réponse porte un **`total`**. C'est lui qui dit où s'arrêter — on ne devine plus la fin à une page incomplète. Une réponse muette sur `total` retombe sur l'ancien critère (page pleine), et une page vide arrête la boucle en toutes circonstances, faute de quoi un `total` trop grand la ferait tourner sans fin. Le décalage avance de `count($page)` et non de `$pageSize` : une page courte au milieu sauterait sinon des lignes.
-- **Journaux datés** (`/v1/parks/orders/list`, `/v2/parks/transactions/list`) : **curseur**, aucun `total`, fenêtre de dates obligatoire pour les courses (`booked_at` ou `ended_at` — on filtre sur `ended_at`, c'est la fin de course qui décide du jour d'activité). On redemande tant qu'un curseur revient. Le premier appel part **sans** la clé `cursor` : Yango lui impose une longueur minimale de 1, une chaîne vide serait refusée.
+- **Journal daté** (`/v1/parks/orders/list`) : **curseur**, aucun `total`, fenêtre de dates obligatoire (`booked_at` ou `ended_at` — on filtre sur `ended_at`, c'est la fin de course qui décide du jour d'activité). On redemande tant qu'un curseur revient. Le premier appel part **sans** la clé `cursor` : Yango lui impose une longueur minimale de 1, une chaîne vide serait refusée.
 
-Plafonds à ne pas confondre : 1000 pour le parc et les transactions, **500 pour les courses**. Et le piège des transactions : `limit` y vaut **40 par défaut** côté Yango — le laisser implicite fait vingt-cinq fois trop d'appels.
+Plafonds à ne pas confondre : 1000 pour le parc, **500 pour les courses**.
 
 **Le plafond n'est pas le régime de croisière.** Chaque requête porte donc deux constantes : `MAX_LIMIT`, ce que Yango accepte, et `DEFAULT_LIMIT`, ce qu'on lui demande vraiment — la moitié. Réclamer le maximum à chaque page faisait refuser la passe en 429 avant qu'elle ait fini le parc, contre l'API vivante. `MAX_LIMIT` ne sert plus qu'à borner ce qu'un `--limit` peut réclamer ; les valeurs par défaut des jobs, services et commandes partent de `DEFAULT_LIMIT`.
 
 L'espacement se règle en base (`YangoSettings::$page_delay_ms`) et non dans le code, précisément parce que le bon palier s'observe : 250 ms ne suffisait pas sur un parc de dix mille conducteurs, 2000 ms tient. Un 429 qui persiste se corrige d'abord là, avant de toucher au code.
 
 ## Les montants Yango sont des chaînes décimales
-`amount`, `price`, `balance`, `mileage` arrivent en chaîne à quatre décimales (« 12345.1434 »), jamais en nombre. `yango_transactions.amount` est donc un `decimal(20,4)` et la valeur ne passe jamais par un `float` — ce serait perdre des centimes sur les gros montants.
+`amount`, `price`, `balance`, `mileage` arrivent en chaîne à quatre décimales (« 12345.1434 »), jamais en nombre. La valeur ne doit jamais passer par un `float` — ce serait perdre des centimes sur les gros montants.
 
-À distinguer de `transactions.amount`, entier de FCFA : c'est l'argent **local** (Wave encaisse), pas le grand livre du parc. Les deux tables se rapprochent, elles ne fusionnent pas.
+À distinguer de `transactions.amount`, entier de FCFA : c'est l'argent **local** (Wave encaisse). Le grand livre du parc Yango, lui, a été **supprimé** — il n'avait aucun lecteur, et sa passe était la seule à échouer encore en production.
 
-## Une course exige un conducteur, une transaction non
+## Une course exige un conducteur
 `yango_orders.driver_id` est requis : une course dont le conducteur n'a pas de ligne locale — le plus souvent un profil écarté faute de téléphone exploitable — est comptée, journalisée, **jamais écrite**. Inventer un conducteur ferait pire que le trou qu'on comble.
-
-`yango_transactions.driver_id` est au contraire **nullable** : toutes les écritures du parc ne visent pas quelqu'un, et le grand livre doit rester complet là même où le rapprochement échoue. Une ligne sans conducteur est écrite et comptée à part.
 
 ## Le solde du parc arrive gratuitement avec les conducteurs
 `GetAllDriversRequest` demande déjà `fields.account`, et la passe le jetait. `YangoSyncService` le lit désormais par `YangoAccountBalance::read()` — la même lecture que `SaloonYangoClient::balanceFor()`, extraite pour que les deux chemins ne puissent pas diverger et afficher deux soldes pour le même conducteur.
@@ -93,7 +91,7 @@ Conséquence assumée : **`YANGO_DRIVER` n'existe plus**, et `config/services.ph
 Écrire un test qui touche Yango :
 
 - `yangoConfigure()` d'abord, sinon `isConfigured()` refuse de sortir et aucune requête n'atteint le mock.
-- Les fabriques de charge utile vivent dans `tests/Pest.php` : `yangoProfile()`, `yangoCar()`, `yangoDriversResponse()`, `yangoVehiclesResponse()`, `yangoBalanceResponse()`, `yangoRefusal()`, `yangoOrderRow()`, `yangoOrdersResponse()`, `yangoTransactionRow()`, `yangoTransactionsResponse()`. Les deux premières listes portent un `total` (nul pour exercer le repli), les deux dernières un `cursor` (vide = dernière page).
+- Les fabriques de charge utile vivent dans `tests/Pest.php` : `yangoProfile()`, `yangoCar()`, `yangoDriversResponse()`, `yangoVehiclesResponse()`, `yangoBalanceResponse()`, `yangoRefusal()`, `yangoOrderRow()`, `yangoOrdersResponse()`. Les deux listes de parc portent un `total` (nul pour exercer le repli), celle des courses un `cursor` (vide = dernière page).
 - **Indexer par classe de requête** (`GetAllDriversRequest::class => ...`) plutôt qu'en séquence : l'ordre des appels devient sans importance, et un rejeu (429, quatre tentatives) ne vide pas la file de réponses.
 - `MockClient::destroyGlobal()` en `afterEach`, sans exception : un mock global qui fuit contamine les fichiers suivants.
 

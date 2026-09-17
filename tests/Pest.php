@@ -285,40 +285,6 @@ function yangoOrdersResponse(array $orders = [], string $cursor = ''): MockRespo
 }
 
 /**
- * Un mouvement du grand livre tel que Yango le remonte. Le montant est une
- * chaîne décimale, pas un nombre — c'est le piège de cette passe.
- *
- * @return array<string, mixed>
- */
-function yangoTransactionRow(
-    string $id = 'TRX-001',
-    ?string $driverYangoId = 'YAN-001',
-    string $amount = '12345.1434',
-    string $eventAt = '2026-09-03T11:58:01+00:00',
-): array {
-    return array_filter([
-        'id' => $id,
-        'event_at' => $eventAt,
-        'category_id' => 'partner_service_manual',
-        'category_name' => 'Recurring payments',
-        'amount' => $amount,
-        'currency_code' => 'XOF',
-        'description' => 'Charging #13',
-        'driver_profile_id' => $driverYangoId,
-    ], fn (mixed $value): bool => $value !== null);
-}
-
-/**
- * Réponse à une page de transactions. `cursor` vide = dernière page.
- *
- * @param  list<array<string, mixed>>  $transactions
- */
-function yangoTransactionsResponse(array $transactions = [], string $cursor = ''): MockResponse
-{
-    return MockResponse::make(['transactions' => $transactions, 'cursor' => $cursor], 200);
-}
-
-/**
  * Réponse de solde. Seul le compte `current` porte le solde utilisable, et
  * Yango le rend en chaîne décimale.
  */

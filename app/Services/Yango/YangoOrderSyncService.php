@@ -45,6 +45,7 @@ class YangoOrderSyncService
         private readonly YangoDirectory $directory,
         private readonly DailyActivityService $activities,
         private readonly YangoDriverResolver $drivers,
+        private readonly YangoDailyStatsRecorder $stats,
     ) {}
 
     public function syncDay(CarbonInterface $day, int $pageSize = GetOrdersRequest::DEFAULT_LIMIT): YangoOrderSyncResult
@@ -69,6 +70,27 @@ class YangoOrderSyncService
         // les courses du jour écrites : le recalculer course par course
         // rejouerait le même comptage autant de fois qu'un conducteur a roulé.
         $result->driversTouched = $this->recordDays($touched, $day, $result);
+
+        /*
+        | Le cumul par journée se compte en dernier, quand toutes les courses
+        | sont écrites — et hors de la boucle par conducteur.
+        |
+        | Hors boucle, et c'est voulu : `recordDays()` avale les exceptions
+        | conducteur par conducteur, si bien qu'une journée peut finir à moitié
+        | comptée côté `driver_daily_activities`. Le cumul parc, lui, reste
+        | juste. C'est cette asymétrie qui fait apparaître l'écart à l'écran —
+        | la supprimer reviendrait à masquer la panne qu'elle sert à montrer.
+        */
+        try {
+            $this->stats->recordDay($day);
+        } catch (Throwable $exception) {
+            $result->statsFailed = true;
+
+            Log::error('Yango : cumul de la journée non écrit', [
+                'day' => $day->toDateString(),
+                'exception' => $exception->getMessage(),
+            ]);
+        }
 
         return $result;
     }

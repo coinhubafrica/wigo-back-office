@@ -193,13 +193,13 @@ it('waits as Yango asks before retrying a 429 on a cursor page', function (): vo
 
     MockClient::global([
         MockResponse::make(['message' => 'slow down'], 429, ['Retry-After' => '30']),
-        yangoTransactionsResponse(),
+        yangoOrdersResponse(),
     ]);
 
     Sleep::fake();
 
     iterator_to_array(
-        (new SaloonYangoDirectory)->transactions(Carbon::parse('2026-09-03'), Carbon::parse('2026-09-03')),
+        (new SaloonYangoDirectory)->orders(Carbon::parse('2026-09-03'), Carbon::parse('2026-09-03')),
         false,
     );
 

@@ -4,6 +4,7 @@ namespace App\Services\Challenges;
 
 use App\Enums\YangoOrderStatus;
 use App\Models\DriverDailyActivity;
+use App\Services\Yango\YangoDailyStatsRecorder;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,8 @@ use Illuminate\Support\Str;
  */
 class DailyActivityRebuilder
 {
+    public function __construct(private readonly YangoDailyStatsRecorder $stats) {}
+
     /**
      * Nombre de lignes écrites par lot. Un parc de treize mille conducteurs
      * tient en quelques requêtes plutôt qu'en treize mille.
@@ -80,6 +83,11 @@ class DailyActivityRebuilder
         }
 
         $this->zeroStaleRows($date, $counts->keys()->all());
+
+        // Le bouton « Recompter » passe par ici : il doit rafraîchir les deux
+        // cumuls, sans quoi l'écart affiché à l'écran resterait celui d'avant
+        // le recompte et le bouton paraîtrait sans effet.
+        $this->stats->recordDay($day);
 
         return $touched;
     }

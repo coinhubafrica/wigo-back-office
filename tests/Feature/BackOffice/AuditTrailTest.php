@@ -176,6 +176,18 @@ it('does not journalise a challenge orders resync', function (): void {
     expect(AuditLog::query()->count())->toBe(0);
 });
 
+it('does not journalise a daily tally recount', function (): void {
+    Queue::fake();
+
+    // Même raison que le rejeu d'un challenge : le recompte relit ce que la
+    // base porte déjà, ne déplace aucune somme et se rejoue sans conséquence.
+    Livewire::actingAs(trailUser('direction'))
+        ->test(YangoSyncIndex::class)
+        ->call('recount', '2026-09-12');
+
+    expect(AuditLog::query()->count())->toBe(0);
+});
+
 it('does not journalise a Yango record refresh', function (): void {
     // Même raison que le rejeu d'un challenge : on redemande à Yango ce qu'il
     // dit déjà, sans déplacer d'argent ni rien rendre irréversible.

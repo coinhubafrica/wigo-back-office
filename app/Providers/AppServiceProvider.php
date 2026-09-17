@@ -34,9 +34,9 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleBrand;
 use App\Models\VehicleModel;
+use App\Models\YangoDailyStat;
 use App\Models\YangoOrder;
 use App\Models\YangoSyncRun;
-use App\Models\YangoTransaction;
 use App\Settings\OtpSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -153,8 +153,8 @@ class AppServiceProvider extends ServiceProvider
             'vehicle' => Vehicle::class,
             'vehicle_brand' => VehicleBrand::class,
             'vehicle_model' => VehicleModel::class,
+            'yango_daily_stat' => YangoDailyStat::class,
             'yango_order' => YangoOrder::class,
-            'yango_transaction' => YangoTransaction::class,
             'yango_sync_run' => YangoSyncRun::class,
         ]);
     }
