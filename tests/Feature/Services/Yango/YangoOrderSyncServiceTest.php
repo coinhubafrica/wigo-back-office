@@ -6,6 +6,7 @@ use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
 use App\Models\Challenge;
 use App\Models\Driver;
 use App\Models\DriverDailyActivity;
+use App\Models\YangoDailyStat;
 use App\Models\YangoOrder;
 use App\Services\Challenges\DailyActivityService;
 use App\Services\Yango\YangoOrderSyncService;
@@ -286,4 +287,45 @@ it('records the remaining drivers when one daily ledger recompute fails', functi
     Log::shouldHaveReceived('error')
         ->withArgs(fn (string $message): bool => str_contains($message, 'grand livre journalier non recalculé'))
         ->once();
+});
+
+it('records the day tally once the orders are written', function (): void {
+    Driver::factory()->create(['yango_id' => 'YAN-001']);
+
+    yangoOrdersReturn([
+        yangoOrderRow(id: 'ORD-1', endedAt: '2026-09-03T18:30:00+00:00'),
+        yangoOrderRow(id: 'ORD-2', status: 'cancelled', endedAt: '2026-09-03T19:30:00+00:00'),
+    ]);
+
+    app(YangoOrderSyncService::class)->syncDay(Carbon::parse('2026-09-03'));
+
+    $stat = YangoDailyStat::query()->firstOrFail();
+
+    expect($stat->orders_completed)->toBe(1)
+        ->and($stat->orders_cancelled)->toBe(1);
+});
+
+it('still records the day tally when a driver ledger recompute fails', function (): void {
+    /*
+    | L'asymétrie est volontaire et c'est elle qui rend l'écart visible : le
+    | cumul par conducteur peut échouer conducteur par conducteur, le cumul du
+    | parc reste juste. L'écran affiche alors 9 255 d'un côté et 1 740 de
+    | l'autre — exactement ce qui a révélé la panne du 2026-09-12.
+    */
+    Log::spy();
+
+    Driver::factory()->create(['yango_id' => 'YAN-001']);
+
+    $activities = Mockery::mock(DailyActivityService::class);
+    $activities->shouldReceive('recordDay')->once()->andThrow(new RuntimeException('boom'));
+
+    app()->instance(DailyActivityService::class, $activities);
+
+    yangoOrdersReturn([yangoOrderRow(id: 'ORD-1', endedAt: '2026-09-03T18:30:00+00:00')]);
+
+    $result = app(YangoOrderSyncService::class)->syncDay(Carbon::parse('2026-09-03'));
+
+    expect($result->activitiesFailed)->toBe(1)
+        ->and($result->statsFailed)->toBeFalse()
+        ->and(YangoDailyStat::query()->firstOrFail()->orders_completed)->toBe(1);
 });

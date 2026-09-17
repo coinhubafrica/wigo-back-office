@@ -5,7 +5,6 @@ use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
 use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
-use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
 use App\Http\Integrations\Yango\Requests\GetVehicleRequest;
 use App\Http\Integrations\Yango\YangoFleetConnector;
 use Saloon\Enums\Method;
@@ -80,7 +79,6 @@ it('asks for less than Yango allows, the ceiling not being a régime de croisiè
     GetAllDriversRequest::class,
     GetAllVehiclesRequest::class,
     GetOrdersRequest::class,
-    GetTransactionsRequest::class,
 ]);
 
 it('never sends more than the endpoint ceiling, whatever it is asked for', function (): void {

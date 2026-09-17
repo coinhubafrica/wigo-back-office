@@ -12,9 +12,9 @@
 use App\Livewire\Dashboard;
 use App\Models\Conversation;
 use App\Models\Driver;
-use App\Models\DriverDailyActivity;
 use App\Models\SupportRequest;
 use App\Models\User;
+use App\Models\YangoDailyStat;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Str;
@@ -50,23 +50,17 @@ it('hides the orders charts from a role without the drivers module', function ()
 });
 
 it('counts only the orders of the selected week', function (): void {
-    $driver = Driver::factory()->create();
     $thisWeek = CarbonImmutable::now()->startOfWeek();
     $lastWeek = $thisWeek->subWeek();
 
-    DriverDailyActivity::factory()->for($driver)->create([
-        'activity_date' => $thisWeek->format('Y-m-d'),
-        'orders_completed' => 11,
+    // Le cumul est celui du parc : une ligne par journée, déjà sommée par
+    // `YangoDailyStatsRecorder`. L'écran ne somme plus rien.
+    YangoDailyStat::factory()->create([
+        'day' => $thisWeek->format('Y-m-d'),
+        'orders_completed' => 16,
     ]);
-    // Un second conducteur le même jour : le total est celui du parc, sommé
-    // en base — une ligne par conducteur et par jour ne remonte jamais telle
-    // quelle.
-    DriverDailyActivity::factory()->for(Driver::factory())->create([
-        'activity_date' => $thisWeek->format('Y-m-d'),
-        'orders_completed' => 5,
-    ]);
-    DriverDailyActivity::factory()->for($driver)->create([
-        'activity_date' => $lastWeek->format('Y-m-d'),
+    YangoDailyStat::factory()->create([
+        'day' => $lastWeek->format('Y-m-d'),
         'orders_completed' => 47,
     ]);
 
@@ -100,16 +94,14 @@ it('charts the seven latest days, crossing into the previous week', function ():
     // glissante remonte au mercredi précédent et en garde sept.
     CarbonImmutable::setTestNow('2026-09-08 10:00:00');
 
-    $driver = Driver::factory()->create();
-
     // Mercredi 2 septembre, premier jour de la fenêtre.
-    DriverDailyActivity::factory()->for($driver)->create([
-        'activity_date' => '2026-09-02',
+    YangoDailyStat::factory()->create([
+        'day' => '2026-09-02',
         'orders_completed' => 31,
     ]);
     // Mardi 1er septembre, la veille de la fenêtre : hors champ.
-    DriverDailyActivity::factory()->for($driver)->create([
-        'activity_date' => '2026-09-01',
+    YangoDailyStat::factory()->create([
+        'day' => '2026-09-01',
         'orders_completed' => 44,
     ]);
 
@@ -135,16 +127,14 @@ it('writes the period and the total of each week on the trend curve', function (
     // point doit porter sa date et son total, pas seulement un survol.
     CarbonImmutable::setTestNow('2026-09-08 10:00:00');
 
-    $driver = Driver::factory()->create();
-
     // Semaine du 31 août, la semaine en cours : son point est le dernier.
-    DriverDailyActivity::factory()->for($driver)->create([
-        'activity_date' => '2026-09-02',
+    YangoDailyStat::factory()->create([
+        'day' => '2026-09-02',
         'orders_completed' => 57,
     ]);
     // Semaine du 17 août, deux semaines plus tôt.
-    DriverDailyActivity::factory()->for($driver)->create([
-        'activity_date' => '2026-08-19',
+    YangoDailyStat::factory()->create([
+        'day' => '2026-08-19',
         'orders_completed' => 23,
     ]);
 

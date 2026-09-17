@@ -8,7 +8,6 @@ use App\Http\Integrations\Yango\Requests\GetAllDriversRequest;
 use App\Http\Integrations\Yango\Requests\GetAllVehiclesRequest;
 use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
-use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
 use App\Http\Integrations\Yango\Requests\GetVehicleRequest;
 use App\Http\Integrations\Yango\YangoFleetConnector;
 use App\Settings\YangoSettings;
@@ -33,9 +32,9 @@ use Symfony\Component\HttpFoundation\Response;
  *   `total`. On demande donc de grandes pages (1000, le plafond) et on
  *   s'arrête sur ce que Yango annonce, plutôt que de deviner la fin à une
  *   page incomplète.
- * - **Les courses et les transactions** se lisent par curseur, sur une
- *   fenêtre de dates obligatoire, et ne disent jamais combien il en reste. On
- *   redemande tant qu'un curseur revient.
+ * - **Les courses** se lisent par curseur, sur une fenêtre de dates
+ *   obligatoire, et ne disent jamais combien il en reste. On redemande tant
+ *   qu'un curseur revient.
  *
  * C'est ici, et pas dans le connecteur, que la passe respire : le 429 vient
  * de la rafale de ces boucles, pas d'un appel isolé. Le connecteur est
@@ -87,17 +86,6 @@ class SaloonYangoDirectory implements YangoDirectory
         yield from $this->paginateByCursor(
             fn (string $parkId, ?string $cursor): Request => new GetOrdersRequest($parkId, $from, $to, $pageSize, $cursor, $driverYangoId),
             'orders',
-        );
-    }
-
-    public function transactions(
-        CarbonInterface $from,
-        CarbonInterface $to,
-        int $pageSize = GetTransactionsRequest::DEFAULT_LIMIT,
-    ): Generator {
-        yield from $this->paginateByCursor(
-            fn (string $parkId, ?string $cursor): Request => new GetTransactionsRequest($parkId, $from, $to, $pageSize, $cursor),
-            'transactions',
         );
     }
 

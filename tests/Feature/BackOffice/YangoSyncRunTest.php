@@ -44,8 +44,7 @@ it('opens a trace per day and per kind when the agent queues a period', function
         ->set('from', '2026-09-12')
         ->set('to', '2026-09-13')
         ->set('syncOrders', true)
-        ->set('syncTransactions', true)
-        ->set('rebuildActivity', false)
+        ->set('rebuildActivity', true)
         ->call('queue')
         ->assertHasNoErrors();
 
@@ -70,7 +69,6 @@ it('hands the trace to the job so the pass can report on itself', function (): v
         ->set('from', '2026-09-12')
         ->set('to', '2026-09-12')
         ->set('syncOrders', true)
-        ->set('syncTransactions', false)
         ->call('queue');
 
     $run = YangoSyncRun::query()->firstOrFail();
@@ -90,8 +88,7 @@ it('reuses the same trace when a day is queued again', function (): void {
         ->test(Index::class)
         ->set('from', '2026-09-12')
         ->set('to', '2026-09-12')
-        ->set('syncOrders', true)
-        ->set('syncTransactions', false);
+        ->set('syncOrders', true);
 
     $component->call('queue');
 
@@ -153,40 +150,105 @@ it('shows a queued pass to the agent who launched it', function (): void {
         ->test(Index::class)
         ->set('from', '2026-09-12')
         ->set('to', '2026-09-12')
-        ->set('syncOrders', true)
-        ->set('syncTransactions', false);
+        ->set('syncOrders', true);
 
     $component->call('queue');
 
-    $component->assertSee(__('backoffice.yango_sync.runs_title'))
-        ->assertSee(YangoSyncRunStatus::Queued->label())
-        ->assertSee(YangoSyncRunKind::Orders->label());
+    $component->assertSee(__('backoffice.yango_sync.history_title'))
+        ->assertSee(YangoSyncRunStatus::Queued->label());
 });
 
-it('keeps a pass in flight visible even outside the chosen window', function (): void {
-    // C'est précisément celle qu'on cherche du regard : la masquer parce que
-    // l'agent a rétréci sa fenêtre ferait croire qu'elle a disparu.
-    YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-01-05', null);
+it('shows a day in the history once a pass has been queued for it', function (): void {
+    // Une journée sans cumul mais avec une passe doit apparaître : c'est
+    // souvent celle qu'on vient de relancer et qu'on cherche du regard.
+    YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-09-12', null);
 
-    $runs = Livewire::actingAs(yangoRunUser())
+    $rows = Livewire::actingAs(yangoRunUser())
         ->test(Index::class)
-        ->set('from', '2026-09-12')
-        ->set('to', '2026-09-12')
-        ->viewData('runs');
+        ->set('historyFrom', '2026-09-12')
+        ->set('historyTo', '2026-09-12')
+        ->viewData('rows');
 
-    expect($runs)->toHaveCount(1);
+    expect($rows->total())->toBe(1)
+        ->and($rows->items()[0]['run']?->status)->toBe(YangoSyncRunStatus::Queued);
 });
 
-it('leaves a finished pass out of an unrelated window', function (): void {
+it('leaves a day out of an unrelated history window', function (): void {
     YangoSyncRun::queueFor(YangoSyncRunKind::Orders, '2026-01-05', null)->markFinished([]);
 
-    $runs = Livewire::actingAs(yangoRunUser())
+    $rows = Livewire::actingAs(yangoRunUser())
         ->test(Index::class)
-        ->set('from', '2026-09-12')
-        ->set('to', '2026-09-12')
-        ->viewData('runs');
+        ->set('historyFrom', '2026-09-12')
+        ->set('historyTo', '2026-09-12')
+        ->viewData('rows');
 
-    expect($runs)->toHaveCount(0);
+    expect($rows->total())->toBe(0);
+});
+
+it('queues a recount for that day alone, and rechains the career total', function (): void {
+    /*
+    | Le bouton vise UNE journée, il n'y a donc pas de « plus ancienne » à qui
+    | réserver le rechaînage : sans lui, réparer le 12 laisserait le 13 et tous
+    | les suivants faux.
+    */
+    Queue::fake();
+
+    Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->call('recount', '2026-09-12');
+
+    Queue::assertPushed(
+        RebuildDailyActivityJob::class,
+        fn (RebuildDailyActivityJob $job): bool => $job->day === '2026-09-12' && $job->repairTotals,
+    );
+
+    Queue::assertPushed(RebuildDailyActivityJob::class, 1);
+});
+
+it('opens an activity trace for the recounted day', function (): void {
+    // La file est Redis : sans trace, le bouton paraît mort et l'agent
+    // reclique dans un verrou silencieux.
+    Queue::fake();
+
+    $user = yangoRunUser();
+
+    Livewire::actingAs($user)
+        ->test(Index::class)
+        ->call('recount', '2026-09-12');
+
+    $run = YangoSyncRun::query()->firstOrFail();
+
+    expect($run->kind)->toBe(YangoSyncRunKind::Activity)
+        ->and($run->status)->toBe(YangoSyncRunStatus::Queued)
+        ->and($run->user_id)->toBe($user->id);
+});
+
+it('refuses to recount for an agent who only has the module', function (): void {
+    Queue::fake();
+
+    $user = User::factory()->create(['is_active' => true]);
+    $user->givePermissionTo([Permission::ModuleYangoSync->value]);
+
+    Livewire::actingAs($user->fresh())
+        ->test(Index::class)
+        ->call('recount', '2026-09-12')
+        ->assertForbidden();
+
+    Queue::assertNothingPushed();
+    expect(YangoSyncRun::query()->count())->toBe(0);
+});
+
+it('ignores an unreadable day without falling over', function (): void {
+    // `$day` vient du client : une chaîne illisible ne doit rien mettre en
+    // file, et surtout pas faire tomber l'écran.
+    Queue::fake();
+
+    Livewire::actingAs(yangoRunUser())
+        ->test(Index::class)
+        ->call('recount', 'pas-une-date')
+        ->assertOk();
+
+    Queue::assertNothingPushed();
 });
 
 it('only polls while something is still in flight', function (): void {

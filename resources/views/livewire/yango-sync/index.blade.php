@@ -1,14 +1,13 @@
 {{--
-    Rattrapage manuel des journaux datés du parc.
+    Rattrapage manuel des courses du parc.
 
-    L'écran existe pour que le creux se voie : le tableau donne, journée par
-    journée, ce que la base porte déjà. Un bouton seul obligerait l'agent à
-    relancer à l'aveugle, et à recommencer sans savoir si cela avait servi.
---}}
-{{--
+    Un seul tableau : chaque ligne est une journée, avec ce que le parc a fait,
+    ce que le tableau de bord en a retenu, où en est la dernière passe, et de
+    quoi recompter. Les deux tableaux d'avant obligeaient l'agent à lire un
+    écart d'un côté et à chercher le bouton de l'autre.
+
     `wire:poll` seulement tant qu'une passe est en vol : un écran qui se
-    rafraîchit en permanence rejouerait les trois requêtes de couverture toutes
-    les cinq secondes pour ne rien apprendre.
+    rafraîchit en permanence rejouerait ses requêtes pour ne rien apprendre.
 --}}
 <div class="flex flex-col gap-4" @if ($hasPendingRuns) wire:poll.5s @endif>
     <x-panel :title="__('backoffice.yango_sync.period_title')" :subtitle="__('backoffice.yango_sync.period_hint')">
@@ -22,10 +21,6 @@
                     <label class="flex items-center gap-2 text-sm text-ink">
                         <input type="checkbox" wire:model="syncOrders" class="size-4 rounded border-line text-primary">
                         {{ __('backoffice.yango_sync.orders') }}
-                    </label>
-                    <label class="flex items-center gap-2 text-sm text-ink">
-                        <input type="checkbox" wire:model="syncTransactions" class="size-4 rounded border-line text-primary">
-                        {{ __('backoffice.yango_sync.transactions') }}
                     </label>
                     <label class="flex items-center gap-2 text-sm text-ink">
                         <input type="checkbox" wire:model="rebuildActivity" class="size-4 rounded border-line text-primary">
@@ -53,82 +48,92 @@
         </form>
     </x-panel>
 
-    @if ($runs->isNotEmpty())
-        <x-panel :title="__('backoffice.yango_sync.runs_title')" :subtitle="__('backoffice.yango_sync.runs_hint')" flush>
-            <x-table>
-                <x-slot:head>
-                    <x-th>{{ __('backoffice.yango_sync.column_day') }}</x-th>
-                    <x-th>{{ __('backoffice.yango_sync.column_kind') }}</x-th>
-                    <x-th>{{ __('backoffice.yango_sync.column_status') }}</x-th>
-                    <x-th>{{ __('backoffice.yango_sync.column_launched_by') }}</x-th>
-                    <x-th align="right">{{ __('backoffice.yango_sync.column_result') }}</x-th>
-                </x-slot:head>
+    <x-panel :title="__('backoffice.yango_sync.history_title')" :subtitle="__('backoffice.yango_sync.history_hint')" :count="$rows->total()" flush>
+        <x-slot:actions>
+            <x-toolbar>
+                <x-field :label="__('backoffice.yango_sync.history_from')" name="historyFrom" type="date" wire:model.live="historyFrom" class="w-40" />
+                <x-field :label="__('backoffice.yango_sync.history_to')" name="historyTo" type="date" wire:model.live="historyTo" class="w-40" />
+            </x-toolbar>
+        </x-slot:actions>
 
-                @foreach ($runs as $run)
-                    <tr wire:key="run-{{ $run->id }}" class="transition-colors hover:bg-surface">
-                        <x-td nowrap mono>{{ $run->day->format('Y-m-d') }}</x-td>
-                        <x-td nowrap>{{ $run->kind->label() }}</x-td>
-                        <x-td nowrap>
-                            <x-badge :classes="$run->status->badgeClasses()" :pulse="$run->status->isPending()">
-                                {{ $run->status->label() }}
-                            </x-badge>
-                        </x-td>
-                        <x-td nowrap :muted="$run->user === null">
-                            {{ $run->user?->name ?? __('backoffice.yango_sync.launched_by_schedule') }}
-                        </x-td>
-                        <x-td align="right" class="text-xs">
-                            @if ($run->hasFailed())
-                                <span class="text-err-text">{{ $run->error }}</span>
-                            @elseif ($run->summary)
-                                <span class="text-muted">
-                                    @foreach ($run->summary as $label => $value)
-                                        {{ $label }}&nbsp;{{ number_format((int) $value, 0, ',', ' ') }}@if (! $loop->last), @endif
-                                    @endforeach
-                                </span>
-                            @else
-                                <span class="text-muted">&mdash;</span>
-                            @endif
-                        </x-td>
-                    </tr>
-                @endforeach
-            </x-table>
-        </x-panel>
-    @endif
-
-    <x-panel :title="__('backoffice.yango_sync.coverage_title')" :subtitle="__('backoffice.yango_sync.coverage_hint')" flush>
-        <x-table loading="queue,from,to">
+        <x-table loading="historyFrom,historyTo,recount,resetHistoryFilter,gotoPage,previousPage,nextPage">
             <x-slot:head>
                 <x-th>{{ __('backoffice.yango_sync.column_day') }}</x-th>
                 <x-th align="right">{{ __('backoffice.yango_sync.column_completed') }}</x-th>
                 <x-th align="right">{{ __('backoffice.yango_sync.column_cancelled') }}</x-th>
-                <x-th align="right">{{ __('backoffice.yango_sync.column_activity') }}</x-th>
-                <x-th align="right">{{ __('backoffice.yango_sync.transactions') }}</x-th>
+                <x-th align="right">{{ __('backoffice.yango_sync.column_dashboard') }}</x-th>
+                <x-th>{{ __('backoffice.yango_sync.column_status') }}</x-th>
+                <x-th align="right"><span class="sr-only">{{ __('backoffice.yango_sync.column_action') }}</span></x-th>
             </x-slot:head>
 
-            @foreach ($coverage as $row)
+            @foreach ($rows as $row)
                 <tr wire:key="day-{{ $row['day'] }}" class="transition-colors hover:bg-surface">
                     <x-td nowrap mono>{{ $row['day'] }}</x-td>
-                    <x-td align="right" mono :muted="$row['completed'] === 0">{{ number_format($row['completed'], 0, ',', ' ') }}</x-td>
-                    <x-td align="right" mono :muted="$row['cancelled'] === 0">{{ number_format($row['cancelled'], 0, ',', ' ') }}</x-td>
+
+                    {{-- Une journée jamais comptée affiche un tiret, pas un zéro : l'absence de compte n'est pas une absence de course. --}}
+                    <x-td align="right" mono :muted="$row['completed'] === null">
+                        {{ $row['completed'] === null ? '—' : number_format($row['completed'], 0, ',', ' ') }}
+                    </x-td>
+
+                    <x-td align="right" mono :muted="! $row['cancelled']">
+                        {{ $row['cancelled'] === null ? '—' : number_format($row['cancelled'], 0, ',', ' ') }}
+                    </x-td>
+
                     {{-- Le cumul journalier découle des courses terminées : un écart se signale, c'est lui que le recompte répare. --}}
-                    <x-td align="right" mono :muted="$row['activity'] === 0">
+                    <x-td align="right" mono :muted="$row['dashboard'] === null">
                         <span @class(['font-semibold text-err-text' => $row['drifted']])>
-                            {{ number_format($row['activity'], 0, ',', ' ') }}
+                            {{ $row['dashboard'] === null ? '—' : number_format($row['dashboard'], 0, ',', ' ') }}
                         </span>
                         @if ($row['drifted'])
                             <span class="ml-1 text-xs font-normal text-err-text" title="{{ __('backoffice.yango_sync.drift_hint') }}">&#9888;</span>
                         @endif
                     </x-td>
-                    <x-td align="right" mono :muted="$row['transactions'] === 0">{{ number_format($row['transactions'], 0, ',', ' ') }}</x-td>
+
+                    <x-td nowrap>
+                        @if ($row['run'])
+                            <x-badge :classes="$row['run']->status->badgeClasses()" :pulse="$row['run']->status->isPending()">
+                                {{ $row['run']->status->label() }}
+                            </x-badge>
+                            @if ($row['run']->hasFailed() && $row['run']->error)
+                                <p class="mt-1 max-w-xs truncate text-xs text-err-text" title="{{ $row['run']->error }}">{{ $row['run']->error }}</p>
+                            @endif
+                        @else
+                            <span class="text-xs text-muted">—</span>
+                        @endif
+                    </x-td>
+
+                    <x-td align="right" nowrap>
+                        @if ($canQueue)
+                            {{-- Sorti de la directive : `@disabled` ne sait pas analyser une chaîne `?->` et la découperait en attributs. --}}
+                            @php($recountRunning = $row['activityRun']?->status->isPending() ?? false)
+                            <x-button
+                                variant="secondary"
+                                size="sm"
+                                wire:click="recount('{{ $row['day'] }}')"
+                                target="recount"
+                                :disabled="$recountRunning"
+                            >
+                                {{ __('backoffice.yango_sync.recount') }}
+                            </x-button>
+                        @endif
+                    </x-td>
                 </tr>
             @endforeach
 
-            @if ($coverage === [])
+            @if ($rows->isEmpty())
                 <x-slot:empty>
-                    <x-empty-state :title="__('backoffice.yango_sync.empty_title')">
-                        {{ __('backoffice.yango_sync.empty_body') }}
+                    <x-empty-state :title="__('backoffice.yango_sync.empty_title')" :hint="__('backoffice.yango_sync.empty_body')">
+                        <x-slot:action>
+                            <x-button variant="secondary" size="sm" wire:click="resetHistoryFilter" target="resetHistoryFilter">
+                                {{ __('backoffice.yango_sync.reset_history') }}
+                            </x-button>
+                        </x-slot:action>
                     </x-empty-state>
                 </x-slot:empty>
+            @endif
+
+            @if ($rows->hasPages())
+                <x-slot:footer>{{ $rows->links() }}</x-slot:footer>
             @endif
         </x-table>
     </x-panel>

@@ -95,7 +95,7 @@ enum BackOfficeModule: string
             self::Dashboard => "Vue d'ensemble du parc, de l'activité et de la performance des équipes",
             self::Drivers => 'Liste, recherche, fiche 360°, suivi CNPS',
             self::Vehicles => 'Parc synchronisé depuis Yango : plaque, modèle, affectation',
-            self::YangoSync => 'Rattrapage manuel des courses et du grand livre, journée par journée',
+            self::YangoSync => 'Rattrapage manuel des courses, journée par journée',
             self::SupportRequests => 'File de traitement — chaque requête porte son fil de messages avec le conducteur',
             self::Challenges => 'La base de toute gratification : des critères, une période, un prix — classement, tirage au sort ou bonus surprise',
             self::Recharges => 'Journal des transactions Wave, réconciliation, rejeux',

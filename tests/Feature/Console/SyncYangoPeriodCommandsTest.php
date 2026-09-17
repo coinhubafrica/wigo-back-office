@@ -2,10 +2,8 @@
 
 use App\Http\Integrations\Yango\Requests\GetDriverProfileRequest;
 use App\Http\Integrations\Yango\Requests\GetOrdersRequest;
-use App\Http\Integrations\Yango\Requests\GetTransactionsRequest;
 use App\Jobs\SyncYangoDriverOrdersJob;
 use App\Jobs\SyncYangoOrdersJob;
-use App\Jobs\SyncYangoTransactionsJob;
 use App\Models\Driver;
 use App\Models\YangoOrder;
 use Illuminate\Support\Carbon;
@@ -98,28 +96,6 @@ it('fails when Yango refuses the period', function (): void {
     $this->artisan('yango:sync-orders --from=2026-09-03 --to=2026-09-03 --now')
         ->expectsOutputToContain('Yango Fleet a refusé les courses')
         ->assertFailed();
-});
-
-it('queues a period of transactions', function (): void {
-    Queue::fake();
-
-    $this->artisan('yango:sync-transactions --from=2026-09-01 --to=2026-09-02')
-        ->expectsOutputToContain('2 journée(s)')
-        ->assertSuccessful();
-
-    Queue::assertPushed(SyncYangoTransactionsJob::class, 2);
-});
-
-it('prints what a period of transactions reconciled', function (): void {
-    Driver::factory()->create(['yango_id' => 'YAN-001']);
-
-    MockClient::global([
-        GetTransactionsRequest::class => yangoTransactionsResponse([yangoTransactionRow()]),
-    ]);
-
-    $this->artisan('yango:sync-transactions --from=2026-09-03 --to=2026-09-03 --now')
-        ->expectsOutputToContain('transactions : 1 sync')
-        ->assertSuccessful();
 });
 
 it('narrows the pass to one driver when named', function (): void {

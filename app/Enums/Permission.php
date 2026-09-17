@@ -212,7 +212,7 @@ enum Permission: string
             self::RechargesReconcile => 'Réconcilier et rejouer un crédit',
 
             self::YangoRefreshRecord => 'Rafraîchir une fiche depuis Yango',
-            self::YangoResyncPeriod => 'Rattraper une période de courses et de transactions',
+            self::YangoResyncPeriod => 'Rattraper une période de courses',
 
             self::SettingsManage => 'Enregistrer les réglages et les clés',
             self::SettingsRevealSecrets => 'Relever une clé en clair',
@@ -259,7 +259,7 @@ enum Permission: string
             self::RechargesReconcile => "Touche à l'argent d'un conducteur. L'accès au module n'ouvre que la lecture du journal.",
 
             self::YangoRefreshRecord => "Redemande à Yango un conducteur ou un véhicule nommément, sans attendre la passe horaire. Rien n'est écrit que Yango ne dise.",
-            self::YangoResyncPeriod => 'Remet en file les courses et le grand livre, une journée par job. Une journée déjà en cours de passe ne se dédouble pas.',
+            self::YangoResyncPeriod => 'Remet en file les courses, une journée par job, et recompte le cumul journalier. Une journée déjà en cours de passe ne se dédouble pas.',
 
             self::SettingsManage => 'Barèmes, plafonds, et les clés Wave et Yango — les écraser coupe l\'encaissement.',
             self::SettingsRevealSecrets => 'Affiche en clair les clés Wave et Yango. Chaque relevé est journalisé.',

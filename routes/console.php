@@ -86,13 +86,6 @@ Schedule::command('yango:sync-orders')
     ->withoutOverlapping()
     ->name('yango:sync-orders');
 
-// Grand livre du parc, même cadence et même fenêtre glissante : un mouvement
-// se règle parfois après la journée qu'il concerne.
-Schedule::command('yango:sync-transactions')
-    ->hourly()
-    ->withoutOverlapping()
-    ->name('yango:sync-transactions');
-
 // Cycle de vie des challenges : démarrage à l'ouverture de la période,
 // clôture à son échéance.
 //

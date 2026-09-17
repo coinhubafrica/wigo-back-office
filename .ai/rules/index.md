@@ -28,6 +28,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Livewire/** | .ai/rules/livewire.md |
 | app/Http/Middleware/EnsureIdempotentRequest.php | .ai/rules/middleware.md |
 | database/migrations/** | .ai/rules/migrations.md |
+| app/Livewire/YangoSync/**,app/Services/Yango/YangoDailyStatsRecorder.php,app/Models/YangoDailyStat.php,app/Livewire/Dashboard.php | .ai/rules/models-livewire.md |
 | app/Models/Vehicle.php, app/Models/Product.php | .ai/rules/models.md |
 | app/Providers/AppServiceProvider.php | .ai/rules/providers.md |
 | app/Notifications/**,app/Services/Shop/ShopOrderService.php,app/Services/Challenges/DrawService.php,app/Services/Recharge/RechargeService.php | .ai/rules/recharge.md |
