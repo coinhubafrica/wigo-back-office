@@ -84,6 +84,21 @@ class DailyActivityRebuilder
 
         $this->zeroStaleRows($date, $counts->keys()->all());
 
+        /*
+        | Une ligne créée ici naît avec `orders_total = 0` — `upsert()` ne
+        | touche pas la colonne, qui est un cumul de carrière et ne se déduit
+        | pas d'une seule journée. Il faut donc la chaîner tout de suite.
+        |
+        | Sans cet appel, une journée reconstruite sans `repairTotals` laissait
+        | ses nouvelles lignes à zéro. Constaté en production : quinze journées
+        | rejouées de la sorte ont produit 6 672 lignes dont le cumul valait 0
+        | là où il aurait dû valoir la somme de la veille et du jour. Le
+        | rechaînage complet (`repairTotalsFrom()`) reste l'affaire de
+        | l'appelant ; ce qui ne peut pas attendre, c'est la journée qu'on
+        | vient d'écrire.
+        */
+        $this->repairDayTotals($date);
+
         // Le bouton « Recompter » passe par ici : il doit rafraîchir les deux
         // cumuls, sans quoi l'écart affiché à l'écran resterait celui d'avant
         // le recompte et le bouton paraîtrait sans effet.
@@ -149,6 +164,63 @@ class DailyActivityRebuilder
                 fn ($query) => $query->whereNotIn('driver_id', $keptDriverIds),
             )
             ->update(['orders_completed' => 0, 'updated_at' => Carbon::now()]);
+    }
+
+    /**
+     * Chaîne `orders_total` des seules lignes de cette journée, depuis la
+     * dernière journée connue de chaque conducteur.
+     *
+     * Une requête pour toute la journée, et non une par conducteur : la
+     * journée porte des milliers de lignes, et `repairDriverTotals()` coûte
+     * deux requêtes par personne.
+     */
+    private function repairDayTotals(string $date): void
+    {
+        /*
+        | En deux temps, et non en une mise à jour corrélée : MySQL refuse
+        | qu'une sous-requête lise la table qu'elle met à jour (erreur 1093,
+        | « You can't specify target table for update in FROM clause »). SQLite
+        | l'accepte, si bien qu'une telle requête passerait la suite de tests
+        | et tomberait en production — vérifié contre la base réelle.
+        |
+        | On lit donc d'abord la veille de chaque conducteur, puis on écrit par
+        | lots. Le nombre de requêtes suit le nombre de lots, pas le nombre de
+        | conducteurs.
+        */
+        $rows = DB::table('driver_daily_activities')
+            ->where('activity_date', $date)
+            ->get(['driver_id', 'orders_completed']);
+
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        $previous = DB::table('driver_daily_activities')
+            ->whereIn('driver_id', $rows->pluck('driver_id'))
+            ->where('activity_date', '<', $date)
+            ->selectRaw('driver_id, max(activity_date) as last_date')
+            ->groupBy('driver_id')
+            ->pluck('last_date', 'driver_id');
+
+        $totals = $previous->isEmpty()
+            ? collect()
+            : DB::table('driver_daily_activities')
+                ->whereIn('driver_id', $previous->keys())
+                ->whereIn('activity_date', $previous->values()->unique())
+                ->get(['driver_id', 'activity_date', 'orders_total'])
+                ->filter(fn (object $row): bool => (string) $previous[$row->driver_id] === (string) $row->activity_date)
+                ->keyBy('driver_id');
+
+        foreach ($rows->chunk(self::CHUNK) as $chunk) {
+            foreach ($chunk as $row) {
+                $carried = (int) ($totals[$row->driver_id]->orders_total ?? 0);
+
+                DB::table('driver_daily_activities')
+                    ->where('driver_id', $row->driver_id)
+                    ->where('activity_date', $date)
+                    ->update(['orders_total' => $carried + (int) $row->orders_completed]);
+            }
+        }
     }
 
     /**

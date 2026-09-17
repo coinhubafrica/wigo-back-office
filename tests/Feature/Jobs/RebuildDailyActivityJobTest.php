@@ -33,9 +33,14 @@ it('is unique per day so two recomputes never fight over the same rows', functio
         ->not->toBe((new RebuildDailyActivityJob('2026-09-13'))->uniqueId());
 });
 
-it('leaves the career total alone when the caller did not ask for it', function (): void {
-    // Le rattrapage d'une période ne rechaîne que depuis la plus ancienne
-    // journée : les autres ne doivent pas refaire le même parcours.
+it('chains the day it rebuilds even when no full rechain was asked for', function (): void {
+    /*
+    | `repairTotals: false` dit « ne rechaîne pas tout l'historique qui suit »,
+    | pas « laisse cette journée à zéro ». La distinction a coûté cher : quinze
+    | journées rejouées sans le drapeau ont laissé 6 672 lignes à `orders_total`
+    | nul en production, parce qu'`upsert()` crée une ligne à zéro et que seul
+    | `repairTotalsFrom()` la corrigeait.
+    */
     $driver = Driver::factory()->create();
 
     YangoOrder::factory()->completedOn(Carbon::parse('2026-09-12 10:00'))->create([
@@ -47,5 +52,5 @@ it('leaves the career total alone when the caller did not ask for it', function 
 
     expect(DriverDailyActivity::query()->firstOrFail())
         ->orders_completed->toBe(1)
-        ->orders_total->toBe(0);
+        ->orders_total->toBe(1);
 });
