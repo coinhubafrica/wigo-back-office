@@ -19,12 +19,22 @@
 
         <div>
             <h4 class="mb-2.5 text-[15.5px] font-bold text-white">Contact</h4>
-            <p class="text-[14.5px]">
-                <span class="me-1" aria-hidden="true">📍</span>Abidjan, Koumassi Prodomo<br>
-                <span class="me-1" aria-hidden="true">💬</span><a href="https://wa.me/message/J2BRZH4KZBNGM1" target="_blank" rel="noopener"
-                   class="text-site-accent hover:underline">WhatsApp support ATCP</a><br>
-                <span class="me-1" aria-hidden="true">🕗</span>Lundi – samedi, 8 h – 18 h
-            </p>
+            {{-- Une ligne par fait : les `<br>` d'autrefois ne tenaient plus dès
+                 que le pictogramme passait en SVG, dont la boîte est alignée sur
+                 la ligne et non collée au texte. --}}
+            <ul class="space-y-1.5 text-[14.5px]">
+                <li class="flex items-center gap-2">
+                    <x-site.icon name="pin" size="size-4" />Abidjan, Koumassi Prodomo
+                </li>
+                <li class="flex items-center gap-2">
+                    <x-site.icon name="chat" size="size-4" />
+                    <a href="https://wa.me/message/J2BRZH4KZBNGM1" target="_blank" rel="noopener"
+                       class="text-site-accent hover:underline">WhatsApp support ATCP</a>
+                </li>
+                <li class="flex items-center gap-2">
+                    <x-site.icon name="clock" size="size-4" />Tous les jours, 24 h/24
+                </li>
+            </ul>
         </div>
 
         <div>

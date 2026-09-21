@@ -26,10 +26,11 @@
             'text-white/85',
         ],
         /*
-         * Le vert porte le bloc de recrutement depuis que la page est orange :
-         * un second dégradé orange en bas de page ferait doublon avec le héros
-         * et l'appel à l'action n'accrocherait plus l'œil. Le vert reste par
-         * ailleurs la teinte de confiance de la marque (CNPS, support).
+         * Le vert reste la teinte de confiance de la marque (CNPS, support).
+         *
+         * Il a porté un temps le bloc de recrutement, pour ne pas répéter le
+         * dégradé orange du héros en bas de page ; celui-ci est revenu à
+         * l'orange du site d'origine, décision éditoriale assumée.
          */
         'green' => [
             'bg-gradient-to-br from-site-green to-site-green-dark',

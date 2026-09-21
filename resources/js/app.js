@@ -422,3 +422,116 @@ document.addEventListener('alpine:init', () => {
         },
     }))
 })
+
+/**
+ * Carrousel des captures d'application du site vitrine.
+ *
+ * Le défilement est fait par le CSS (`overflow-x` + `scroll-snap`), jamais par
+ * ce composant : la rangée reste donc parcourable au doigt, à la molette et au
+ * clavier même si le bundle Livewire — qui porte Alpine — ne part pas. C'est la
+ * même contrainte que le reste de la page (cf. `.ai/rules/site.md`).
+ *
+ * Alpine n'ajoute que l'habillage : les deux flèches et la position courante.
+ * `scrollend` n'étant pas encore partout, la position est relue à `scroll`,
+ * amortie par `requestAnimationFrame`.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('siteSlider', () => ({
+        index: 0,
+        count: 0,
+        atStart: true,
+        atEnd: false,
+
+        init() {
+            this.track = this.$refs.track
+            this.count = this.track.children.length
+            this.smooth = ! window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+            this.onScroll = () => {
+                if (this.ticking) {
+                    return
+                }
+
+                this.ticking = true
+                requestAnimationFrame(() => {
+                    this.sync()
+                    this.ticking = false
+                })
+            }
+
+            this.track.addEventListener('scroll', this.onScroll, { passive: true })
+            this.sync()
+        },
+
+        destroy() {
+            this.track?.removeEventListener('scroll', this.onScroll)
+        },
+
+        /** Relit la position réelle du ruban plutôt que de la déduire des clics. */
+        sync() {
+            const { scrollLeft, scrollWidth, clientWidth } = this.track
+
+            /*
+             * Le pas est mesuré sur une vignette réelle, pas déduit de
+             * `scrollWidth / count` : dès que plusieurs vignettes tiennent à
+             * l'écran, la division donnait un index qui plafonnait avant la
+             * dernière (2 sur 6 en 1080 px).
+             */
+            const first = this.track.children[0]
+            const second = this.track.children[1]
+            const step = second
+                ? second.getBoundingClientRect().left - first.getBoundingClientRect().left
+                : first?.getBoundingClientRect().width || 1
+
+            this.index = Math.min(Math.round(scrollLeft / step), this.count - 1)
+            this.atStart = scrollLeft <= 1
+            // Une marge d'un pixel : les largeurs fractionnaires ne retombent
+            // jamais exactement sur `scrollWidth - clientWidth`.
+            this.atEnd = scrollLeft + clientWidth >= scrollWidth - 1
+        },
+
+        /*
+         * `scrollLeft` et non `scrollIntoView` : ce dernier fait défiler
+         * l'ancêtre défilant le plus proche — ici la page, qui sautait au
+         * ruban sans jamais le décaler. On vise donc la position de la vignette
+         * dans le ruban, mesurée par rapport à son parent.
+         */
+        go(index) {
+            const target = this.track.children[index]
+
+            if (! target) {
+                return
+            }
+
+            const delta = target.getBoundingClientRect().left - this.track.getBoundingClientRect().left
+            const left = this.track.scrollLeft + delta
+
+            /*
+             * Affectation directe plutôt que `scrollTo({behavior:'smooth'})` :
+             * sur un conteneur en `scroll-snap`, le défilement lissé est
+             * réaccroché puis abandonné, et `scrollLeft` retombe à 0 (vérifié
+             * dans Chrome). Le lissage est donc demandé à part, et seulement
+             * si le visiteur ne l'a pas désactivé.
+             */
+            if (this.smooth) {
+                this.track.style.scrollBehavior = 'smooth'
+            }
+
+            this.track.scrollLeft = left
+
+            // Rendu au pas suivant : laissé posé, le lissage rejouerait sur le
+            // défilement au doigt, que le navigateur gère déjà.
+            requestAnimationFrame(() => {
+                this.track.style.scrollBehavior = ''
+            })
+        },
+
+        prev() {
+            this.go(Math.max(this.index - 1, 0))
+        },
+
+        next() {
+            this.go(Math.min(this.index + 1, this.count - 1))
+        },
+    }))
+})

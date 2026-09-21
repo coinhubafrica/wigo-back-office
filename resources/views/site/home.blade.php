@@ -8,24 +8,34 @@
      * recharge la page.
      */
     $stats = [
-        ['value' => 2539, 'label' => 'chauffeurs actifs'],
-        ['value' => 24624, 'label' => 'comptes au référentiel'],
         ['value' => 5000, 'label' => 'FCFA de bonus hebdo (Top 100)'],
         ['value' => 37, 'label' => 'pièces au catalogue boutique'],
     ];
 
+    /*
+     * Captures de l'application : `screenshot` nomme le fichier dans
+     * `resources/images/site/captures` (variantes .webp et .jpg). Elles
+     * viennent de la version courante de l'app, sur un compte de
+     * démonstration — aucune donnée personnelle de chauffeur n'y figure.
+     */
     $features = [
-        ['icon' => '🎁', 'tone' => 'orange', 'title' => 'Bonus & tombola',
+        ['icon' => 'gift', 'tone' => 'orange', 'title' => 'Bonus & tombola',
+         'screenshot' => 'bonus', 'alt' => "Écran Bonus de l'application WiGO PRO",
          'body' => "1 ticket numéroté toutes les 50 courses, tirage automatique chaque semaine avec de vrais lots (téléviseur, réfrigérateur, cuisinière, smartphone…) et 5 000 FCFA pour le Top 100."],
-        ['icon' => '💳', 'tone' => 'orange', 'title' => 'Recharge Yango Pro',
+        ['icon' => 'card', 'tone' => 'orange', 'title' => 'Recharge Yango Pro',
+         'screenshot' => 'recharge', 'alt' => "Écran Recharge Yango Pro de l'application WiGO PRO",
          'body' => "Rechargez votre solde Yango Pro en quelques secondes par Wave, avec reçu et suivi — sans vous déplacer."],
-        ['icon' => '🛡️', 'tone' => 'green', 'title' => 'Cotisations CNPS (RSTI)',
+        ['icon' => 'shield', 'tone' => 'green', 'title' => 'Cotisations CNPS (RSTI)',
+         'screenshot' => 'cnps', 'alt' => "Écran Cotisations CNPS de l'application WiGO PRO",
          'body' => "Déclarez vos cotisations retraite en joignant simplement la capture de votre paiement Wave. Suivi mois par mois, report automatique des excédents."],
-        ['icon' => '🛒', 'tone' => 'orange', 'title' => 'Boutique de pièces',
+        ['icon' => 'cart', 'tone' => 'orange', 'title' => 'Boutique de pièces',
+         'screenshot' => 'boutique', 'alt' => "Écran Boutique de pièces de l'application WiGO PRO",
          'body' => "37 références d'origine à prix AT Confort Plus (jusqu'à −30 %) : livraison suivie ou retrait au siège avec code sécurisé."],
-        ['icon' => '💬', 'tone' => 'green', 'title' => 'Support intégré',
-         'body' => "Messagerie directe avec les gestionnaires, appel audio via Internet et WhatsApp officiel. Du lundi au samedi, 8 h – 18 h."],
-        ['icon' => '📊', 'tone' => 'orange', 'title' => 'Vos courses en clair',
+        ['icon' => 'chat', 'tone' => 'green', 'title' => 'Support intégré',
+         'screenshot' => 'messages', 'alt' => "Écran Messages du support de l'application WiGO PRO",
+         'body' => "Messagerie directe avec les gestionnaires, appel audio via Internet et WhatsApp officiel. 24 h/24, 7 j/7."],
+        ['icon' => 'chart', 'tone' => 'orange', 'title' => 'Vos courses en clair',
+         'screenshot' => 'accueil', 'alt' => "Écran d'accueil de l'application WiGO PRO avec le compteur de courses",
          'body' => "Compteur hebdomadaire, historique sur 12 semaines, classement Top 100 et progression vers votre prochain ticket."],
     ];
 
@@ -59,7 +69,7 @@
             <div class="mx-auto grid max-w-[1120px] items-center gap-9 px-5 lg:grid-cols-[1.1fr_1fr]">
                 <div>
                     <x-site.pill class="mb-4.5">
-                        <span class="me-1" aria-hidden="true">🚕</span>by AT Confort Plus — partenaire Yango
+                        <x-site.icon name="taxi" size="size-4" class="me-1.5 -mt-px" />by AT Confort Plus — partenaire Yango
                     </x-site.pill>
 
                     <h1 class="mb-4 text-[clamp(30px,5vw,46px)] font-bold leading-[1.15]">
@@ -78,15 +88,14 @@
                              son fond et se fond dedans. Sur fond coloré, c'est le
                              blanc qui porte l'action principale. --}}
                         <x-site.cta href="#rejoindre" variant="white">
-                            <span class="me-1" aria-hidden="true">🚗</span>Devenir chauffeur WiGO
+                            <x-site.icon name="car" size="size-5" class="me-2" />Devenir chauffeur WiGO
                         </x-site.cta>
                         <x-site.cta href="#app" variant="outline">Découvrir l'application</x-site.cta>
                     </div>
 
                     <ul class="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-white/85">
-                        <li>✓ 2 539 chauffeurs actifs</li>
-                        <li>✓ Bonus 5 000 FCFA / semaine</li>
-                        <li>✓ Support 6 j/7</li>
+                        <li class="flex items-center gap-1.5"><x-site.icon name="check" size="size-4" />Bonus 5 000 FCFA / semaine</li>
+                        <li class="flex items-center gap-1.5"><x-site.icon name="check" size="size-4" />Support 24 h/24</li>
                     </ul>
                 </div>
 
@@ -114,7 +123,7 @@
                                  alt="" width="46" height="46" loading="lazy"
                                  class="size-[46px] rounded-[10px] object-cover">
                         </picture>
-                        <span><span class="me-1" aria-hidden="true">🎁</span>Un lot à gagner<br>chaque semaine</span>
+                        <span class="flex items-center gap-1.5"><x-site.icon name="gift" size="size-4" class="text-primary" /><span>Un lot à gagner<br>chaque semaine</span></span>
                     </div>
                 </div>
             </div>
@@ -130,7 +139,10 @@
 
         {{-- ============ CHIFFRES ============ --}}
         <section id="avantages" class="bg-site-surface pt-10 pb-2">
-            <div class="mx-auto grid max-w-[1120px] grid-cols-2 gap-4 px-5 md:grid-cols-4">
+            {{-- Deux colonnes et une largeur bornée à 700 px, comme le site
+                 d'origine : en `md:grid-cols-4`, les deux cartes restantes se
+                 tassaient sur la gauche d'une rangée de 1 120 px. --}}
+            <div class="mx-auto grid max-w-[700px] grid-cols-2 gap-4 px-5">
                 @foreach ($stats as $stat)
                     <x-site.stat :value="$stat['value']" :label="$stat['label']" />
                 @endforeach
@@ -144,18 +156,15 @@
                 L'application <span class="whitespace-nowrap">WiGO <em class="not-italic text-primary">PRO</em></span>
             </x-slot:title>
 
-            <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($features as $feature)
-                    <x-site.feature-card :icon="$feature['icon']" :tone="$feature['tone']" :title="$feature['title']">
-                        {{ $feature['body'] }}
-                    </x-site.feature-card>
-                @endforeach
-            </div>
+            {{-- La section se réduit aux captures : la rangée défilante montre
+                 déjà les six écrans, et les cartes qui la doublaient en texte
+                 repoussaient la suite de la page sans rien ajouter. --}}
+            <x-site.screenshot-slider :items="$features" />
         </x-site.section>
 
         {{-- ============ TOMBOLA ============ --}}
         <x-site.section id="tombola" tone="dark"
-                        title="Chaque semaine, un lot à remporter 🎰"
+                        title="Chaque semaine, un lot à remporter"
                         subtitle="Le challenge « Daba Guéhou » : plus vous roulez, plus vous avez de tickets. Tirage au sort automatique chaque dimanche à minuit — le gagnant est notifié dans l'application, lot remis au siège.">
             <div class="mx-auto mb-7 grid max-w-[900px] grid-cols-2 gap-4 md:grid-cols-4">
                 @foreach ($prizes as $prize)
@@ -168,7 +177,7 @@
             </div>
 
             <p class="text-center text-[14.5px] font-semibold text-white/80">
-                <span class="me-1" aria-hidden="true">🎟️</span>1 ticket toutes les 50 courses ·
+                <x-site.icon name="ticket" size="size-4" class="me-1.5 -mt-px" />1 ticket toutes les 50 courses ·
                 tirage automatique et auditable ·
                 bonus de 5 000 FCFA chaque semaine pour le Top 100
             </p>
@@ -192,7 +201,7 @@
         </x-site.section>
 
         {{-- ============ DEVENIR CHAUFFEUR ============ --}}
-        <x-site.section id="rejoindre" tone="green"
+        <x-site.section id="rejoindre" tone="orange"
                         title="Devenez chauffeur du parc AT Confort Plus"
                         subtitle="Un véhicule récent, un revenu régulier avec Yango, et tous les avantages WiGO PRO.">
             <ol class="mx-auto mb-9 grid max-w-[980px] gap-4.5 md:grid-cols-3">
@@ -209,21 +218,66 @@
 
             <div class="text-center">
                 <x-site.cta :href="$whatsapp" variant="white" size="lg" external>
-                    <span class="me-1" aria-hidden="true">💬</span>Nous écrire sur WhatsApp
+                    <x-site.icon name="chat" size="size-5" class="me-2" />Nous écrire sur WhatsApp
                 </x-site.cta>
             </div>
         </x-site.section>
 
+        {{-- ============ FAQ ============ --}}
+        <x-site.section id="faq"
+                        title="Questions fréquentes"
+                        subtitle="Tout ce que les chauffeurs nous demandent le plus souvent.">
+            <div class="mx-auto grid max-w-[760px] gap-3">
+                <x-site.faq-item question="Comment obtenir des tickets de tombola ?">
+                    Vous recevez automatiquement <b>1 ticket numéroté toutes les 50 courses</b>
+                    effectuées dans la semaine. Le tirage a lieu chaque dimanche à minuit ; le
+                    gagnant est notifié dans l'application et le lot est remis au siège.
+                </x-site.faq-item>
+
+                <x-site.faq-item question="Comment recharger mon solde Yango Pro ?">
+                    Depuis l'application WiGO PRO, indiquez le montant puis payez par <b>Wave</b> :
+                    votre solde Yango Pro est crédité, avec reçu et historique de vos recharges —
+                    sans vous déplacer.
+                </x-site.faq-item>
+
+                <x-site.faq-item question="Comment déclarer mes cotisations CNPS (RSTI) ?">
+                    Payez votre cotisation par Wave, puis joignez simplement la
+                    <b>capture de votre paiement</b> dans l'application. Votre situation est suivie
+                    mois par mois et les excédents sont reportés automatiquement.
+                </x-site.faq-item>
+
+                <x-site.faq-item question="Comment commander une pièce à la boutique ?">
+                    Choisissez la pièce dans le catalogue (37 références d'origine, jusqu'à −30 %),
+                    commandez depuis l'application, puis faites-vous <b>livrer</b> ou
+                    <b>retirez-la au siège</b> avec votre code de retrait sécurisé.
+                </x-site.faq-item>
+
+                <x-site.faq-item question="Comment rejoindre le parc AT Confort Plus ?">
+                    Écrivez-nous sur <a href="{{ $whatsapp }}" target="_blank" rel="noopener">WhatsApp</a>
+                    ou passez au siège (Koumassi Prodomo, Abidjan) avec votre permis de conduire.
+                    Un véhicule vous est attribué, votre compte Yango Pro est activé et
+                    l'application installée avec vous.
+                </x-site.faq-item>
+
+                <x-site.faq-item question="Quand le support est-il disponible ?">
+                    Du <b>lundi au dimanche, 24 h/24 et 7 j/7</b> : messagerie intégrée à
+                    l'application, appel audio via Internet ou WhatsApp officiel ATCP.
+                </x-site.faq-item>
+            </div>
+        </x-site.section>
+
         {{-- ============ WIGO PASSAGERS ============ --}}
-        <x-site.section compact>
+        {{-- Bandeau vert et étiquette translucide, comme le site d'origine :
+             sur ce fond, la pastille orange perdrait le contraste que porte
+             ici le filet blanc. --}}
+        <x-site.section tone="green" compact>
             <div class="text-center">
-                <x-site.pill tone="orange" class="mb-4">Bientôt</x-site.pill>
-                <h2 class="mb-3 text-[clamp(26px,4vw,36px)] font-bold text-ink">
-                    WiGO pour les passagers arrive 🚀
+                <x-site.pill class="mb-4">Bientôt</x-site.pill>
+                <h2 class="mb-3 text-[clamp(26px,4vw,36px)] font-bold text-white">
+                    Avec WiGO, chaque course compte
                 </h2>
-                <p class="mx-auto max-w-[680px] text-[16.5px] text-site-muted">
-                    Commander une course avec un chauffeur du parc, en toute confiance.
-                    Restez à l'écoute sur wigo.ci.
+                <p class="mx-auto max-w-[680px] text-[16.5px] text-white/85">
+                    Wi Go on y go. Restez à l'écoute sur wigo.ci.
                 </p>
             </div>
         </x-site.section>
