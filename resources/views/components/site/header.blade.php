@@ -12,22 +12,22 @@
 @php
     $links = [
         '#app' => "L'application",
-        '#avantages' => 'Avantages',
         '#tombola' => 'Bonus & tombola',
         '#boutique' => 'Boutique',
         '#rejoindre' => 'Devenir chauffeur',
+        '#faq' => 'FAQ',
         '#contact' => 'Contact',
     ];
 @endphp
 <header x-data="siteNav"
         x-on:keydown.escape.window="close()"
         class="sticky top-0 z-50 bg-site-hero shadow-[0_2px_12px_rgb(0_0_0/0.18)]">
-    <div class="mx-auto flex h-[62px] max-w-[1120px] items-center gap-[18px] px-5">
+    <div class="mx-auto flex h-[78px] max-w-[1120px] items-center gap-[18px] px-5">
         <a href="#haut" aria-label="WiGO — accueil" class="shrink-0">
             <picture>
                 <source type="image/webp" srcset="{{ Vite::asset('resources/images/site/logo-blanc.webp') }}">
                 <img src="{{ Vite::asset('resources/images/site/logo-blanc.png') }}"
-                     alt="WiGO" width="82" height="34" class="h-[34px] w-auto">
+                     alt="WiGO" width="110" height="46" class="h-[46px] w-auto">
             </picture>
         </a>
 

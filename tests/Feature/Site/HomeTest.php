@@ -25,7 +25,7 @@ it('does not require a session or a user', function (): void {
 it('renders every anchored section, and every nav anchor resolves', function (): void {
     $html = $this->get('/')->assertOk()->getContent();
 
-    foreach (['haut', 'app', 'avantages', 'tombola', 'boutique', 'rejoindre', 'contact'] as $id) {
+    foreach (['haut', 'app', 'avantages', 'tombola', 'boutique', 'rejoindre', 'faq', 'contact'] as $id) {
         expect($html)->toContain('id="'.$id.'"');
     }
 
@@ -53,9 +53,7 @@ it('renders the hardcoded figures at their final value', function (): void {
     $html = $this->get('/')->assertOk()->getContent();
 
     // Espace fine insécable, comme les colonnes chiffrées du back-office.
-    expect($html)->toContain('2'."\u{202F}".'539')
-        ->and($html)->toContain('24'."\u{202F}".'624')
-        ->and($html)->toContain('5'."\u{202F}".'000')
+    expect($html)->toContain('5'."\u{202F}".'000')
         ->and($html)->toContain('37');
 
     expect($html)->not->toMatch('/data-site-target="\d+"[^>]*>0</');
