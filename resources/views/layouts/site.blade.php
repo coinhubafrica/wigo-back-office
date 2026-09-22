@@ -8,6 +8,12 @@
     $description ??= "WiGO PRO, l'application des chauffeurs du parc AT Confort Plus (partenaire Yango) : bonus hebdomadaires, tombola, recharge Yango Pro par Wave, cotisations CNPS simplifiées, boutique de pièces à prix réduits et support intégré. Rejoignez le parc !";
     $ogTitle ??= "WiGO — La plateforme des chauffeurs VTC d'Abidjan";
     $ogDescription ??= "Bonus chaque semaine, tombola, recharge Wave, CNPS simplifiée et pièces auto à prix réduits. L'application des chauffeurs du parc AT Confort Plus.";
+    /*
+     * Chemin canonique de la page, sous l'hôte du site. La vitrine est `/` ;
+     * une page secondaire (confidentialité) pose le sien pour ne pas se
+     * déclarer copie de l'accueil.
+     */
+    $canonicalPath ??= '/';
 @endphp
 @php
     /*
@@ -18,6 +24,13 @@
     $siteUrl = ($siteDomain = config('wigo.domains.site'))
         ? 'https://'.$siteDomain
         : rtrim(url('/'), '/');
+
+    /*
+     * Les liens de l'en-tête et du pied sont des ancres de l'accueil. Sur
+     * l'accueil elles restent relatives (`#app`) ; sur une autre page elles
+     * sont préfixées de l'URL de l'accueil, sinon elles ne mènent nulle part.
+     */
+    $homeUrl = request()->routeIs('site.home') ? '' : rtrim(route('site.home'), '/').'/';
 @endphp
 
 <!DOCTYPE html>
@@ -32,7 +45,7 @@
 
     <title>{{ $title }}</title>
     <meta name="description" content="{{ $description }}">
-    <link rel="canonical" href="{{ $siteUrl }}/">
+    <link rel="canonical" href="{{ $siteUrl }}{{ $canonicalPath }}">
 
     {{-- La vitrine doit être indexée. Les gabarits du back-office portent au
          contraire `noindex` : ce sont des écrans nominatifs. --}}
@@ -43,7 +56,7 @@
     <meta property="og:locale" content="fr_FR">
     <meta property="og:title" content="{{ $ogTitle }}">
     <meta property="og:description" content="{{ $ogDescription }}">
-    <meta property="og:url" content="{{ $siteUrl }}/">
+    <meta property="og:url" content="{{ $siteUrl }}{{ $canonicalPath }}">
     <meta property="og:image" content="{{ $siteUrl }}/og-image.png">
     {{-- `summary` et non `summary_large_image` : l'illustration disponible est
          l'icône carrée 512×512. Une image 1200×630 permettrait la grande
@@ -64,11 +77,11 @@
         Aller au contenu
     </a>
 
-    <x-site.header />
+    <x-site.header :home="$homeUrl" />
 
     <main id="main">@yield('content')</main>
 
-    <x-site.footer />
+    <x-site.footer :home="$homeUrl" />
 
     {{--
         Alpine n'est pas une dépendance npm du projet : il est fourni par le

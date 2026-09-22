@@ -1,3 +1,8 @@
+@props([
+    /** Préfixe des ancres : vide sur l'accueil, URL de l'accueil ailleurs (cf. `layouts/site`). */
+    'home' => '',
+])
+
 {{--
     Pied de page. L'année est rendue par le serveur : le site d'origine la
     posait en JavaScript, ce qui est un comportement de moins à embarquer et
@@ -40,9 +45,10 @@
         <div>
             <h4 class="mb-2.5 text-[15.5px] font-bold text-white">Liens</h4>
             <p class="text-[14.5px]">
-                <a href="#app" class="text-site-accent hover:underline">L'application WiGO PRO</a><br>
-                <a href="#tombola" class="text-site-accent hover:underline">Bonus &amp; tombola</a><br>
-                <a href="#rejoindre" class="text-site-accent hover:underline">Devenir chauffeur</a>
+                <a href="{{ $home }}#app" class="text-site-accent hover:underline">L'application WiGO PRO</a><br>
+                <a href="{{ $home }}#tombola" class="text-site-accent hover:underline">Bonus &amp; tombola</a><br>
+                <a href="{{ $home }}#rejoindre" class="text-site-accent hover:underline">Devenir chauffeur</a><br>
+                <a href="{{ route('site.privacy') }}" class="text-site-accent hover:underline">Politique de confidentialité</a>
             </p>
         </div>
     </div>

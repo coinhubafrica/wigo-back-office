@@ -7,7 +7,7 @@ paths:
 
 # Site vitrine (wigo.ci)
 
-Page publique unique, servie par `Route::view('/', 'site.home')` — aucun état serveur, donc ni composant Livewire ni contrôleur. Gabarit autonome étendu par `@extends('layouts.site')`, comme la documentation : c'est le motif des gabarits du projet, `layouts/app` étant inutilisable pour un anonyme (il appelle `auth()->user()->visibleModules()`).
+Deux pages publiques servies par `Route::view` — `/` (`site.home`) et `/confidentialite` (`site.privacy`, la politique de confidentialité de WiGO PRO que Google Play exige à une URL publique) — aucun état serveur, donc ni composant Livewire ni contrôleur. Les ancres de l'en-tête et du pied (`#app`, `#rejoindre`…) visent l'accueil : le gabarit calcule `$homeUrl` (vide sur l'accueil, URL de l'accueil ailleurs) et le passe en prop `home` aux deux composants ; une page secondaire pose `$canonicalPath` pour ne pas se déclarer copie de `/`. Gabarit autonome étendu par `@extends('layouts.site')`, comme la documentation : c'est le motif des gabarits du projet, `layouts/app` étant inutilisable pour un anonyme (il appelle `auth()->user()->visibleModules()`).
 
 ## Alpine n'est PAS disponible ici sans `@livewireScripts`
 

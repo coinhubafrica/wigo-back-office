@@ -41,10 +41,11 @@ use Illuminate\Support\Facades\Route;
 | Site vitrine — wigo.ci
 |--------------------------------------------------------------------------
 |
-| La page publique du parc, seule route de ce domaine. Aucun compte, aucune
-| donnée : les chiffres sont figés dans la vue. Une vue et non un composant
-| Livewire — la page n'a aucun état serveur, et c'est déjà le motif des pages
-| de retour de paiement.
+| La page publique du parc et la politique de confidentialité de WiGO PRO
+| (Google Play exige une URL publique), seules routes de ce domaine. Aucun
+| compte, aucune donnée : les chiffres sont figés dans la vue. Des vues et non
+| des composants Livewire — ces pages n'ont aucun état serveur, et c'est déjà
+| le motif des pages de retour de paiement.
 |
 | ORDRE SIGNIFICATIF : ce groupe est déclaré AVANT celui du back-office, qui
 | pose lui aussi un `GET /` (`bo.home`). En production les domaines les
@@ -57,6 +58,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::domain(config('wigo.domains.site'))->group(function (): void {
     Route::view('/', 'site.home')->name('site.home');
+    Route::view('confidentialite', 'site.confidentialite')->name('site.privacy');
 });
 
 /*

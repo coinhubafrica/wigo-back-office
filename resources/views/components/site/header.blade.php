@@ -9,6 +9,11 @@
     des glyphes qui servaient de nom accessible et se rendaient mal selon la
     police disponible.
 --}}
+@props([
+    /** Préfixe des ancres : vide sur l'accueil, URL de l'accueil ailleurs (cf. `layouts/site`). */
+    'home' => '',
+])
+
 @php
     $links = [
         '#app' => "L'application",
@@ -23,7 +28,7 @@
         x-on:keydown.escape.window="close()"
         class="sticky top-0 z-50 bg-site-hero shadow-[0_2px_12px_rgb(0_0_0/0.18)]">
     <div class="mx-auto flex h-[78px] max-w-[1120px] items-center gap-[18px] px-5">
-        <a href="#haut" aria-label="WiGO — accueil" class="shrink-0">
+        <a href="{{ $home }}#haut" aria-label="WiGO — accueil" class="shrink-0">
             <picture>
                 <source type="image/webp" srcset="{{ Vite::asset('resources/images/site/logo-blanc.webp') }}">
                 <img src="{{ Vite::asset('resources/images/site/logo-blanc.png') }}"
@@ -33,11 +38,11 @@
 
         <nav aria-label="Navigation principale" class="ml-auto hidden gap-1 lg:flex">
             @foreach ($links as $href => $label)
-                <x-site.nav-link :href="$href">{{ $label }}</x-site.nav-link>
+                <x-site.nav-link :href="$home.$href">{{ $label }}</x-site.nav-link>
             @endforeach
         </nav>
 
-        <x-site.cta href="#rejoindre" variant="white" size="sm" class="ml-auto shrink-0 lg:ml-0">
+        <x-site.cta href="{{ $home }}#rejoindre" variant="white" size="sm" class="ml-auto shrink-0 lg:ml-0">
             Rejoindre le parc
         </x-site.cta>
 
@@ -65,7 +70,7 @@
          aria-label="Navigation principale (mobile)"
          class="flex flex-col bg-site-hero-deep px-4 pb-4 shadow-[0_12px_24px_rgb(0_0_0/0.25)] lg:hidden">
         @foreach ($links as $href => $label)
-            <x-site.nav-link :href="$href" class="border-b border-white/10 py-3">{{ $label }}</x-site.nav-link>
+            <x-site.nav-link :href="$home.$href" class="border-b border-white/10 py-3">{{ $label }}</x-site.nav-link>
         @endforeach
     </nav>
 </header>

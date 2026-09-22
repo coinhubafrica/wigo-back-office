@@ -67,6 +67,9 @@ it('declares each façade on its configured domain', function (): void {
     expect(Route::getRoutes()->getByName('site.home')->getDomain())
         ->toBe(config('wigo.domains.site'));
 
+    expect(Route::getRoutes()->getByName('site.privacy')->getDomain())
+        ->toBe(config('wigo.domains.site'));
+
     // `Route::livewire` est une macro : si elle construisait sa route hors de
     // la pile de groupes, elle perdrait le domaine en silence.
     expect(Route::getRoutes()->getByName('bo.login')->getDomain())
@@ -92,7 +95,7 @@ it('puts the api, the docs and the payment returns on the back-office domain', f
     $exempt = ['up', 'broadcasting/auth', 'sanctum/csrf-cookie'];
 
     $offenders = collect(Route::getRoutes()->getRoutes())
-        ->reject(fn ($route) => $route->getName() === 'site.home')
+        ->reject(fn ($route) => str_starts_with((string) $route->getName(), 'site.'))
         ->reject(fn ($route) => in_array($route->uri(), $exempt, true))
         ->reject(fn ($route) => (bool) preg_match('#^(livewire|_boost|storage)#', $route->uri()))
         ->filter(fn ($route) => $route->getDomain() !== $expected)
