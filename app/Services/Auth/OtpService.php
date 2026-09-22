@@ -11,6 +11,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -40,7 +42,8 @@ class OtpService
     {
         $this->assertNotLocked($driver);
 
-        $code = $this->generateCode();
+        $testCode = $this->testCodeFor($driver->phone);
+        $code = $testCode ?? $this->generateCode();
         $ttl = $this->settings->ttl_minutes;
 
         $otpCode = $driver->otpCodes()->create([
@@ -50,6 +53,16 @@ class OtpService
             'expires_at' => now()->addMinutes($ttl),
             'request_ip' => $requestIp,
         ]);
+
+        if ($testCode !== null) {
+            // Numéro de revue des stores : rien ne part, et le code fixe n'est
+            // jamais renvoyé dans la réponse, même avec `expose_code`.
+            $this->lastPlainCode = null;
+
+            Log::info('OTP : numéro de test, aucun envoi', ['driver_id' => $driver->id, 'phone' => $driver->phone]);
+
+            return $otpCode;
+        }
 
         $this->smsSender->send(
             $driver->phone,
@@ -125,6 +138,67 @@ class OtpService
 
             $driver->forceFill(['last_login_at' => now()])->save();
         });
+
+        if ($this->testCodeFor($driver->phone) !== null) {
+            Log::info('OTP : connexion d\'un numéro de test', ['driver_id' => $driver->id, 'phone' => $driver->phone]);
+        }
+    }
+
+    /**
+     * Code fixe du numéro s'il figure dans `wigo.otp.test_numbers` (comptes de
+     * revue Google Play / App Store), `null` sinon. Le code ne vaut que pour
+     * son propre numéro ; une entrée mal formée est ignorée.
+     */
+    public function testCodeFor(string $phone): ?string
+    {
+        return $this->testNumbers()[$phone] ?? null;
+    }
+
+    /**
+     * Liste `WIGO_OTP_TEST_NUMBERS` (`0700000001:123456,+2250700000002:654321`)
+     * indexée par numéro E.164, forme de `drivers.phone`.
+     *
+     * @return array<string, string>
+     */
+    private function testNumbers(): array
+    {
+        $numbers = [];
+        $length = $this->settings->length;
+
+        foreach (explode(',', (string) config('wigo.otp.test_numbers', '')) as $entry) {
+            [$phone, $code] = array_pad(array_map('trim', explode(':', $entry, 2)), 2, '');
+            $phone = $this->normalizeTestPhone($phone);
+
+            if ($phone === null || preg_match('/^\d{'.$length.'}$/', $code) !== 1) {
+                continue;
+            }
+
+            $numbers[$phone] = $code;
+        }
+
+        return $numbers;
+    }
+
+    /**
+     * Même règle que la synchronisation Yango : un numéro ivoirien national
+     * (10 chiffres, sans `+`) reçoit l'indicatif 225 ; le résultat doit être
+     * un E.164 strict, comme le valide l'API.
+     */
+    private function normalizeTestPhone(string $phone): ?string
+    {
+        $digits = preg_replace('/\D/', '', $phone) ?? '';
+
+        if ($digits === '') {
+            return null;
+        }
+
+        if (! Str::startsWith($phone, '+') && strlen($digits) === 10) {
+            $digits = '225'.$digits;
+        }
+
+        $normalized = '+'.$digits;
+
+        return preg_match('/^\+[1-9]\d{7,14}$/', $normalized) === 1 ? $normalized : null;
     }
 
     /**

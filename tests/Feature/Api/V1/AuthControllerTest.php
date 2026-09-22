@@ -9,6 +9,7 @@ use App\Services\Sms\LogSmsSender;
 use App\Settings\OtpSettings;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\Sanctum;
 
 it('stores a hashed code and sends it on otp request', function (): void {
@@ -241,6 +242,95 @@ it('refuses an otp request while the account is locked', function (): void {
     $this->postJson(route('api.v1.auth.otp.request'), ['phone' => $driver->phone])
         ->assertStatus(422)
         ->assertJsonValidationErrors('phone');
+});
+
+it('sends nothing and accepts the fixed code for a store review number', function (): void {
+    $sender = fakeSmsSender();
+    Log::spy();
+    config([
+        'wigo.otp.expose_code' => true,
+        'wigo.otp.test_numbers' => '0717738299:123456, +2250700000009:654321',
+    ]);
+    $driver = Driver::factory()->create(['phone' => '+2250717738299']);
+
+    $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])
+        ->assertOk()
+        ->assertJsonStructure(['message', 'data' => ['channel', 'expires_at']])
+        ->assertJsonMissingPath('data.code')
+        ->assertDontSee('123456');
+
+    $this->assertSame([], $sender->sent());
+    $this->assertTrue(Hash::check('123456', OtpCode::sole()->code_hash));
+
+    $this->postJson(route('api.v1.auth.otp.verify'), [
+        'phone' => '+2250717738299',
+        'code' => '123456',
+        'device_name' => 'Pixel 8',
+    ])->assertOk()->assertJsonStructure(['data' => ['token', 'driver', 'terms']]);
+
+    $this->assertSame(['mobile:*'], $driver->tokens()->sole()->abilities);
+
+    Log::shouldHaveReceived('info')
+        ->with("OTP : connexion d'un numéro de test", ['driver_id' => $driver->id, 'phone' => '+2250717738299'])
+        ->once();
+    Log::shouldNotHaveReceived('info', fn (string $message, array $context = []): bool => str_contains($message.json_encode($context), '123456'));
+});
+
+it('rejects a wrong code for a store review number', function (): void {
+    $sender = fakeSmsSender();
+    config(['wigo.otp.test_numbers' => '0717738299:123456']);
+    $driver = Driver::factory()->create(['phone' => '+2250717738299']);
+
+    $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])->assertOk();
+
+    $this->postJson(route('api.v1.auth.otp.verify'), [
+        'phone' => '+2250717738299',
+        'code' => '000000',
+        'device_name' => 'Pixel 8',
+    ])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.code.0', __('otp.invalid'));
+
+    $this->assertSame(1, OtpCode::sole()->attempts);
+    $this->assertCount(0, $driver->tokens()->get());
+    $this->assertSame([], $sender->sent());
+});
+
+it('keeps unlisted numbers on the normal flow when store review numbers are set', function (): void {
+    $sender = fakeSmsSender();
+    config(['wigo.otp.test_numbers' => '0717738299:123456']);
+    Driver::factory()->create(['phone' => '+2250717738299']);
+    Driver::factory()->create(['phone' => '+2250700000002']);
+
+    $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250700000002'])->assertOk();
+
+    $this->assertCount(1, $sender->sent());
+    $this->assertSame('+2250700000002', $sender->sent()[0]['phone']);
+    $this->assertTrue(Hash::check(extractCode($sender->sent()[0]['message']), OtpCode::sole()->code_hash));
+});
+
+it('does not accept a store review code for another number', function (): void {
+    config(['wigo.otp.test_numbers' => '0717738299:123456']);
+    $other = driverWithOtp('482913');
+
+    $this->postJson(route('api.v1.auth.otp.verify'), [
+        'phone' => $other->phone,
+        'code' => '123456',
+        'device_name' => 'Pixel 8',
+    ])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.code.0', __('otp.invalid'));
+});
+
+it('sends a real code to a would-be review number when the list is empty', function (): void {
+    $sender = fakeSmsSender();
+    config(['wigo.otp.test_numbers' => '']);
+    Driver::factory()->create(['phone' => '+2250717738299']);
+
+    $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])->assertOk();
+
+    $this->assertCount(1, $sender->sent());
+    $this->assertTrue(Hash::check(extractCode($sender->sent()[0]['message']), OtpCode::sole()->code_hash));
 });
 
 it('returns 401 from me without a token', function (): void {

@@ -28,6 +28,13 @@ return [
     | est ignoré dès que l'application tourne en production, quelle que soit la
     | valeur de l'environnement (cf. OtpService::exposesCode()).
     |
+    | `test_numbers` : comptes de revue Google Play / App Store, dont les
+    | examinateurs ne reçoivent pas de SMS. Format `numéro:code` séparés par
+    | des virgules (`0700000001:123456,+2250700000002:654321`) ; un numéro
+    | national à 10 chiffres reçoit l'indicatif 225. Pour ces numéros aucun
+    | SMS/WhatsApp ne part et seul le code fixe est accepté. Vide = désactivé.
+    | Actif en production : c'est là que se font les revues.
+    |
     | Le reste du barème OTP (longueur, durée de vie, tentatives, verrouillage,
     | throttle, rétention) est dans App\Settings\OtpSettings.
     |
@@ -35,6 +42,7 @@ return [
 
     'otp' => [
         'expose_code' => (bool) env('WIGO_OTP_EXPOSE_CODE', false),
+        'test_numbers' => (string) env('WIGO_OTP_TEST_NUMBERS', ''),
     ],
 
     /*
