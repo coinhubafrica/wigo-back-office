@@ -71,7 +71,7 @@
                     "Auth"
                 ],
                 "operationId": "v1.auth.otp.request",
-                "description": "Envoie un code à 6 chiffres (valable 5 minutes) par SMS ou WhatsApp. Le\nconducteur doit être pré-enregistré par le back-office : l'application\nmobile ne crée pas de compte.\n\nLimité à 3 envois par tranche de 10 minutes et par numéro.\n\nEn développement et en test (`WIGO_OTP_EXPOSE_CODE`), la réponse contient\nen plus le champ `code` : il est toujours absent en production.",
+                "description": "Envoie un code à 6 chiffres (valable 5 minutes) par WhatsApp. Le\nconducteur doit être pré-enregistré par le back-office : l'application\nmobile ne crée pas de compte.\n\nLimité à 3 envois par tranche de 10 minutes et par numéro.\n\nEn développement et en test (`WIGO_OTP_EXPOSE_CODE`), la réponse contient\nen plus le champ `code` : il est toujours absent en production.",
                 "summary": "Demander un code OTP",
                 "requestBody": {
                     "required": true,
@@ -103,7 +103,6 @@
                                                 "channel": {
                                                     "type": "string",
                                                     "enum": [
-                                                        "sms",
                                                         "whatsapp"
                                                     ]
                                                 },
@@ -3887,7 +3886,9 @@
                         ]
                     },
                     "channel": {
-                        "$ref": "#/components/schemas/OtpChannel"
+                        "$ref": "#/components/schemas/OtpChannel",
+                        "deprecated": true,
+                        "description": "Ignoré : le code part toujours par WhatsApp. Encore accepté pour ne pas\nrejeter les versions de l'application qui l'envoient."
                     }
                 },
                 "required": [

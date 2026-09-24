@@ -89,6 +89,7 @@ enum AuditAction: string
     case SettingsRechargeUpdated = 'settings.recharge_updated';
     case SettingsYangoUpdated = 'settings.yango_updated';
     case SettingsOtpUpdated = 'settings.otp_updated';
+    case SettingsWhatsappUpdated = 'settings.whatsapp_updated';
 
     case UserCreated = 'user.created';
     case UserUpdated = 'user.updated';
@@ -151,6 +152,7 @@ enum AuditAction: string
             self::SettingsRechargeUpdated => 'Plafonds de recharge modifiés',
             self::SettingsYangoUpdated => 'Accès Yango modifié',
             self::SettingsOtpUpdated => 'Barème OTP modifié',
+            self::SettingsWhatsappUpdated => 'Accès WhatsApp modifié',
 
             self::UserCreated => 'Compte créé',
             self::UserUpdated => 'Compte modifié',
@@ -214,7 +216,8 @@ enum AuditAction: string
             self::SettingsWaveTopupUpdated,
             self::SettingsRechargeUpdated,
             self::SettingsYangoUpdated,
-            self::SettingsOtpUpdated => BackOfficeModule::Settings,
+            self::SettingsOtpUpdated,
+            self::SettingsWhatsappUpdated => BackOfficeModule::Settings,
 
             self::UserCreated,
             self::UserUpdated,
@@ -258,6 +261,7 @@ enum AuditAction: string
             self::SettingsRechargeUpdated,
             self::SettingsYangoUpdated,
             self::SettingsOtpUpdated,
+            self::SettingsWhatsappUpdated,
             self::ChallengeSeedRegenerated,
             self::ShopPriceChanged,
             self::UserPasswordReset,

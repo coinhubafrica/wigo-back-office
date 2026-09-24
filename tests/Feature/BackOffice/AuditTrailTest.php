@@ -43,6 +43,7 @@ use App\Models\ShopOrder;
 use App\Models\User;
 use App\Services\Support\CampaignDispatcher;
 use App\Settings\RechargeSettings;
+use App\Settings\WhatsappSettings;
 use App\Settings\YangoSettings;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Carbon;
@@ -99,6 +100,38 @@ it('records nothing when the secret fields are left blank', function (): void {
         ->call('saveWaveShop');
 
     expect(AuditLog::query()->where('action', AuditAction::SettingsWaveShopUpdated->value)->exists())
+        ->toBeFalse();
+});
+
+it('records the WhatsApp token by name and the sender number as a diff', function (): void {
+    Livewire::actingAs(trailUser('direction'))
+        ->test(SettingsIndex::class)
+        ->set('whatsappPhoneNumberId', '123456789012345')
+        ->set('whatsappAccessToken', 'EAAB-ultra-secret')
+        ->call('saveWhatsapp');
+
+    $line = AuditLog::query()->where('action', AuditAction::SettingsWhatsappUpdated->value)->sole();
+
+    expect(json_encode($line->context))->not->toContain('ultra-secret')
+        ->and($line->context)->toBe([
+            'phone_number_id_before' => '',
+            'phone_number_id_after' => '123456789012345',
+            'fields' => ['access_token'],
+        ]);
+});
+
+it('records nothing when the WhatsApp settings are saved unchanged', function (): void {
+    $settings = app(WhatsappSettings::class);
+    $settings->phone_number_id = '123456789012345';
+    $settings->save();
+
+    // Même numéro, jeton laissé vide : rien n'a bougé, rien à annoncer.
+    Livewire::actingAs(trailUser('direction'))
+        ->test(SettingsIndex::class)
+        ->call('saveWhatsapp')
+        ->assertHasNoErrors();
+
+    expect(AuditLog::query()->where('action', AuditAction::SettingsWhatsappUpdated->value)->exists())
         ->toBeFalse();
 });
 

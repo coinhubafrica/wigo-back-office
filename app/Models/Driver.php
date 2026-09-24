@@ -235,4 +235,13 @@ class Driver extends Authenticatable
     {
         return $this->fcm_token;
     }
+
+    /**
+     * Destinataire WhatsApp : le numéro E.164 sans son `+`, forme attendue
+     * par l'API WhatsApp Cloud (`+2250700000001` → `2250700000001`).
+     */
+    public function routeNotificationForWhatsapp(): ?string
+    {
+        return filled($this->phone) ? ltrim($this->phone, '+') : null;
+    }
 }

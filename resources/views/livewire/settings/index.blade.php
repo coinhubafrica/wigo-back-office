@@ -216,6 +216,47 @@
         </x-slot:footer>
     </x-panel>
 
+    {{--
+        Accès à l'API WhatsApp Cloud, par laquelle partent les codes OTP. Le
+        jeton n'est jamais pré-rempli — laisser vide conserve celui enregistré.
+    --}}
+    <x-panel :title="__('backoffice.settings.whatsapp_title')" :subtitle="__('backoffice.settings.whatsapp_hint')" class="lg:col-span-2">
+        <form id="settings-whatsapp" wire:submit="saveWhatsapp" class="grid gap-4 sm:grid-cols-2">
+            <x-field
+                :label="__('backoffice.settings.whatsapp_phone_number_id')"
+                name="whatsappPhoneNumberId"
+                wire:model="whatsappPhoneNumberId"
+                inputmode="numeric"
+                autocomplete="off"
+                :hint="__('backoffice.settings.whatsapp_phone_number_id_hint')"
+            />
+            <x-field
+                :label="__('backoffice.settings.whatsapp_access_token')"
+                name="whatsappAccessToken"
+                type="password"
+                reveal="whatsappAccessToken"
+                :revealed="$revealedSecrets['whatsappAccessToken'] ?? null"
+                wire:model="whatsappAccessToken"
+                autocomplete="off"
+                :placeholder="$whatsappTokenPreview"
+                :hint="$whatsappTokenStored ? __('backoffice.settings.key_replace_hint') : __('backoffice.settings.wave_secret_hint')"
+            />
+
+            @unless ($whatsappTokenStored)
+                <p class="text-xs text-err-text sm:col-span-2">{{ __('backoffice.settings.whatsapp_token_missing') }}</p>
+            @endunless
+        </form>
+
+        <x-slot:footer>
+            <div class="flex justify-end">
+                <x-button type="submit" form="settings-whatsapp" target="saveWhatsapp">
+                    {{ __('backoffice.settings.save') }}
+                    <x-slot:loading>{{ __('backoffice.common.saving') }}</x-slot:loading>
+                </x-button>
+            </div>
+        </x-slot:footer>
+    </x-panel>
+
     {{-- Ce qui n'est délibérément pas modifiable ici. --}}
     <section class="rounded border border-dashed border-line bg-surface p-5 lg:col-span-2" aria-labelledby="settings-env-title">
         <h2 id="settings-env-title" class="text-sm font-semibold text-ink">{{ __('backoffice.settings.env_title') }}</h2>

@@ -2,10 +2,10 @@
 
 namespace App\Services\Auth;
 
-use App\Contracts\SmsSender;
 use App\Enums\OtpChannel;
 use App\Models\Driver;
 use App\Models\OtpCode;
+use App\Notifications\WhatsappOtpCode;
 use App\Settings\OtpSettings;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -31,14 +31,14 @@ class OtpService
      */
     private ?string $lastPlainCode = null;
 
-    public function __construct(private SmsSender $smsSender, private OtpSettings $settings) {}
+    public function __construct(private OtpSettings $settings) {}
 
     /**
-     * Émet un code et l'envoie sur le canal demandé.
+     * Émet un code et l'envoie au conducteur par WhatsApp.
      *
      * @throws ValidationException si le conducteur est verrouillé
      */
-    public function send(Driver $driver, OtpChannel $channel, ?string $requestIp = null): OtpCode
+    public function send(Driver $driver, ?string $requestIp = null): OtpCode
     {
         $this->assertNotLocked($driver);
 
@@ -48,7 +48,7 @@ class OtpService
 
         $otpCode = $driver->otpCodes()->create([
             'code_hash' => Hash::make($code),
-            'channel' => $channel,
+            'channel' => OtpChannel::Whatsapp,
             'sent_at' => now(),
             'expires_at' => now()->addMinutes($ttl),
             'request_ip' => $requestIp,
@@ -64,11 +64,7 @@ class OtpService
             return $otpCode;
         }
 
-        $this->smsSender->send(
-            $driver->phone,
-            __('otp.message', ['code' => $code, 'minutes' => $ttl]),
-            $channel,
-        );
+        $driver->notify(new WhatsappOtpCode($code));
 
         // Conservé en mémoire uniquement : jamais persisté en clair.
         $this->lastPlainCode = $code;

@@ -2,7 +2,6 @@
 
 return [
     'sent' => 'Un code de connexion vous a été envoyé. Il expire dans :minutes minutes.',
-    'message' => 'WiGO PRO : votre code de connexion est :code. Il expire dans :minutes minutes.',
     'not_requested' => "Aucun code n'a été demandé pour ce numéro.",
     'expired' => 'Ce code a expiré. Demandez un nouveau code.',
     'invalid' => 'Code incorrect.',

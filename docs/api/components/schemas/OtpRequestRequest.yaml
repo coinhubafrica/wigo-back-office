@@ -7,6 +7,10 @@ properties:
       - '+2250717738299'
   channel:
     $ref: ../../components/schemas/OtpChannel.yaml
+    deprecated: true
+    description: |-
+      Ignoré : le code part toujours par WhatsApp. Encore accepté pour ne pas
+      rejeter les versions de l'application qui l'envoient.
 required:
   - phone
 title: OtpRequestRequest

@@ -2,7 +2,7 @@
   post:
     operationId: v1.auth.otp.request
     description: |-
-      Envoie un code à 6 chiffres (valable 5 minutes) par SMS ou WhatsApp. Le
+      Envoie un code à 6 chiffres (valable 5 minutes) par WhatsApp. Le
       conducteur doit être pré-enregistré par le back-office : l'application
       mobile ne crée pas de compte.
 
@@ -35,7 +35,6 @@
                     channel:
                       type: string
                       enum:
-                        - sms
                         - whatsapp
                     expires_at:
                       type: string

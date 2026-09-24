@@ -27,7 +27,7 @@ class AuthController extends Controller
     /**
      * Demander un code OTP
      *
-     * Envoie un code à 6 chiffres (valable 5 minutes) par SMS ou WhatsApp. Le
+     * Envoie un code à 6 chiffres (valable 5 minutes) par WhatsApp. Le
      * conducteur doit être pré-enregistré par le back-office : l'application
      * mobile ne crée pas de compte.
      *
@@ -39,7 +39,7 @@ class AuthController extends Controller
      * @response array{
      *     message: string,
      *     data: array{
-     *         channel: 'sms'|'whatsapp',
+     *         channel: 'whatsapp',
      *         expires_at: string,
      *         code?: string,
      *     },
@@ -49,7 +49,7 @@ class AuthController extends Controller
     {
         $driver = $this->findByPhone($request->string('phone')->toString());
 
-        $otpCode = $this->otpService->send($driver, $request->channel(), $request->ip());
+        $otpCode = $this->otpService->send($driver, $request->ip());
 
         $payload = [
             'channel' => $otpCode->channel->value,
