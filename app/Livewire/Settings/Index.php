@@ -13,6 +13,7 @@ use App\Settings\RechargeSettings;
 use App\Settings\WaveAccountSettings;
 use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
+use App\Settings\WhatsappSettings;
 use App\Settings\YangoSettings;
 use App\Support\SecretMask;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -22,8 +23,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Réglages métier : barème OTP, plafonds de recharge, accès au parc Yango et
- * clés des deux comptes Wave (boutique et recharge).
+ * Réglages métier : barème OTP, plafonds de recharge, accès au parc Yango,
+ * clés des deux comptes Wave (boutique et recharge) et accès WhatsApp.
  *
  * Seules les valeurs que le métier ajuste sont ici. Les interrupteurs de
  * sécurité et de déploiement (contournement d'OTP, jeton de documentation,
@@ -97,7 +98,15 @@ class Index extends Component
 
     public string $waveTopupWebhookSecret = '';
 
-    public function mount(OtpSettings $otp, RechargeSettings $recharge, YangoSettings $yango): void
+    public string $whatsappPhoneNumberId = '';
+
+    /**
+     * Jeton de l'API WhatsApp Cloud. Jamais pré-rempli, comme les clés Wave et
+     * Yango : vide à l'affichage signifie « on garde celui déjà enregistré ».
+     */
+    public string $whatsappAccessToken = '';
+
+    public function mount(OtpSettings $otp, RechargeSettings $recharge, YangoSettings $yango, WhatsappSettings $whatsapp): void
     {
         $this->otpLength = $otp->length;
         $this->otpTtlMinutes = $otp->ttl_minutes;
@@ -115,6 +124,8 @@ class Index extends Component
         $this->yangoBaseUrl = $yango->base_url;
         $this->yangoParkId = $yango->park_id;
         $this->yangoPageDelayMs = $yango->page_delay_ms;
+
+        $this->whatsappPhoneNumberId = $whatsapp->phone_number_id;
     }
 
     /**
@@ -146,6 +157,7 @@ class Index extends Component
             'waveShopWebhookSecret' => fn (): string => app(WaveShopSettings::class)->webhook_secret,
             'waveTopupApiKey' => fn (): string => app(WaveTopupSettings::class)->api_key,
             'waveTopupWebhookSecret' => fn (): string => app(WaveTopupSettings::class)->webhook_secret,
+            'whatsappAccessToken' => fn (): string => app(WhatsappSettings::class)->access_token,
         ];
     }
 
@@ -258,6 +270,52 @@ class Index extends Component
         }
 
         $this->dispatch('toast', message: __('backoffice.settings.wave_topup_saved'));
+    }
+
+    public function saveWhatsapp(WhatsappSettings $whatsapp): void
+    {
+        Gate::authorize('manageSettings');
+
+        $this->validate([
+            // L'identifiant du numéro expéditeur est un entier chez Meta.
+            'whatsappPhoneNumberId' => 'required|string|regex:/^\d+$/|max:64',
+            // Facultatif : laissé vide, le jeton déjà enregistré est conservé.
+            // Un jeton Meta dépasse largement les 255 caractères d'une clé Wave.
+            'whatsappAccessToken' => 'nullable|string|max:1024',
+        ]);
+
+        // Le numéro expéditeur dit *au nom de qui* partent les codes : son
+        // changement est journalisé en clair. Le jeton, lui, n'est cité que
+        // par son nom.
+        $before = $whatsapp->phone_number_id;
+
+        $whatsapp->phone_number_id = $this->whatsappPhoneNumberId;
+
+        if (filled($this->whatsappAccessToken)) {
+            $whatsapp->access_token = $this->whatsappAccessToken;
+        }
+
+        $whatsapp->save();
+
+        $replaced = $this->replacedSecretFields(['access_token' => $this->whatsappAccessToken]);
+        $this->whatsappAccessToken = '';
+
+        $context = array_filter([
+            'phone_number_id_before' => $before === $whatsapp->phone_number_id ? null : $before,
+            'phone_number_id_after' => $before === $whatsapp->phone_number_id ? null : $whatsapp->phone_number_id,
+            'fields' => $replaced === [] ? null : $replaced,
+        ], fn (mixed $value): bool => $value !== null);
+
+        if ($context !== []) {
+            AuditLog::record(
+                action: AuditAction::SettingsWhatsappUpdated->value,
+                summary: "{$this->actor()->fullName()} a modifié l'accès WhatsApp.",
+                by: $this->actor(),
+                context: $context,
+            );
+        }
+
+        $this->dispatch('toast', message: __('backoffice.settings.whatsapp_saved'));
     }
 
     /**
@@ -517,7 +575,7 @@ class Index extends Component
         };
     }
 
-    public function render(YangoSettings $yango, WaveShopSettings $shop, WaveTopupSettings $topup): View
+    public function render(YangoSettings $yango, WaveShopSettings $shop, WaveTopupSettings $topup, WhatsappSettings $whatsapp): View
     {
         /** @var view-string $view */
         $view = 'livewire.settings.index';
@@ -531,6 +589,7 @@ class Index extends Component
             'waveShopSecretStored' => filled($shop->webhook_secret),
             'waveTopupKeyStored' => $topup->isConfigured(),
             'waveTopupSecretStored' => filled($topup->webhook_secret),
+            'whatsappTokenStored' => filled($whatsapp->access_token),
 
             // Aperçus masqués : ils disent *laquelle* est en place — une clé de
             // test se distingue d'une clé de production, et les deux comptes
@@ -542,6 +601,7 @@ class Index extends Component
             'waveShopSecretPreview' => SecretMask::preview($shop->webhook_secret),
             'waveTopupKeyPreview' => SecretMask::preview($topup->api_key),
             'waveTopupSecretPreview' => SecretMask::preview($topup->webhook_secret),
+            'whatsappTokenPreview' => SecretMask::preview($whatsapp->access_token),
         ]);
     }
 }

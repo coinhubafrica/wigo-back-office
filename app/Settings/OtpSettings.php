@@ -21,8 +21,6 @@ class OtpSettings extends Settings
 
     public int $lock_minutes;
 
-    public string $default_channel;
-
     /** Envois autorisés par numéro sur `throttle_decay_minutes`. */
     public int $throttle_max_sends;
 

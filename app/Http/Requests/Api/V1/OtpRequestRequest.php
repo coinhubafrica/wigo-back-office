@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\Enums\OtpChannel;
-use App\Settings\OtpSettings;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,13 +15,10 @@ class OtpRequestRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'regex:/^\+[1-9]\d{7,14}$/'],
+            // Toujours accepté pour ne pas casser les versions de
+            // l'application qui l'envoient, mais ignoré : le code part par
+            // WhatsApp quel que soit le canal demandé.
             'channel' => ['sometimes', Rule::enum(OtpChannel::class)],
         ];
-    }
-
-    public function channel(): OtpChannel
-    {
-        return $this->enum('channel', OtpChannel::class)
-            ?? OtpChannel::from(app(OtpSettings::class)->default_channel);
     }
 }

@@ -1,19 +1,19 @@
 <?php
 
-use App\Contracts\SmsSender;
 use App\Enums\OtpChannel;
 use App\Models\Driver;
 use App\Models\OtpCode;
 use App\Models\Vehicle;
-use App\Services\Sms\LogSmsSender;
+use App\Notifications\WhatsappOtpCode;
 use App\Settings\OtpSettings;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 
-it('stores a hashed code and sends it on otp request', function (): void {
-    $sender = fakeSmsSender();
+it('stores a hashed code and sends it by whatsapp on otp request', function (): void {
+    Notification::fake();
     $driver = Driver::factory()->create(['phone' => '+2250717738299']);
 
     $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])
@@ -24,35 +24,37 @@ it('stores a hashed code and sends it on otp request', function (): void {
     $this->assertSame($driver->id, $otpCode->driver_id);
     $this->assertTrue($otpCode->expires_at->isFuture());
     $this->assertNull($otpCode->consumed_at);
-    $this->assertCount(1, $sender->sent());
+    $this->assertSame(OtpChannel::Whatsapp, $otpCode->channel);
+    Notification::assertSentToTimes($driver, WhatsappOtpCode::class, 1);
 
-    // Le code circule en clair dans le SMS mais n'est stocké que haché.
-    $code = extractCode($sender->sent()[0]['message']);
+    // Le code circule en clair dans le message mais n'est stocké que haché.
+    $code = authSentCode($driver);
     $this->assertTrue(Hash::check($code, $otpCode->code_hash));
     $this->assertStringNotContainsString($code, $otpCode->code_hash);
 });
 
-it('honours the requested channel on otp request', function (): void {
-    $sender = fakeSmsSender();
-    Driver::factory()->create(['phone' => '+2250717738299']);
+it('ignores a requested sms channel and sends by whatsapp on otp request', function (): void {
+    Notification::fake();
+    $driver = Driver::factory()->create(['phone' => '+2250717738299']);
 
+    // Les versions de l'application qui envoient encore `channel` ne doivent
+    // pas être rejetées : le champ est accepté, puis ignoré.
     $this->postJson(route('api.v1.auth.otp.request'), [
         'phone' => '+2250717738299',
-        'channel' => 'whatsapp',
+        'channel' => 'sms',
     ])->assertOk()->assertJsonPath('data.channel', 'whatsapp');
 
-    $this->assertSame(OtpChannel::Whatsapp->value, $sender->sent()[0]['channel']);
+    $this->assertSame(OtpChannel::Whatsapp, OtpCode::sole()->channel);
+    Notification::assertSentTo($driver, WhatsappOtpCode::class);
 });
 
-it('defaults to sms on otp request', function (): void {
-    $sender = fakeSmsSender();
+it('reports whatsapp as the channel by default on otp request', function (): void {
+    Notification::fake();
     Driver::factory()->create(['phone' => '+2250717738299']);
 
     $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])
         ->assertOk()
-        ->assertJsonPath('data.channel', 'sms');
-
-    $this->assertSame(OtpChannel::Sms->value, $sender->sent()[0]['channel']);
+        ->assertJsonPath('data.channel', 'whatsapp');
 });
 
 it('returns 422 for an unknown phone on otp request', function (): void {
@@ -68,7 +70,7 @@ it('returns 422 for a malformed phone on otp request', function (): void {
 });
 
 it('returns the code when exposure is enabled on otp request', function (): void {
-    fakeSmsSender();
+    Notification::fake();
     config(['wigo.otp.expose_code' => true]);
     $driver = Driver::factory()->create(['phone' => '+2250717738299']);
 
@@ -88,7 +90,7 @@ it('returns the code when exposure is enabled on otp request', function (): void
 });
 
 it('omits the code when exposure is disabled on otp request', function (): void {
-    fakeSmsSender();
+    Notification::fake();
     config(['wigo.otp.expose_code' => false]);
     Driver::factory()->create(['phone' => '+2250717738299']);
 
@@ -98,7 +100,7 @@ it('omits the code when exposure is disabled on otp request', function (): void 
 });
 
 it('never exposes the code in production', function (): void {
-    fakeSmsSender();
+    Notification::fake();
 
     // Même configuration explicite : la production doit refuser.
     config(['wigo.otp.expose_code' => true]);
@@ -112,7 +114,7 @@ it('never exposes the code in production', function (): void {
 });
 
 it('returns 429 after three sends on otp request', function (): void {
-    fakeSmsSender();
+    Notification::fake();
     Driver::factory()->create(['phone' => '+2250717738299']);
 
     for ($send = 0; $send < 3; $send++) {
@@ -235,7 +237,7 @@ it('locks the account after five failures on otp verify', function (): void {
 });
 
 it('refuses an otp request while the account is locked', function (): void {
-    fakeSmsSender();
+    Notification::fake();
     $driver = Driver::factory()->create();
     OtpCode::factory()->for($driver)->locked()->create();
 
@@ -245,7 +247,7 @@ it('refuses an otp request while the account is locked', function (): void {
 });
 
 it('sends nothing and accepts the fixed code for a store review number', function (): void {
-    $sender = fakeSmsSender();
+    Notification::fake();
     Log::spy();
     config([
         'wigo.otp.expose_code' => true,
@@ -259,7 +261,7 @@ it('sends nothing and accepts the fixed code for a store review number', functio
         ->assertJsonMissingPath('data.code')
         ->assertDontSee('123456');
 
-    $this->assertSame([], $sender->sent());
+    Notification::assertNothingSent();
     $this->assertTrue(Hash::check('123456', OtpCode::sole()->code_hash));
 
     $this->postJson(route('api.v1.auth.otp.verify'), [
@@ -277,7 +279,7 @@ it('sends nothing and accepts the fixed code for a store review number', functio
 });
 
 it('rejects a wrong code for a store review number', function (): void {
-    $sender = fakeSmsSender();
+    Notification::fake();
     config(['wigo.otp.test_numbers' => '0717738299:123456']);
     $driver = Driver::factory()->create(['phone' => '+2250717738299']);
 
@@ -293,20 +295,20 @@ it('rejects a wrong code for a store review number', function (): void {
 
     $this->assertSame(1, OtpCode::sole()->attempts);
     $this->assertCount(0, $driver->tokens()->get());
-    $this->assertSame([], $sender->sent());
+    Notification::assertNothingSent();
 });
 
 it('keeps unlisted numbers on the normal flow when store review numbers are set', function (): void {
-    $sender = fakeSmsSender();
+    Notification::fake();
     config(['wigo.otp.test_numbers' => '0717738299:123456']);
-    Driver::factory()->create(['phone' => '+2250717738299']);
-    Driver::factory()->create(['phone' => '+2250700000002']);
+    $reviewer = Driver::factory()->create(['phone' => '+2250717738299']);
+    $driver = Driver::factory()->create(['phone' => '+2250700000002']);
 
     $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250700000002'])->assertOk();
 
-    $this->assertCount(1, $sender->sent());
-    $this->assertSame('+2250700000002', $sender->sent()[0]['phone']);
-    $this->assertTrue(Hash::check(extractCode($sender->sent()[0]['message']), OtpCode::sole()->code_hash));
+    Notification::assertSentToTimes($driver, WhatsappOtpCode::class, 1);
+    Notification::assertNotSentTo($reviewer, WhatsappOtpCode::class);
+    $this->assertTrue(Hash::check(authSentCode($driver), OtpCode::sole()->code_hash));
 });
 
 it('does not accept a store review code for another number', function (): void {
@@ -323,14 +325,14 @@ it('does not accept a store review code for another number', function (): void {
 });
 
 it('sends a real code to a would-be review number when the list is empty', function (): void {
-    $sender = fakeSmsSender();
+    Notification::fake();
     config(['wigo.otp.test_numbers' => '']);
-    Driver::factory()->create(['phone' => '+2250717738299']);
+    $driver = Driver::factory()->create(['phone' => '+2250717738299']);
 
     $this->postJson(route('api.v1.auth.otp.request'), ['phone' => '+2250717738299'])->assertOk();
 
-    $this->assertCount(1, $sender->sent());
-    $this->assertTrue(Hash::check(extractCode($sender->sent()[0]['message']), OtpCode::sole()->code_hash));
+    Notification::assertSentToTimes($driver, WhatsappOtpCode::class, 1);
+    $this->assertTrue(Hash::check(authSentCode($driver), OtpCode::sole()->code_hash));
 });
 
 it('returns 401 from me without a token', function (): void {
@@ -442,14 +444,6 @@ it('lets a fired driver keep the profile but loses protected routes', function (
     $this->postJson(route('api.v1.auth.logout'))->assertOk();
 });
 
-function fakeSmsSender(): LogSmsSender
-{
-    $sender = new LogSmsSender;
-    app()->instance(SmsSender::class, $sender);
-
-    return $sender;
-}
-
 /**
  * @param  Factory<Driver>|null  $factory
  */
@@ -462,9 +456,10 @@ function driverWithOtp(string $code, $factory = null): Driver
     return $driver;
 }
 
-function extractCode(string $message): string
+/**
+ * Code en clair porté par la dernière notification WhatsApp du conducteur.
+ */
+function authSentCode(Driver $driver): string
 {
-    preg_match('/\b(\d{'.app(OtpSettings::class)->length.'})\b/', $message, $matches);
-
-    return $matches[1] ?? '';
+    return Notification::sent($driver, WhatsappOtpCode::class)->last()->code;
 }

@@ -2,12 +2,9 @@
 
 namespace App\Providers;
 
-use App\Contracts\SmsSender;
 use App\Contracts\WaveClient;
 use App\Contracts\YangoClient;
 use App\Contracts\YangoDirectory;
-use App\Services\Sms\HttpSmsSender;
-use App\Services\Sms\LogSmsSender;
 use App\Services\Wave\FakeWaveClient;
 use App\Services\Wave\SaloonWaveClient;
 use App\Services\Yango\SaloonYangoClient;
@@ -22,14 +19,6 @@ class IntegrationServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(SmsSender::class, function (): SmsSender {
-            if ($this->app->environment('testing') || config('services.sms.driver') === 'log') {
-                return new LogSmsSender;
-            }
-
-            return new HttpSmsSender;
-        });
-
         $this->app->singleton(WaveClient::class, function (): WaveClient {
             if ($this->app->environment('testing') || config('services.wave.driver') === 'fake') {
                 return new FakeWaveClient;

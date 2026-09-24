@@ -1046,6 +1046,14 @@ return [
         'wave_shop_saved' => 'Compte Wave de la boutique enregistré.',
         'wave_topup_saved' => 'Compte Wave de la recharge enregistré.',
 
+        'whatsapp_title' => 'WhatsApp — Codes de connexion',
+        'whatsapp_hint' => "Accès à l'API WhatsApp Cloud de Meta, par laquelle partent les codes OTP des conducteurs.",
+        'whatsapp_phone_number_id' => 'Identifiant du numéro (Phone number ID)',
+        'whatsapp_phone_number_id_hint' => 'Visible dans Meta Business, rubrique WhatsApp › Configuration de l’API.',
+        'whatsapp_access_token' => "Jeton d'accès",
+        'whatsapp_token_missing' => 'Aucun jeton enregistré : les codes de connexion ne peuvent pas partir.',
+        'whatsapp_saved' => 'Accès WhatsApp enregistré.',
+
         'save' => 'Enregistrer',
 
         'env_title' => "Réglages pilotés par l'environnement",

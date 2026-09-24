@@ -14,6 +14,7 @@ use App\Settings\OtpSettings;
 use App\Settings\RechargeSettings;
 use App\Settings\WaveShopSettings;
 use App\Settings\WaveTopupSettings;
+use App\Settings\WhatsappSettings;
 use App\Settings\YangoSettings;
 use Database\Seeders\RolePermissionSeeder;
 use Livewire\Livewire;
@@ -511,4 +512,91 @@ function settingsRevealer(): User
     $user->givePermissionTo(BackOfficePermission::SettingsRevealSecrets->value);
 
     return $user->fresh();
+}
+
+// ------------------------------------------------------------------- WhatsApp
+
+it('saves the WhatsApp credentials with the token encrypted at rest', function (): void {
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('whatsappPhoneNumberId', '123456789012345')
+        ->set('whatsappAccessToken', 'EAAB-jeton-whatsapp-secret')
+        ->call('saveWhatsapp')
+        ->assertHasNoErrors()
+        // Rien ne repart vers le navigateur une fois enregistré.
+        ->assertSet('whatsappAccessToken', '');
+
+    expect(app(WhatsappSettings::class)->phone_number_id)->toBe('123456789012345')
+        ->and(app(WhatsappSettings::class)->access_token)->toBe('EAAB-jeton-whatsapp-secret');
+
+    $payload = DB::table('settings')->where('group', 'whatsapp')->where('name', 'access_token')->value('payload');
+
+    expect($payload)->not->toContain('EAAB-jeton-whatsapp-secret');
+});
+
+it('keeps the stored WhatsApp token when the field is left empty', function (): void {
+    settingsStoreWhatsappToken('EAAB-jeton-en-place');
+
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('whatsappPhoneNumberId', '999999999999999')
+        ->call('saveWhatsapp')
+        ->assertHasNoErrors();
+
+    expect(app(WhatsappSettings::class)->access_token)->toBe('EAAB-jeton-en-place')
+        ->and(app(WhatsappSettings::class)->phone_number_id)->toBe('999999999999999');
+});
+
+it('requires a numeric WhatsApp phone number id', function (string $phoneNumberId): void {
+    Livewire::actingAs(settingsUser('admin'))
+        ->test(Index::class)
+        ->set('whatsappPhoneNumberId', $phoneNumberId)
+        ->call('saveWhatsapp')
+        ->assertHasErrors(['whatsappPhoneNumberId']);
+})->with([
+    'vide' => [''],
+    'non numérique' => ['+225-0700'],
+]);
+
+it('never sends the stored WhatsApp token back to the browser', function (): void {
+    settingsStoreWhatsappToken('EAAB-jeton-whatsapp-tres-secret');
+
+    $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        ->assertDontSee('EAAB-jeton-whatsapp-tres-secret');
+});
+
+it('warns when no WhatsApp token is stored', function (): void {
+    $this->actingAs(settingsUser('admin'))
+        ->get(route(BackOfficeModule::Settings->route()))
+        ->assertOk()
+        ->assertSee(__('backoffice.settings.whatsapp_token_missing'));
+});
+
+it('reveals the stored WhatsApp token to a holder of the permission', function (): void {
+    settingsStoreWhatsappToken('EAAB-jeton-a-relever');
+
+    Livewire::actingAs(settingsRevealer())
+        ->test(Index::class)
+        ->call('reveal', 'whatsappAccessToken')
+        ->assertSet('revealedSecrets.whatsappAccessToken', 'EAAB-jeton-a-relever');
+});
+
+it('refuses to save WhatsApp credentials without the permission', function (): void {
+    Livewire::actingAs(settingsUser('bonus'))
+        ->test(Index::class)
+        ->set('whatsappPhoneNumberId', '123456789012345')
+        ->call('saveWhatsapp')
+        ->assertForbidden();
+
+    expect(app(WhatsappSettings::class)->phone_number_id)->toBe('');
+});
+
+function settingsStoreWhatsappToken(string $token): void
+{
+    $settings = app(WhatsappSettings::class);
+    $settings->phone_number_id = '123456789012345';
+    $settings->access_token = $token;
+    $settings->save();
 }
